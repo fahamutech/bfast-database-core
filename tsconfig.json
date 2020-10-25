@@ -6,5 +6,12 @@
 */
 {
   "files": [],
-  "references": []
+  "references": [
+    {
+      "path": "./projects/daas/tsconfig.lib.json"
+    },
+    {
+      "path": "./projects/daas/tsconfig.spec.json"
+    }
+]
 }
