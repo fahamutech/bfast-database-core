@@ -1,9 +1,9 @@
 import * as bcrypt from 'bcrypt';
-import * as _jwt from "jsonwebtoken";
+import * as _jwt from 'jsonwebtoken';
 import * as uuid from 'uuid';
 
-let _jwtPassword =
-    `MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDFg6797ocIzEPK
+const jwtPassword =
+  `MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDFg6797ocIzEPK
 mk96COGGqySke+nVcJwNvuGqynxvahg6OFHamg29P9S5Ji73O1t+3uEhubv7lbaF
 f6WA1xnLzPSa3y3OdkFDUt8Px0SwnSJRxgNVG2g4gT6pA/huuJDuyleTPUKAqe/4
 Ty/jbmj+dco+nTXzxo2VDB/uCGUTibPE7TvuAG3O5QbYVM2GBEPntha8L3IQ9GKc
@@ -23,69 +23,69 @@ JLcWQ6hFDpecIaaCJiqAXvFACr`;
 
 export class SecurityController {
 
-    constructor() {
-    }
+  constructor() {
+  }
 
-    async comparePassword(plainPassword: string, hashPassword: string): Promise<boolean> {
-        return await bcrypt.compare(plainPassword, hashPassword);
-    }
+  private static dayToSecond(day: string): number {
+    const days = day ? day : '7d';
+    const daysInNumber = days.replace('d', '') as unknown as number;
+    return (daysInNumber * 86400);
+  }
 
-    async hashPlainText(plainText: string): Promise<string> {
-        return await bcrypt.hash(plainText, 10);
-    }
+  async comparePassword(plainPassword: string, hashPassword: string): Promise<boolean> {
+    return await bcrypt.compare(plainPassword, hashPassword);
+  }
 
-    async revokeToken(token: string): Promise<any> {
-        return {message: 'Token not revoked', value: false};
-    }
+  async hashPlainText(plainText: string): Promise<string> {
+    return await bcrypt.hash(plainText, 10);
+  }
 
-    async generateToken(data: { uid: string, [key: string]: any }, expire?: string): Promise<string> {
-        return new Promise((resolve, reject) => {
-            _jwt.sign(data, _jwtPassword, {
-                expiresIn: expire ? expire : '7d',
-                issuer: 'bfast::cloud'
-            }, async (err, encoded) => {
-                if (err) {
-                    reject({message: 'Fails to generate a token', reason: err.toString()});
-                    return;
-                }
-                resolve(encoded);
-            });
-        });
-    }
+  async revokeToken(token: string): Promise<any> {
+    return {message: 'Token not revoked', value: false};
+  }
 
-    async verifyToken<T>(token: string): Promise<T> {
-        return new Promise((resolve, reject) => {
-            _jwt.verify(token, _jwtPassword, {
-                issuer: 'bfast::cloud'
-            }, (err, decoded: any) => {
-                if (err) {
-                    reject({message: 'Fails to verify token', reason: err.toString()});
-                } else {
-                    const data = JSON.parse(JSON.stringify(decoded));
-                    if (data && data.uid) {
-                        resolve(data);
-                    } else {
-                        reject({message: 'Invalid data in token'});
-                    }
-                }
-            });
-        });
-    }
+  async generateToken(data: { uid: string, [key: string]: any }, expire?: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+      _jwt.sign(data, jwtPassword, {
+        expiresIn: expire ? expire : '7d',
+        issuer: 'bfast::cloud'
+      }, async (err, encoded) => {
+        if (err) {
+          reject({message: 'Fails to generate a token', reason: err.toString()});
+          return;
+        }
+        resolve(encoded);
+      });
+    });
+  }
 
-    decodeToken(token: string): any {
-        return _jwt.decode(token, {
-            complete: true,
-            json: true
-        });
-    }
+  async verifyToken<T>(token: string): Promise<T> {
+    return new Promise((resolve, reject) => {
+      _jwt.verify(token, jwtPassword, {
+        issuer: 'bfast::cloud'
+      }, (err, decoded: any) => {
+        if (err) {
+          reject({message: 'Fails to verify token', reason: err.toString()});
+        } else {
+          const data = JSON.parse(JSON.stringify(decoded));
+          if (data && data.uid) {
+            resolve(data);
+          } else {
+            reject({message: 'Invalid data in token'});
+          }
+        }
+      });
+    });
+  }
 
-    private static dayToSecond(day: string) {
-        const days = day ? day : '7d';
-        const daysInNumber = days.replace('d', '') as unknown as number;
-        return (daysInNumber * 86400);
-    }
+  decodeToken(token: string): any {
+    return _jwt.decode(token, {
+      complete: true,
+      json: true
+    });
+  }
 
-    generateUUID(): string {
-        return uuid.v4();
-    }
+  generateUUID(): string {
+    return uuid.v4();
+  }
 }

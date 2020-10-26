@@ -6,7 +6,7 @@
     "**/adapter/**",
     "**/controllers/**",
     "**/web-services/index.**",
-    "**/web-services/webServicesConfig.**",
+    "**/webservices/**.js",
     "**/model/**",
     "**/*.specs.js",
     "**/*.spec.js",

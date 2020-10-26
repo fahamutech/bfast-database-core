@@ -1,5 +1,5 @@
-# BFast Database Core
-BFast Database Core Libs
+# BFast DatabaseFactory Core
+BFast DatabaseFactory Core Libs
 
 ## Get Started
 
@@ -17,7 +17,7 @@ const bfastDatabase = new BfastDatabaseCore();
 
 bfastDatabase.init({
     masterKey: 'any-string-you-want',
-    applicationId: 'any-string-you-want',
+    verifyApplicationId: 'any-string-you-want',
     mongoDbUri: 'mongodb://localhost/test', // your mongodb server url
 }).then(console.log).catch(console.log);
 

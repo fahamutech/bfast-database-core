@@ -29,7 +29,7 @@
 //   }
 //
 //   return new BfastDatabaseCore().startServer({
-//     applicationId: await envUtil.getEnv(process.env.APPLICATION_ID),
+//     verifyApplicationId: await envUtil.getEnv(process.env.APPLICATION_ID),
 //     masterKey: await envUtil.getEnv(process.env.MASTER_KEY),
 //     mongoDbUri: await envUtil.getEnv(process.env.MONGO_URL),
 //     port: await envUtil.getEnv(process.env.PORT),
