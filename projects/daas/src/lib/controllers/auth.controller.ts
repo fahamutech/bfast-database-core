@@ -3,15 +3,10 @@ import {ContextBlock} from '../model/rules.model';
 import {BasicUserAttributesModel} from '../model/basic-user-attributes.model';
 import {DatabaseController} from './database.controller';
 
-let authAdapter: AuthAdapter;
-let databaseController: DatabaseController;
-
 export class AuthController {
 
-  constructor(private readonly auth: AuthAdapter,
-              private readonly database: DatabaseController) {
-    authAdapter = this.auth;
-    databaseController = this.database;
+  constructor(private readonly authAdapter: AuthAdapter,
+              private readonly databaseController: DatabaseController) {
   }
 
   private policyDomainName = '_Policy';
@@ -33,7 +28,7 @@ export class AuthController {
   }
 
   async addAuthorizationRule(ruleId: string, rule: string, context: ContextBlock): Promise<any> {
-    const rules = await databaseController.query(this.policyDomainName, {
+    const rules = await this.databaseController.query(this.policyDomainName, {
       filter: {
         ruleId
       }
@@ -41,7 +36,7 @@ export class AuthController {
       bypassDomainVerification: context && context.useMasterKey === true
     });
     if (rules && rules.length > 0) {
-      return databaseController.update(this.policyDomainName, {
+      return this.databaseController.update(this.policyDomainName, {
         filter: {
           ruleId
         },
@@ -57,7 +52,7 @@ export class AuthController {
         bypassDomainVerification: context && context.useMasterKey === true
       });
     } else {
-      return databaseController.writeOne(this.policyDomainName, {
+      return this.databaseController.writeOne(this.policyDomainName, {
         ruleId,
         ruleBody: rule,
         return: [],
@@ -90,7 +85,7 @@ export class AuthController {
       filter.$or.push({ruleId: globalRule});
     }
     filter.$or.push({ruleId: originalRule});
-    const query: any[] = await databaseController.query(this.policyDomainName, {
+    const query: any[] = await this.databaseController.query(this.policyDomainName, {
       return: [],
       filter,
     }, context, {
@@ -117,7 +112,7 @@ export class AuthController {
   }
 
   async resetPassword(email: string, context?: ContextBlock): Promise<any> {
-    return authAdapter.resetPassword(email, context);
+    return this.authAdapter.resetPassword(email, context);
   }
 
   async sendVerificationEmail(email: string, context?: ContextBlock): Promise<any> {
@@ -127,13 +122,13 @@ export class AuthController {
   async signIn<T extends BasicUserAttributesModel>(userModel: T, context?: ContextBlock): Promise<T> {
     AuthController.validateData(userModel, true);
     userModel.return = [];
-    return authAdapter.signIn(userModel, context);
+    return this.authAdapter.signIn(userModel, context);
   }
 
   async signUp<T extends BasicUserAttributesModel>(userModel: T, context?: ContextBlock): Promise<T> {
     AuthController.validateData(userModel);
     userModel.return = [];
-    return authAdapter.signUp(userModel, context);
+    return this.authAdapter.signUp(userModel, context);
   }
 
   async update<T extends BasicUserAttributesModel>(userModel: T, context?: ContextBlock): Promise<T> {

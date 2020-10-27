@@ -2,6 +2,8 @@ import {DatabaseFactory} from './factory/database.factory';
 import {DatabaseController} from './controllers/database.controller';
 import {SecurityController} from './controllers/security.controller';
 import {BFastDatabaseConfigAdapter} from './bfast.config';
+import {Container} from './container';
+import {RealtimeWebservice} from './webservices/realtime.webservice';
 
 
 export class BfastDatabaseCore {
@@ -65,6 +67,13 @@ export class BfastDatabaseCore {
       new SecurityController()
     );
     return database.init();
+  }
+
+  private initiateDependencies(config: BFastDatabaseConfigAdapter): void {
+    const databaseFactory = config.adapters && config.adapters.database ? config.adapters.database(config) : new DatabaseFactory(config);
+    Container.service('SecurityController', container => new SecurityController());
+    Container.service('DatabaseContainer', container => new DatabaseController(databaseFactory, Container.SecurityController));
+    Container.service('RealtimeWebservice', container => new RealtimeWebservice(Container.DatabaseContainer));
   }
 
   /**

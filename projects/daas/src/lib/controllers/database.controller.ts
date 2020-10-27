@@ -7,15 +7,10 @@ import {QueryModel} from '../model/query-model';
 import {SecurityController} from './security.controller';
 import {ChangeEvent} from 'mongodb';
 
-let databaseAdapter: DatabaseAdapter;
-let securityController: SecurityController;
-
 export class DatabaseController {
 
-  constructor(private readonly database: DatabaseAdapter,
-              private readonly security: SecurityController) {
-    databaseAdapter = this.database;
-    securityController = this.security;
+  constructor(private readonly databaseAdapter: DatabaseAdapter,
+              private readonly securityController: SecurityController) {
   }
 
   /**
@@ -39,7 +34,7 @@ export class DatabaseController {
    * @return Promise
    */
   async init(mandatory = false): Promise<any> {
-    return databaseAdapter.init();
+    return this.databaseAdapter.init();
   }
 
   /**
@@ -49,7 +44,7 @@ export class DatabaseController {
    */
   async addIndexes(domain: string, indexes: any[]): Promise<any> {
     if (indexes && Array.isArray(indexes)) {
-      return databaseAdapter.createIndexes(domain, indexes);
+      return this.databaseAdapter.createIndexes(domain, indexes);
     } else {
       throw new Error('Must supply array of indexes to be added');
     }
@@ -60,7 +55,7 @@ export class DatabaseController {
    * @param domain - resource name
    */
   async removeIndexes(domain: string): Promise<boolean> {
-    return databaseAdapter.dropIndexes(domain);
+    return this.databaseAdapter.dropIndexes(domain);
   }
 
   /**
@@ -68,7 +63,7 @@ export class DatabaseController {
    * @param domain - resource name
    */
   async listIndexes(domain: string): Promise<any[]> {
-    return databaseAdapter.listIndexes(domain);
+    return this.databaseAdapter.listIndexes(domain);
   }
 
   /**
@@ -86,7 +81,7 @@ export class DatabaseController {
     const returnFields = this.getReturnFields<T>(data);
     const sanitizedData = this.sanitize4Db(data);
     const sanitizedDataWithCreateMetadata = this.addCreateMetadata(sanitizedData, context);
-    sanitizedDataWithCreateMetadata._id = await databaseAdapter.writeOne<T>(domain, sanitizedDataWithCreateMetadata, context, options);
+    sanitizedDataWithCreateMetadata._id = await this.databaseAdapter.writeOne<T>(domain, sanitizedDataWithCreateMetadata, context, options);
     return this.sanitize4User<T>(sanitizedDataWithCreateMetadata, returnFields) as T;
   }
 
@@ -106,7 +101,7 @@ export class DatabaseController {
     updateModel.update = this.sanitizeWithOperator4Db(updateModel?.update as any);
     updateModel.filter = this.sanitizeWithOperator4Db(updateModel?.filter as any);
     updateModel.update = this.addUpdateMetadata(updateModel?.update as any, context);
-    const updatedDoc = await databaseAdapter.update<any, any>(domain, updateModel, context, options);
+    const updatedDoc = await this.databaseAdapter.update<any, any>(domain, updateModel, context, options);
     return this.sanitize4User(updatedDoc, returnFields);
   }
 
@@ -124,7 +119,7 @@ export class DatabaseController {
     }
     // const returnFields = deleteModel.return;
     deleteModel.filter = this.sanitizeWithOperator4Db(deleteModel?.filter as any);
-    const result = await databaseAdapter.deleteOne<any, any>(domain, deleteModel, context, options);
+    const result = await this.databaseAdapter.deleteOne<any, any>(domain, deleteModel, context, options);
     return this.sanitize4User(result, ['id']);
   }
 
@@ -133,7 +128,7 @@ export class DatabaseController {
    * @param operations - callback to return operations to perform
    */
   async transaction<V>(operations: (session: any) => Promise<any>): Promise<any> {
-    return databaseAdapter.transaction(operations);
+    return this.databaseAdapter.transaction(operations);
   }
 
   /**
@@ -148,7 +143,7 @@ export class DatabaseController {
     if (options && options.bypassDomainVerification === false) {
       await this.handleDomainValidation(domain);
     }
-    const results = await databaseAdapter.aggregate(domain, pipelines, context, options);
+    const results = await this.databaseAdapter.aggregate(domain, pipelines, context, options);
     return results.map(result => this.sanitize4User(result, []));
   }
 
@@ -164,7 +159,7 @@ export class DatabaseController {
     if (options && options.bypassDomainVerification === false) {
       await this.handleDomainValidation(domain);
     }
-    return databaseAdapter.changes(domain, pipeline, (doc: ChangeEvent) => {
+    return this.databaseAdapter.changes(domain, pipeline, (doc: ChangeEvent) => {
       if (doc.operationType === 'insert') {
         listener({
           name: 'create',
@@ -204,13 +199,13 @@ export class DatabaseController {
       queryModel = this.sanitizeWithOperator4Db(queryModel as any);
       queryModel.filter = this.sanitizeWithOperator4Db(queryModel?.filter as any);
       queryModel.return = returnFields4Db;
-      const result = await databaseAdapter.findOne(domain, queryModel, context, options);
+      const result = await this.databaseAdapter.findOne(domain, queryModel, context, options);
       return this.sanitize4User(result, returnFields);
     } else {
       queryModel = this.sanitizeWithOperator4Db(queryModel as any);
       queryModel.filter = this.sanitizeWithOperator4Db(queryModel?.filter as any);
       queryModel.return = returnFields4Db;
-      const result = await databaseAdapter.query(domain, queryModel, context, options);
+      const result = await this.databaseAdapter.query(domain, queryModel, context, options);
       if (result && Array.isArray(result)) {
         return result.map(value => this.sanitize4User(value, returnFields));
       }
@@ -229,7 +224,7 @@ export class DatabaseController {
     });
     const sanitizedData = data.map(value => this.sanitize4Db(value));
     const freshData = sanitizedData.map(value => this.addCreateMetadata(value, context));
-    const insertedIds = await databaseAdapter.writeMany<any, object>(domain, freshData, context, options);
+    const insertedIds = await this.databaseAdapter.writeMany<any, object>(domain, freshData, context, options);
     Object.keys(insertedIds).forEach(index => {
       freshData[index]._id = insertedIds[index];
       freshData[index] = this.sanitize4User(freshData[index], returnFieldsMap[index]);
@@ -270,7 +265,7 @@ export class DatabaseController {
     data._created_at = new Date();
     data._updated_at = new Date();
     if (data && (data._id === undefined || data._id === null) && typeof data !== 'boolean') {
-      data._id = securityController.generateUUID();
+      data._id = this.securityController.generateUUID();
     }
     return data;
   }
