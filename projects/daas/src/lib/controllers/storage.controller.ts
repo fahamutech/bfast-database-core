@@ -6,9 +6,15 @@ import {EXPECTATION_FAILED} from 'http-status-codes';
 import {PassThrough} from 'stream';
 import {BFastDatabaseConfigAdapter} from '../bfast.config';
 
+
+let filesAdapter: FilesAdapter;
+let config: BFastDatabaseConfigAdapter;
+
 export class StorageController {
-  constructor(private readonly filesAdapter: FilesAdapter,
-              private readonly config: BFastDatabaseConfigAdapter) {
+  constructor(files: FilesAdapter,
+              configAdapter: BFastDatabaseConfigAdapter) {
+    filesAdapter = files;
+    config = configAdapter;
   }
 
   private static getSource(base64: string, type: string): any {
@@ -71,7 +77,7 @@ export class StorageController {
       dataToSave.type = source.type;
     }
     const isBase64 = Buffer.from(dataToSave.data, 'base64').toString('base64') === dataToSave.data;
-    const file = await this.filesAdapter.createFile(
+    const file = await filesAdapter.createFile(
       dataToSave.filename,
       isBase64 === true ?
         Buffer.from(dataToSave.data, 'base64')
@@ -92,7 +98,7 @@ export class StorageController {
     //         console.warn('Fails to save thumbnail', e);
     //     }
     // }
-    return this.filesAdapter.getFileLocation(file, this.config);
+    return filesAdapter.getFileLocation(file, config);
   }
 
   isFileStreamable(req, filesController: FilesAdapter): boolean {
@@ -106,8 +112,8 @@ export class StorageController {
   getFileData(request, response, thumbnail = false): void {
     const filename = request.params.filename;
     const contentType = mime.getType(filename);
-    if (this.isFileStreamable(request, this.filesAdapter)) {
-      this.filesAdapter
+    if (this.isFileStreamable(request, filesAdapter)) {
+      filesAdapter
         .handleFileStream(filename, request, response, contentType, thumbnail)
         .catch(() => {
           response.status(404);
@@ -115,7 +121,7 @@ export class StorageController {
           response.end('File not found.');
         });
     } else {
-      this.filesAdapter
+      filesAdapter
         .getFileData(filename, thumbnail)
         .then(data => {
           response.status(200);
@@ -132,7 +138,7 @@ export class StorageController {
   }
 
   async listFiles(data: { prefix: string, size: number, skip: number, after: string }): Promise<any[]> {
-    return this.filesAdapter.listFiles(data);
+    return filesAdapter.listFiles(data);
   }
 
   async saveFromBuffer(fileModel: { filename: string, data: PassThrough, type: string }, context: ContextBlock): Promise<string> {
@@ -147,7 +153,7 @@ export class StorageController {
     if (!type) {
       type = mime.getType(filename);
     }
-    const file = await this.filesAdapter.createFile(filename, data, type, {});
+    const file = await filesAdapter.createFile(filename, data, type, {});
     // if (type && type.toString().startsWith('image/') === true) {
     //     try {
     //         await this._filesAdapter.createThumbnail(file, Buffer.from(data), type, {});
@@ -156,7 +162,7 @@ export class StorageController {
     //         console.warn('Fails to save thumbnail', e);
     //     }
     // }
-    return this.filesAdapter.getFileLocation(file, this.config);
+    return filesAdapter.getFileLocation(file, config);
   }
 
   async delete(data: { filename: string }, context: ContextBlock): Promise<string> {
@@ -164,17 +170,17 @@ export class StorageController {
     if (!filename) {
       throw new Error('Filename required');
     }
-    await this.filesAdapter.deleteFile(filename);
+    await filesAdapter.deleteFile(filename);
     return filename;
   }
 
   isS3(): boolean {
-    return this.filesAdapter.isS3;
+    return filesAdapter.isS3;
   }
 
   handleGetFileBySignedUrl(request: any, response: any, thumbnail = false): void {
     const filename = request.params.filename;
-    this.filesAdapter.signedUrl(filename, thumbnail).then(value => {
+    filesAdapter.signedUrl(filename, thumbnail).then(value => {
       response.redirect(value);
     }).catch(reason => {
       response.status(EXPECTATION_FAILED).send({message: reason.toString()});

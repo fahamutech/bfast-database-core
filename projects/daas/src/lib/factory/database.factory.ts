@@ -7,10 +7,13 @@ import {UpdateRuleRequestModel} from '../model/update-rule-request.model';
 import {DeleteModel} from '../model/delete-model';
 import {BFastDatabaseConfigAdapter} from '../bfast.config';
 
+let config: BFastDatabaseConfigAdapter;
+
 export class DatabaseFactory implements DatabaseAdapter {
   private mongoClient: MongoClient;
 
-  constructor(private readonly config: BFastDatabaseConfigAdapter) {
+  constructor(configAdapter: BFastDatabaseConfigAdapter) {
+    config = configAdapter;
   }
 
   async writeMany<T extends BasicAttributesModel, V>(domain: string, data: T[], context: ContextBlock, options?: DatabaseWriteOptions)
@@ -37,7 +40,7 @@ export class DatabaseFactory implements DatabaseAdapter {
     if (this.mongoClient && this.mongoClient.isConnected()) {
       return this.mongoClient;
     } else {
-      const mongoUri = this.config.mongoDbUri;
+      const mongoUri = config.mongoDbUri;
       return new MongoClient(mongoUri, {
         useNewUrlParser: true,
         useUnifiedTopology: true

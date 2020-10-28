@@ -1,18 +1,21 @@
 import {BFast} from 'bfastnode';
 import {RestController} from '../controllers/rest.controller';
 
+let restController: RestController;
+
 export class RestWebservice {
 
-  constructor(private readonly restController: RestController) {
+  constructor(rest: RestController) {
+    restController = rest;
   }
 
   rulesV2(): { path: string, onRequest: any, method: string } {
     return BFast.functions().onPostHttpRequest('/v2', [
-      this.restController.verifyMethod,
-      this.restController.verifyBodyData,
-      this.restController.verifyApplicationId,
-      this.restController.verifyToken,
-      this.restController.handleRuleBlocks
+      restController.verifyMethod,
+      restController.verifyBodyData,
+      restController.verifyApplicationId,
+      restController.verifyToken,
+      restController.handleRuleBlocks
     ]);
   }
 

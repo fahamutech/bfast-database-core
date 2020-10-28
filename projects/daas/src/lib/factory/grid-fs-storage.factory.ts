@@ -10,14 +10,19 @@ import {SecurityController} from '../controllers/security.controller';
 import {PassThrough} from 'stream';
 import {BFastDatabaseConfigAdapter} from '../bfast.config';
 
+let security: SecurityController;
+let config: BFastDatabaseConfigAdapter;
+
 export class GridFsStorageFactory implements FilesAdapter {
 
-  constructor(private readonly security: SecurityController,
-              private readonly config: BFastDatabaseConfigAdapter,
+  constructor(securityController: SecurityController,
+              configAdapter: BFastDatabaseConfigAdapter,
               private readonly mongoDatabaseURI: string,
               private readonly mongoOptions = {}) {
+    security = securityController;
+    config = configAdapter;
     if (!this.mongoDatabaseURI) {
-      this.mongoDatabaseURI = this.config.mongoDbUri;
+      this.mongoDatabaseURI = config.mongoDbUri;
     }
     const defaultMongoOptions = {
       useNewUrlParser: true,
@@ -49,7 +54,7 @@ export class GridFsStorageFactory implements FilesAdapter {
 
   async createFile(filename: string, data: PassThrough, contentType: any, options: any = {}): Promise<string> {
     await this.validateFilename(filename);
-    const newFilename = this.security.generateUUID() + '-' + filename;
+    const newFilename = security.generateUUID() + '-' + filename;
     const bucket = await this.getBucket();
     return this._saveFile(newFilename, data, contentType, bucket, options);
   }
@@ -85,8 +90,8 @@ export class GridFsStorageFactory implements FilesAdapter {
     });
   }
 
-  async getFileLocation(filename: string, config: BFastDatabaseConfigAdapter): Promise<string> {
-    return '/storage/' + config.applicationId + '/file/' + encodeURIComponent(filename);
+  async getFileLocation(filename: string, configAdapter: BFastDatabaseConfigAdapter): Promise<string> {
+    return '/storage/' + configAdapter.applicationId + '/file/' + encodeURIComponent(filename);
   }
 
   async getMetadata(filename): Promise<any> {
@@ -164,7 +169,7 @@ export class GridFsStorageFactory implements FilesAdapter {
   }
 
   async signedUrl(filename: string, thumbnail = false): Promise<string> {
-    return this.getFileLocation(filename, this.config);
+    return this.getFileLocation(filename, config);
   }
 
   // async createThumbnail(filename: string, data: Buffer, contentType: string, options: any = {}): Promise<string> {

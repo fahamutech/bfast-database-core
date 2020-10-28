@@ -17,100 +17,103 @@ import {FunctionsModel} from '../model/functions.model';
 //   `);
 // });
 
+let restController: RestController;
 
+// @dynamic
 export class StorageWebservice {
-  constructor(private readonly restController: RestController) {
+  constructor(rest: RestController) {
+    restController = rest;
   }
 
-  private handleGetFile(): any[] {
+  private static handleGetFile(): any[] {
     return [
       (request, _, next) => {
         request.body.applicationId = request.params.appId;
         request.body.ruleId = 'files.read';
         next();
       },
-      this.restController.verifyApplicationId,
-      this.restController.verifyToken,
-      this.restController.filePolicy,
-      this.restController.getFile
+      restController.verifyApplicationId,
+      restController.verifyToken,
+      restController.filePolicy,
+      restController.getFile
     ];
   }
 
-  private handleUploadFile(): any[] {
+  private static handleUploadFile(): any[] {
     return [
       (request, response, next) => {
         request.body.applicationId = request.params.appId;
         request.body.ruleId = 'files.save';
         next();
       },
-      this.restController.verifyApplicationId,
-      this.restController.verifyToken,
-      this.restController.filePolicy,
-      this.restController.multipartForm
+      restController.verifyApplicationId,
+      restController.verifyToken,
+      restController.filePolicy,
+      restController.multipartForm
     ];
   }
 
-  private handleGetThumbnail(): any[] {
+  private static handleGetThumbnail(): any[] {
     return [
       (request, _, next) => {
         request.body.applicationId = request.params.appId;
         request.body.ruleId = 'files.read';
         next();
       },
-      this.restController.verifyApplicationId,
-      this.restController.verifyToken,
-      this.restController.filePolicy,
-      this.restController.getThumbnail
+      restController.verifyApplicationId,
+      restController.verifyToken,
+      restController.filePolicy,
+      restController.getThumbnail
     ];
   }
 
-  private handleListFiles(): any[] {
+  private static handleListFiles(): any[] {
     return [
       (request, _, next) => {
         request.body.applicationId = request.params.appId;
         request.body.ruleId = 'files.list';
         next();
       },
-      this.restController.verifyApplicationId,
-      this.restController.verifyToken,
-      this.restController.filePolicy,
-      this.restController.getAllFiles
+      restController.verifyApplicationId,
+      restController.verifyToken,
+      restController.filePolicy,
+      restController.getAllFiles
     ];
   }
 
   getFileStorageV1(): FunctionsModel {
-    return BFast.functions().onGetHttpRequest('/files/:appId/:filename', this.handleGetFile());
+    return BFast.functions().onGetHttpRequest('/files/:appId/:filename', StorageWebservice.handleGetFile());
   }
 
   getFileFromStorage(): FunctionsModel {
-    return BFast.functions().onGetHttpRequest('/storage/:appId/file/:filename', this.handleGetFile());
+    return BFast.functions().onGetHttpRequest('/storage/:appId/file/:filename', StorageWebservice.handleGetFile());
   }
 
   getFileFromStorageV2(): FunctionsModel {
-    return BFast.functions().onGetHttpRequest('/v2/storage/:appId/file/:filename', this.handleGetFile());
+    return BFast.functions().onGetHttpRequest('/v2/storage/:appId/file/:filename', StorageWebservice.handleGetFile());
   }
 
   uploadMultiPartFile(): FunctionsModel {
-    return BFast.functions().onPostHttpRequest('/storage/:appId', this.handleUploadFile());
+    return BFast.functions().onPostHttpRequest('/storage/:appId', StorageWebservice.handleUploadFile());
   }
 
   uploadMultiPartFileV2(): FunctionsModel {
-    return BFast.functions().onPostHttpRequest('/v2/storage/:appId', this.handleUploadFile());
+    return BFast.functions().onPostHttpRequest('/v2/storage/:appId', StorageWebservice.handleUploadFile());
   }
 
   geThumbnailFromStorage(): FunctionsModel {
-    return BFast.functions().onGetHttpRequest('/storage/:appId/thumbnail/:filename', this.handleGetThumbnail());
+    return BFast.functions().onGetHttpRequest('/storage/:appId/thumbnail/:filename', StorageWebservice.handleGetThumbnail());
   }
 
   geThumbnailFromStorageV2(): FunctionsModel {
-    return BFast.functions().onGetHttpRequest('/v2/storage/:appId/thumbnail/:filename', this.handleGetThumbnail());
+    return BFast.functions().onGetHttpRequest('/v2/storage/:appId/thumbnail/:filename', StorageWebservice.handleGetThumbnail());
   }
 
   getFilesFromStorage(): FunctionsModel {
-    return BFast.functions().onGetHttpRequest('/storage/:appId/list', this.handleListFiles());
+    return BFast.functions().onGetHttpRequest('/storage/:appId/list', StorageWebservice.handleListFiles());
   }
 
   getFilesFromStorageV2(): FunctionsModel {
-    return BFast.functions().onGetHttpRequest('/v2/storage/:appId/list', this.handleListFiles());
+    return BFast.functions().onGetHttpRequest('/v2/storage/:appId/list', StorageWebservice.handleListFiles());
   }
 }
