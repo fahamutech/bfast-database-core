@@ -2,8 +2,18 @@ import {DatabaseFactory} from './factory/database.factory';
 import {DatabaseController} from './controllers/database.controller';
 import {SecurityController} from './controllers/security.controller';
 import {BFastDatabaseConfigAdapter} from './bfast.config';
-import {Container} from './container';
+import {Provider} from './provider';
 import {RealtimeWebservice} from './webservices/realtime.webservice';
+import {AuthController} from './controllers/auth.controller';
+import {AuthFactory} from './factory/auth.factory';
+import {StorageController} from './controllers/storage.controller';
+import {S3StorageFactory} from './factory/s3-storage.factory';
+import {FilesAdapter} from './adapters/files.adapter';
+import {RestController} from './controllers/rest.controller';
+import {RestWebservice} from './webservices/rest.webservice';
+import {StorageWebservice} from './webservices/storage.webservice';
+import {AuthAdapter} from './adapters/auth.adapter';
+import {GridFsStorageFactory} from './factory/grid-fs-storage.factory';
 
 
 export class BfastDatabaseCore {
@@ -70,10 +80,29 @@ export class BfastDatabaseCore {
   }
 
   private initiateDependencies(config: BFastDatabaseConfigAdapter): void {
-    const databaseFactory = config.adapters && config.adapters.database ? config.adapters.database(config) : new DatabaseFactory(config);
-    Container.service('SecurityController', container => new SecurityController());
-    Container.service('DatabaseContainer', container => new DatabaseController(databaseFactory, Container.SecurityController));
-    Container.service('RealtimeWebservice', container => new RealtimeWebservice(Container.DatabaseContainer));
+    const databaseFactory = config.adapters && config.adapters.database
+      ? config.adapters.database(config)
+      : new DatabaseFactory(config);
+    Provider.service('SecurityController', container => new SecurityController());
+    Provider.service('DatabaseController', container => new DatabaseController(databaseFactory, Provider.get('SecurityController')));
+    Provider.service('RealtimeWebservice', container => new RealtimeWebservice(Provider.get('DatabaseContainer')));
+    const authFactory: AuthAdapter = config.adapters && config.adapters.auth
+      ? config.adapters.auth(config)
+      : new AuthFactory(Provider.get('DatabaseController'), Provider.get('SecurityController'));
+    Provider.service('AuthController', container => new AuthController(authFactory, Provider.get('DatabaseController')));
+    const fileFactory: FilesAdapter = config.adapters && config.adapters.s3Storage
+      ? new S3StorageFactory(Provider.get('SecurityController'), config)
+      : new GridFsStorageFactory(Provider.get('SecurityController'), config, config.mongoDbUri);
+    Provider.service('StorageController', container => new StorageController(fileFactory, config));
+    Provider.service('RestController', container => new RestController(
+      Provider.get('SecurityController'),
+      Provider.get('AuthController'),
+      Provider.get('StorageController'),
+      config)
+    );
+    Provider.service('RealtimeWebService', container => new RealtimeWebservice(Provider.get('DatabaseController')));
+    Provider.service('RestWebservice', container => new RestWebservice(Provider.get('RestController')));
+    Provider.service('StorageWebservice', container => new StorageWebservice(Provider.get('RestController')));
   }
 
   /**
@@ -82,6 +111,10 @@ export class BfastDatabaseCore {
    */
   async init(options: BFastDatabaseConfigAdapter): Promise<any> {
     if (BfastDatabaseCore.validateOptions(options, false).valid) {
+      if (!options.adapters) {
+        options.adapters = {};
+      }
+      this.initiateDependencies(options);
       return BfastDatabaseCore.setUpDatabase(options);
     } else {
       throw new Error(BfastDatabaseCore.validateOptions(options, false).message);

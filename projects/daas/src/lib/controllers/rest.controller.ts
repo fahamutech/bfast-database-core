@@ -178,29 +178,29 @@ export class RestController {
     }
   }
 
-  handleRuleBlocks(request: any, response: any, next: any): void {
+  handleRuleBlocks(request: any, response: any, _: any): void {
     const body = request.body;
     const results: RuleResponse = {errors: {}};
     const rulesController = new RulesController(new UpdateRuleController(), this.config);
-    rulesController.handleIndexesRule(body, results).then(_ => {
+    rulesController.handleIndexesRule(body, results).then(__ => {
       return rulesController.handleAuthenticationRule(body, results);
-    }).then(_ => {
+    }).then(_1 => {
       return rulesController.handleAuthorizationRule(body, results);
-    }).then(_ => {
+    }).then(_2 => {
       return rulesController.handleCreateRules(body, results);
-    }).then(_ => {
+    }).then(_3 => {
       return rulesController.handleUpdateRules(body, results);
-    }).then(_ => {
+    }).then(_4 => {
       return rulesController.handleDeleteRules(body, results);
-    }).then(_ => {
+    }).then(_5 => {
       return rulesController.handleQueryRules(body, results);
-    }).then(_ => {
+    }).then(_6 => {
       return rulesController.handleTransactionRule(body, results);
-    }).then(_ => {
+    }).then(_7 => {
       return rulesController.handleAggregationRules(body, results);
-    }).then(_ => {
+    }).then(_8 => {
       return rulesController.handleStorageRule(body, results);
-    }).then(_ => {
+    }).then(_9 => {
       if (!(results.errors && Object.keys(results.errors).length > 0)) {
         delete results.errors;
       }
