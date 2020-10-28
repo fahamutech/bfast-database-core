@@ -3,12 +3,12 @@ import {AuthAdapter} from './adapters/auth.adapter';
 import {EmailAdapter} from './adapters/email.adapter';
 
 export interface BFastDatabaseConfigAdapter {
-  port: string;
+  port?: string;
   masterKey?: string;
-  applicationId: string;
+  applicationId?: string;
   // mountPath: string;
   mongoDbUri?: string;
-  adapters: {
+  adapters?: {
     database?: (config: BFastDatabaseConfigAdapter) => DatabaseAdapter;
     auth?: (config: BFastDatabaseConfigAdapter) => AuthAdapter;
     email?: (config: BFastDatabaseConfigAdapter) => EmailAdapter;

@@ -1,5 +1,4 @@
 import {BFast} from 'bfastnode';
-import {BFastDatabaseConfigAdapter} from '../bfast.config';
 import {DatabaseController} from '../controllers/database.controller';
 
 export class RealtimeWebservice {
@@ -7,7 +6,7 @@ export class RealtimeWebservice {
   constructor(private readonly databaseController: DatabaseController) {
   }
 
-  changesV2(config: BFastDatabaseConfigAdapter): { name: string, onEvent: any } {
+  changesV2(config: { applicationId: string, masterKey: string }): { name: string, onEvent: any } {
     return BFast.functions().onEvent('/v2/__changes__',
       (request, response) => {
         if (request.auth.applicationId === config.applicationId) {

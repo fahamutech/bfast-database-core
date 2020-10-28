@@ -1,4 +1,3 @@
-import {BFastDatabaseConfigAdapter} from '../bfast.config';
 import {RestWebservice} from './rest.webservice';
 import {RealtimeWebservice} from './realtime.webservice';
 import {StorageWebservice} from './storage.webservice';
@@ -23,7 +22,7 @@ export class WebServices {
     };
   }
 
-  realtime(config: BFastDatabaseConfigAdapter): any {
+  realtime(config: { applicationId: string, masterKey: string }): any {
     return {
       changes: this.realtimeWebservice.changesV2(config)
     };
