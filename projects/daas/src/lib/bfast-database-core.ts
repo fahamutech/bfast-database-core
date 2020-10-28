@@ -79,7 +79,7 @@ export class BfastDatabaseCore {
     return database.init();
   }
 
-  private initiateDependencies(config: BFastDatabaseConfigAdapter): void {
+  initiateServices(config: BFastDatabaseConfigAdapter): void {
     const databaseFactory = config.adapters && config.adapters.database
       ? config.adapters.database(config)
       : new DatabaseFactory(config);
@@ -114,7 +114,7 @@ export class BfastDatabaseCore {
       if (!options.adapters) {
         options.adapters = {};
       }
-      this.initiateDependencies(options);
+      this.initiateServices(options);
       return BfastDatabaseCore.setUpDatabase(options);
     } else {
       throw new Error(BfastDatabaseCore.validateOptions(options, false).message);
