@@ -85,7 +85,7 @@ export class BfastDatabaseCore {
       : new DatabaseFactory(config);
     Provider.service('SecurityController', container => new SecurityController());
     Provider.service('DatabaseController', container => new DatabaseController(databaseFactory, Provider.get('SecurityController')));
-    Provider.service('RealtimeWebservice', container => new RealtimeWebservice(Provider.get('DatabaseContainer')));
+    Provider.service('RealtimeWebservice', container => new RealtimeWebservice(Provider.get('DatabaseController')));
     const authFactory: AuthAdapter = config.adapters && config.adapters.auth
       ? config.adapters.auth(config)
       : new AuthFactory(Provider.get('DatabaseController'), Provider.get('SecurityController'));
