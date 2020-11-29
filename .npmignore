@@ -1,0 +1,15 @@
+specs
+.dockerignore
+devStart.sh
+Dockerfile
+gulpfile.js
+pkg.js
+tsconfig.json
+yarn.lock
+src
+.github
+.idea
+index.js
+index.d.ts
+.env
+**.log

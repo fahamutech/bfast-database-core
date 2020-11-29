@@ -1,0 +1,6 @@
+.github
+devStart.sh
+pkg.js
+**/*.d.ts
+dist
+node_modules
