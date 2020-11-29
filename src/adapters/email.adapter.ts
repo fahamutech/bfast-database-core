@@ -1,5 +1,5 @@
 import {MailModel} from '../model/mail.model';
 
-export interface EmailAdapter {
-  sendMail(mailModel: MailModel): Promise<any>;
+export abstract class EmailAdapter {
+  abstract sendMail(mailModel: MailModel): Promise<any>;
 }
