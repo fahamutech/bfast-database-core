@@ -4,12 +4,12 @@ import {QueryModel} from '../model/query-model';
 import {UpdateRuleRequestModel} from '../model/update-rule-request.model';
 import {DeleteModel} from '../model/delete-model';
 
-export interface DatabaseAdapter {
+export abstract class DatabaseAdapter {
 
   /**
    * initialize some database pre operation like indexes
    */
-  init(): Promise<any>;
+  abstract init(): Promise<any>;
 
   /**
    * return promise which resolve to string which is id of a created document
@@ -19,7 +19,7 @@ export interface DatabaseAdapter {
    * @param options - {DatabaseWriteOptions} bfast::database write operation
    * @return Promise resolve with an id of the record created in bfast::database
    */
-  writeOne<T extends BasicAttributesModel>(domain: string, data: T, context: ContextBlock, options?: DatabaseWriteOptions): Promise<any>;
+  abstract writeOne<T extends BasicAttributesModel>(domain: string, data: T, context: ContextBlock, options?: DatabaseWriteOptions): Promise<any>;
 
   /**
    * return promise which resolve to object of ids of a created documents
@@ -28,13 +28,13 @@ export interface DatabaseAdapter {
    * @param context - {ContextBlock}
    * @param options - {Data}
    */
-  writeMany<T extends BasicAttributesModel, V>(domain: string, data: T[], context: ContextBlock, options?: DatabaseWriteOptions)
+  abstract writeMany<T extends BasicAttributesModel, V>(domain: string, data: T[], context: ContextBlock, options?: DatabaseWriteOptions)
     : Promise<V>;
 
-  update<T extends BasicAttributesModel, V>(domain: string, updateModel: UpdateRuleRequestModel, context: ContextBlock,
+  abstract update<T extends BasicAttributesModel, V>(domain: string, updateModel: UpdateRuleRequestModel, context: ContextBlock,
                                             options?: DatabaseUpdateOptions): Promise<V>;
 
-  deleteOne<T extends BasicAttributesModel, V>(domain: string, deleteModel: DeleteModel<T>, context: ContextBlock,
+  abstract deleteOne<T extends BasicAttributesModel, V>(domain: string, deleteModel: DeleteModel<T>, context: ContextBlock,
                                                options?: DatabaseBasicOptions): Promise<V>;
 
   /**
@@ -44,7 +44,7 @@ export interface DatabaseAdapter {
    * @param context - {ContextBlock} current operation context
    * @param options - {DatabaseWriteOptions} bfast::database write operation
    */
-  findOne<T extends BasicAttributesModel>(domain: string, queryModel: QueryModel<T>, context: ContextBlock,
+  abstract findOne<T extends BasicAttributesModel>(domain: string, queryModel: QueryModel<T>, context: ContextBlock,
                                           options?: DatabaseWriteOptions): Promise<any>;
 
   /**
@@ -54,20 +54,20 @@ export interface DatabaseAdapter {
    * @param context - {ContextBlock} current operation context
    * @param options - {DatabaseWriteOptions} bfast::database write options
    */
-  query<T extends BasicAttributesModel>(domain: string, queryModel: QueryModel<T>, context: ContextBlock,
+  abstract query<T extends BasicAttributesModel>(domain: string, queryModel: QueryModel<T>, context: ContextBlock,
                                         options?: DatabaseWriteOptions): Promise<any>;
 
-  changes(domain: string, pipeline: object[], listener: (doc: any) => void): Promise<any>;
+  abstract changes(domain: string, pipeline: object[], listener: (doc: any) => void): Promise<any>;
 
-  transaction(operations: (session) => Promise<any>): Promise<any>;
+  abstract transaction(operations: (session) => Promise<any>): Promise<any>;
 
-  createIndexes(domain: string, indexes: any[]): Promise<any>;
+  abstract createIndexes(domain: string, indexes: any[]): Promise<any>;
 
-  dropIndexes(domain: string): Promise<boolean>;
+  abstract dropIndexes(domain: string): Promise<boolean>;
 
-  listIndexes(domain: string): Promise<any>;
+  abstract listIndexes(domain: string): Promise<any>;
 
-  aggregate(domain: string, pipelines: object[], context: ContextBlock, options?: DatabaseWriteOptions): Promise<any[]>;
+  abstract aggregate(domain: string, pipelines: object[], context: ContextBlock, options?: DatabaseWriteOptions): Promise<any[]>;
 }
 
 export interface DatabaseWriteOptions extends DatabaseBasicOptions {

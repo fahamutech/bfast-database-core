@@ -1,7 +1,7 @@
 {
   "name": "bfast-database-core",
-  "version": "0.0.8",
-  "main": "dist/bfast-database-core.js",
+  "version": "0.0.9",
+  "main": "dist/index.js",
   "license": "MIT",
   "scripts": {
     "build": "gulp build",
