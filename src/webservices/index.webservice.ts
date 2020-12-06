@@ -26,6 +26,7 @@ export class WebServices {
       fileListV2Api: storageWebservice.getFilesFromStorageV2(),
       fileUploadApi: storageWebservice.uploadMultiPartFile(),
       fileUploadV2Api: storageWebservice.uploadMultiPartFileV2(),
+      getUploadFileV2: storageWebservice.getUploadFileV2(),
     };
   }
 
