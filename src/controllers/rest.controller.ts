@@ -1,5 +1,4 @@
-import * as httpStatus from 'http-status-codes';
-import {StatusCodes} from 'http-status-codes';
+import httpStatus, {StatusCodes} from 'http-status-codes';
 import {SecurityController} from './security.controller';
 import {RulesController} from './rules.controller';
 import {RuleResponse} from '../model/rules.model';
@@ -73,7 +72,7 @@ export class RestController {
                 form.handlePart(part);
                 return;
             }
-            const regx = /[^0-9a-z]/gi;
+            const regx = /[^0-9a-z.]/gi;
             fileMeta.name = part.filename
                 .toString()
                 .replace(regx, '');
