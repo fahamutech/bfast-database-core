@@ -120,10 +120,7 @@ export class S3StorageFactory implements FilesAdapter {
 
         // Needs `useSSL`, whether it's provided or defaulted
         const {port = ep.port ? +ep.port : (useSSL ? 443 : 80)} = config.adapters.s3Storage;
-        const region = config.adapters.s3Storage.endPoint
-            .replace('https://', '')
-            .replace('http://', '')
-            .trim().split('.')[0];
+        const region = this.getRegion(endPoint, configAdapter.adapters.s3Storage.region).trim()
         Object.assign(this, {endPoint, region: `${region}`});
         Object.assign(this, {
             bucket: typeof bucket === 'function'
@@ -154,23 +151,25 @@ export class S3StorageFactory implements FilesAdapter {
             await this.s3.putObject(bucket, filename, data);
             return filename;
         } else {
-            let _region = '';
-            if (region) {
-                _region = region;
-            } else if (endpoint.includes('amazonaws.')) {
-                _region = endpoint
-                    .replace('https://', '')
-                    .replace('http://', '')
-                    .trim().split('.')[2];
-            } else {
-                _region = endpoint
-                    .replace('https://', '')
-                    .replace('http://', '')
-                    .trim().split('.')[0];
-            }
-            await this.s3.makeBucket(bucket, _region.toString().trim());
+            await this.s3.makeBucket(bucket, this.getRegion(endpoint, region).trim());
             await this.s3.putObject(bucket, filename, data);
             return filename;
+        }
+    }
+
+    private getRegion(endpoint, region = null) {
+        if (region) {
+            return region;
+        } else if (endpoint.includes('amazonaws.')) {
+            return endpoint
+                .replace('https://', '')
+                .replace('http://', '')
+                .trim().split('.')[2];
+        } else {
+            return endpoint
+                .replace('https://', '')
+                .replace('http://', '')
+                .trim().split('.')[0];
         }
     }
 }
