@@ -27,7 +27,7 @@ export class S3StorageFactory implements FilesAdapter {
         const bucket = config.adapters.s3Storage.bucket;
         await this.validateFilename(filename);
         const newFilename = security.generateUUID() + '-' + filename;
-        return this.saveFile(newFilename, data, bucket, config.adapters.s3Storage.endPoint);
+        return this.saveFile(newFilename, data, bucket, config.adapters.s3Storage.endPoint, config.adapters.s3Storage.region);
     }
 
     deleteFile(filename: string): Promise<any> {
@@ -148,17 +148,27 @@ export class S3StorageFactory implements FilesAdapter {
     //     return this.saveFile(filename, thumbnailBuffer, bucket, config.adapters.s3Storage.endPoint);
     // }
 
-    private async saveFile(filename: string, data: any, bucket: string, endpoint: string): Promise<string> {
+    private async saveFile(filename: string, data: any, bucket: string, endpoint: string, region = null): Promise<string> {
         const bucketExist = await this.s3.bucketExists(bucket);
         if (bucketExist === true) {
             await this.s3.putObject(bucket, filename, data);
             return filename;
         } else {
-            const region = endpoint
-                .replace('https://', '')
-                .replace('http://', '')
-                .trim().split('.')[0];
-            await this.s3.makeBucket(bucket, region.toString().trim());
+            let _region = '';
+            if (region) {
+                _region = region;
+            } else if (endpoint.includes('amazonaws.')) {
+                _region = endpoint
+                    .replace('https://', '')
+                    .replace('http://', '')
+                    .trim().split('.')[2];
+            } else {
+                _region = endpoint
+                    .replace('https://', '')
+                    .replace('http://', '')
+                    .trim().split('.')[0];
+            }
+            await this.s3.makeBucket(bucket, _region.toString().trim());
             await this.s3.putObject(bucket, filename, data);
             return filename;
         }
