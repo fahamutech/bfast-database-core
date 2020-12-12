@@ -17,7 +17,6 @@ export class AuthController {
     private policyDomainName = '_Policy';
 
     private static validateData<T extends BasicUserAttributesModel>(data: T, skipEmail = false): void {
-        console.log(data);
         if (!data) {
             throw new Error('Invalid user data');
         } else if (Object.keys(data).length === 0) {
