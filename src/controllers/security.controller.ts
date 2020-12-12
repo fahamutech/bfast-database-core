@@ -1,4 +1,4 @@
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 import * as _jwt from 'jsonwebtoken';
 import * as uuid from 'uuid';
 

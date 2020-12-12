@@ -1,6 +1,6 @@
 {
   "name": "bfast-database-core",
-  "version": "0.0.10-alpha.5",
+  "version": "0.0.10-alpha.6",
   "main": "dist/index.js",
   "license": "MIT",
   "scripts": {
@@ -18,11 +18,10 @@
     "push:latest": "gulp publishContainerLatest",
     "push:beta": "gulp publishContainerBeta"
   },
-  "peerDependencies": {},
   "dependencies": {
-    "bcrypt": "^5.0.0",
+    "bcryptjs": "^2.4.3",
     "bfast-faas": "^1.10.5-beta.0",
-    "bfastnode": "^4.0.1",
+    "bfastnode": "^4.0.5",
     "formidable": "^1.2.2",
     "http-status-codes": "^2.1.4",
     "jsonwebtoken": "^8.5.1",
