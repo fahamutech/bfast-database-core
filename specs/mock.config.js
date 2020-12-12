@@ -1,3 +1,4 @@
+const {MessageController} = require("../dist/controllers/message.controller");
 const {BfastDatabaseCore} = require("../dist/bfast-database-core");
 const {MongoMemoryServer} = require('mongodb-memory-server');
 const {MongoMemoryReplSet} = require('mongodb-memory-server');
@@ -53,11 +54,12 @@ exports.getRulesController = async function (memoryReplSet) {
             mongoDbUri: await memoryReplSet.getUri(),
             applicationId: 'daas',
             port: 3111,
+            logs: false,
             adapters: {},
             mountPath: '/',
             masterKey: 'daas'
         }
-        return new RulesController(new UpdateRuleController(), config);
+        return new RulesController(new UpdateRuleController(), new MessageController(config), config);
     } catch (e) {
         console.log(e);
     }

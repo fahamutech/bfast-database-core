@@ -9,6 +9,7 @@ import {PassThrough} from 'stream';
 import {BFastDatabaseConfigAdapter} from '../bfast.config';
 
 import formidable from 'formidable';
+import {MessageController} from './message.controller';
 
 let restSecurity: SecurityController;
 let restAuthController: AuthController;
@@ -182,7 +183,7 @@ export class RestController {
     handleRuleBlocks(request: any, response: any, _: any): void {
         const body = request.body;
         const results: RuleResponse = {errors: {}};
-        const rulesController = new RulesController(new UpdateRuleController(), restConfig);
+        const rulesController = new RulesController(new UpdateRuleController(), new MessageController(restConfig), restConfig);
         rulesController.handleIndexesRule(body, results).then(__ => {
             return rulesController.handleAuthenticationRule(body, results);
         }).then(_1 => {

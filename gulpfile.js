@@ -79,14 +79,16 @@ function devStart(cb) {
         await mongoMemoryServer.waitUntilRunning();
         daaSServer = await daas();
         const file = await new EnvUtil().getEnv(__dirname + '/db.env.txt');
-        await daaSServer.start({
-            mongoDbUri: file,
+        const options = {
+            mongoDbUri: 'mongodb://localhost/bfast',
             applicationId: 'daas',
             port: 3003,
             adapters: {},
             mountPath: await new EnvUtil().getEnv('/'),
             masterKey: 'daas'
-        });
+        };
+        await daaSServer.initiateServices(options)
+        await daaSServer.init(options).then(console.log).catch(console.log)
     }
 
     run().then(_ => {
