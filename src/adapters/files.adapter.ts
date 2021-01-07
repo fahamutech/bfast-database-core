@@ -37,10 +37,10 @@ export abstract class FilesAdapter {
      *
      * @param filename - the name of file to retrieve
      *
-     * @param thumbnail - true if request a thumbnail of an image
+     * @param asStream
      * @return  a promise that should pass with the file data or fail on error
      */
-    abstract getFileData(filename: string, thumbnail: boolean): Promise<any>;
+    abstract getFileData<T>(filename: string, asStream: boolean): Promise<T>;
 
     /** Returns an absolute URL where the file can be accessed
      *
@@ -56,18 +56,15 @@ export abstract class FilesAdapter {
      * @param  request - http request object [express.Request]
      * @param response - http response object [express.Response]
      * @param contentType - content type of the file to stream
-     *
-     * @param thumbnail - true if request a thumbnail of an image
      */
 
-    abstract handleFileStream(filename: any, request: any, response: any, contentType: any, thumbnail: boolean): any;
+    abstract handleFileStream(filename: any, request: any, response: any, contentType: any): any;
 
     /**
      *
      * @param filename - the name of the file to retrieve
-     * @param thumbnail - true if you want a thumbnail of an image
      */
-    abstract signedUrl(filename: string, thumbnail: boolean): Promise<string>;
+    abstract signedUrl(filename: string): Promise<string>;
 
 
     /**

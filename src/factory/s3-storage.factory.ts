@@ -25,20 +25,21 @@ export class S3StorageFactory implements FilesAdapter {
 
     async createFile(filename: string, data: PassThrough, contentType: string, options: any): Promise<string> {
         const bucket = config.adapters.s3Storage.bucket;
+        await this.createBucket(bucket);
         await this.validateFilename(filename);
         const newFilename = security.generateUUID() + '-' + filename;
         return this.saveFile(newFilename, data, bucket, config.adapters.s3Storage.endPoint, config.adapters.s3Storage.region);
     }
 
-    deleteFile(filename: string): Promise<any> {
+    async deleteFile(filename: string): Promise<any> {
         const bucket = config.adapters.s3Storage.bucket;
+        await this.createBucket(bucket);
         return this.s3.removeObject(bucket, filename);
     }
 
-    getFileData(filename: string, thumbnail = false): Promise<any> {
-        const bucket = thumbnail === true
-            ? config.adapters.s3Storage.bucket + '-thumb'
-            : config.adapters.s3Storage.bucket;
+    async getFileData(filename: string, asStream = false): Promise<any> {
+        const bucket = config.adapters.s3Storage.bucket;
+        await this.createBucket(bucket);
         return this.s3.getObject(bucket, filename);
     }
 
@@ -58,15 +59,14 @@ export class S3StorageFactory implements FilesAdapter {
         return null;
     }
 
-    handleFileStream(filename: any, request: any, response: any, contentType: any, thumbnail = false): any {
-        return undefined;
+    handleFileStream(filename: any, request: any, response: any, contentType: any): any {
+        return this.signedUrl(filename);
     }
 
-    async signedUrl(filename: string, thumbnail = false): Promise<string> {
-        const bucket = thumbnail === true
-            ? config.adapters.s3Storage.bucket + '-thumb'
-            : config.adapters.s3Storage.bucket;
-        return this.s3.presignedGetObject(bucket, filename);
+    async signedUrl(filename: string): Promise<string> {
+        const bucket = config.adapters.s3Storage.bucket;
+        await this.createBucket(bucket);
+        return this.s3.presignedGetObject(bucket, filename, 2 * 60 * 60);
     }
 
     async listFiles(query: { prefix: string, size: number, after: string } = {
@@ -75,6 +75,7 @@ export class S3StorageFactory implements FilesAdapter {
         size: 20
     }): Promise<any> {
         const bucket = config.adapters.s3Storage.bucket;
+        await this.createBucket(bucket);
         const listStream = this.s3.listObjectsV2(bucket, query.prefix, true, query.after);
         const files = [];
         return new Promise((resolve, _) => {
@@ -120,7 +121,7 @@ export class S3StorageFactory implements FilesAdapter {
 
         // Needs `useSSL`, whether it's provided or defaulted
         const {port = ep.port ? +ep.port : (useSSL ? 443 : 80)} = config.adapters.s3Storage;
-        const region = this.getRegion(endPoint, configAdapter.adapters.s3Storage.region).trim()
+        const region = S3StorageFactory.getRegion(endPoint, configAdapter.adapters.s3Storage.region).trim();
         Object.assign(this, {endPoint, region: `${region}`});
         Object.assign(this, {
             bucket: typeof bucket === 'function'
@@ -146,18 +147,18 @@ export class S3StorageFactory implements FilesAdapter {
     // }
 
     private async saveFile(filename: string, data: any, bucket: string, endpoint: string, region = null): Promise<string> {
-        const bucketExist = await this.s3.bucketExists(bucket);
-        if (bucketExist === true) {
-            await this.s3.putObject(bucket, filename, data);
-            return filename;
-        } else {
-            await this.s3.makeBucket(bucket, this.getRegion(endpoint, region).trim());
-            await this.s3.putObject(bucket, filename, data);
-            return filename;
-        }
+        await this.createBucket(bucket);
+        // if (bucketExist === true) {
+        //     await this.s3.putObject(bucket, filename, data);
+        //     return filename;
+        // } else {
+        //     await this.s3.makeBucket(bucket, S3StorageFactory.getRegion(endpoint, region).trim());
+        await this.s3.putObject(bucket, filename, data);
+        return filename;
+        //   }
     }
 
-    private getRegion(endpoint, region = null) {
+    private static getRegion(endpoint, region = null) {
         if (region) {
             return region;
         } else if (endpoint.includes('amazonaws.')) {
@@ -170,6 +171,16 @@ export class S3StorageFactory implements FilesAdapter {
                 .replace('https://', '')
                 .replace('http://', '')
                 .trim().split('.')[0];
+        }
+    }
+
+    private async createBucket(bucket) {
+        const endpoint = config.adapters.s3Storage.endPoint;
+        const region = config.adapters.s3Storage.region;
+        const bucketExist = await this.s3.bucketExists(bucket);
+        if (bucketExist === true) {
+        } else {
+            await this.s3.makeBucket(bucket, S3StorageFactory.getRegion(endpoint, region).trim());
         }
     }
 }

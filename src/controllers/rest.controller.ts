@@ -29,7 +29,7 @@ export class RestController {
 
     getFile(request: any, response: any, _: any): void {
         if (restStorageController.isS3() === true) {
-            restStorageController.handleGetFileBySignedUrl(request, response, false);
+            restStorageController.handleGetFileBySignedUrl(request, response, !!request.query.thumbnail);
             return;
         } else {
             restStorageController.getFileData(request, response, false);

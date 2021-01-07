@@ -3,8 +3,10 @@ import {FileModel} from '../model/file-model';
 import {ContextBlock} from '../model/rules.model';
 import mime from 'mime';
 import {StatusCodes} from 'http-status-codes';
-import {PassThrough} from 'stream';
+import {PassThrough, Stream} from 'stream';
 import {BFastDatabaseConfigAdapter} from '../bfast.config';
+import {bfast} from 'bfastnode';
+import sharp from 'sharp';
 
 
 let filesAdapter: FilesAdapter;
@@ -112,9 +114,24 @@ export class StorageController {
     getFileData(request, response, thumbnail = false): void {
         const filename = request.params.filename;
         const contentType = mime.getType(filename);
+        if (thumbnail === true && contentType && contentType.toString().startsWith('image')) {
+            filesAdapter.getFileData<Stream>(filename, true).then(stream => {
+                // response.send('image thumbnail');
+                const width = parseInt(request.query.width ? request.query.width : 100);
+                const height = parseInt(request.query.height ? request.query.height : 0);
+                stream.pipe(sharp().resize(width, height !== 0 ? height : null)).pipe(response);
+            }).catch(_ => {
+                this._getFileData(filename, contentType, request, response);
+            });
+        } else {
+            this._getFileData(filename, contentType, request, response);
+        }
+    }
+
+    _getFileData(filename, contentType, request, response) {
         if (this.isFileStreamable(request, filesAdapter)) {
             filesAdapter
-                .handleFileStream(filename, request, response, contentType, thumbnail)
+                .handleFileStream(filename, request, response, contentType)
                 .catch(() => {
                     response.status(404);
                     response.set('Content-Type', 'text/plain');
@@ -122,7 +139,7 @@ export class StorageController {
                 });
         } else {
             filesAdapter
-                .getFileData(filename, thumbnail)
+                .getFileData<any>(filename, false)
                 .then(data => {
                     response.status(200);
                     response.set('Content-Type', contentType);
@@ -180,10 +197,28 @@ export class StorageController {
 
     handleGetFileBySignedUrl(request: any, response: any, thumbnail = false): void {
         const filename = request.params.filename;
-        filesAdapter.signedUrl(filename, thumbnail).then(value => {
-            response.redirect(value);
+        const contentType = mime.getType(filename);
+        filesAdapter.signedUrl(filename).then(value => {
+            if (thumbnail === true && contentType && contentType.toString().startsWith('image')) {
+                // response.send('image thumbnail');
+                const width = parseInt(request.query.width ? request.query.width : 100);
+                const height = parseInt(request.query.height ? request.query.height : 0);
+                bfast.init({projectId: '', applicationId: ''});
+                bfast.functions().request(value).get<Stream>({
+                    // @ts-ignore
+                    responseType: 'stream'
+                }).then(value1 => {
+                    value1.pipe(sharp().resize(width, height !== 0 ? height : null)).pipe(response);
+                }).catch(_ => {
+                    console.log(_);
+                    response.redirect(value);
+                });
+            } else {
+                // response.send('not image thumbnail');
+                response.redirect(value);
+            }
         }).catch(reason => {
-            response.status(StatusCodes.EXPECTATION_FAILED).send({message: reason.toString()});
+            response.status(StatusCodes.EXPECTATION_FAILED).send({message: reason && reason.message ? reason.message : reason.toString()});
         });
     }
 }

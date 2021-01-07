@@ -94,20 +94,20 @@ export class StorageWebservice {
         return BFast.functions().onGetHttpRequest('/v2/storage/:appId/file/:filename', StorageWebservice.handleGetFile());
     }
 
+    geThumbnailFromStorage(): FunctionsModel {
+        return BFast.functions().onGetHttpRequest('/storage/:appId/thumbnail/:filename/thumbnail', StorageWebservice.handleGetThumbnail());
+    }
+
+    geThumbnailFromStorageV2(): FunctionsModel {
+        return BFast.functions().onGetHttpRequest('/v2/storage/:appId/file/:filename/thumbnail', StorageWebservice.handleGetThumbnail());
+    }
+
     uploadMultiPartFile(): FunctionsModel {
         return BFast.functions().onPostHttpRequest('/storage/:appId', StorageWebservice.handleUploadFile());
     }
 
     uploadMultiPartFileV2(): FunctionsModel {
         return BFast.functions().onPostHttpRequest('/v2/storage/:appId', StorageWebservice.handleUploadFile());
-    }
-
-    geThumbnailFromStorage(): FunctionsModel {
-        return BFast.functions().onGetHttpRequest('/storage/:appId/thumbnail/:filename', StorageWebservice.handleGetThumbnail());
-    }
-
-    geThumbnailFromStorageV2(): FunctionsModel {
-        return BFast.functions().onGetHttpRequest('/v2/storage/:appId/thumbnail/:filename', StorageWebservice.handleGetThumbnail());
     }
 
     getFilesFromStorage(): FunctionsModel {

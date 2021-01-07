@@ -7,7 +7,7 @@
 import {Db, GridFSBucket, MongoClient} from 'mongodb';
 import {FilesAdapter} from '../adapters/files.adapter';
 import {SecurityController} from '../controllers/security.controller';
-import {PassThrough} from 'stream';
+import {PassThrough, Stream} from 'stream';
 import {BFastDatabaseConfigAdapter} from '../bfast.config';
 
 let security: SecurityController;
@@ -72,23 +72,36 @@ export class GridFsStorageFactory implements FilesAdapter {
         );
     }
 
-    async getFileData(filename: string, thumbnail = false): Promise<any> {
-        const bucket = await this.getBucket(thumbnail === true ? 'thumbnails' : 'fs');
+    async getFileData<T>(filename: string, asStream = false): Promise<T> {
+        const bucket = await this.getBucket('fs');
+        const files = await bucket.find({filename}).toArray();
+        if (files.length === 0) {
+            throw new Error('FileNotFound');
+        }
         const stream = bucket.openDownloadStreamByName(filename);
-        stream.read();
-        return new Promise((resolve, reject) => {
-            const chunks = [];
-            stream.on('data', (data) => {
-                chunks.push(data);
+        if (asStream === true) {
+            return stream as any;
+        } else {
+            stream.read();
+            return new Promise((resolve, reject) => {
+                const chunks = [];
+                stream.on('data', (data) => {
+                    chunks.push(data);
+                });
+                stream.on('end', () => {
+                    // @ts-ignore
+                    resolve(Buffer.concat(chunks));
+                });
+                stream.on('error', (err) => {
+                    reject(err);
+                });
             });
-            stream.on('end', () => {
-                // @ts-ignore
-                resolve(Buffer.concat(chunks));
-            });
-            stream.on('error', (err) => {
-                reject(err);
-            });
-        });
+        }
+    }
+
+    async getFileStream(filename): Promise<Stream> {
+        const bucket = await this.getBucket('fs');
+        return bucket.openDownloadStreamByName(filename);
     }
 
     async getFileLocation(filename: string, configAdapter: BFastDatabaseConfigAdapter): Promise<string> {
@@ -105,16 +118,13 @@ export class GridFsStorageFactory implements FilesAdapter {
         return {metadata};
     }
 
-    async handleFileStream(filename: string, req, res, contentType, thumbnail = false): Promise<any> {
-        const bucket = await this.getBucket(thumbnail === true ? 'thumbnails' : 'fs');
+    async handleFileStream(filename: string, req, res, contentType): Promise<any> {
+        const bucket = await this.getBucket('fs');
         const files = await bucket.find({filename}).toArray();
         if (files.length === 0) {
             throw new Error('FileNotFound');
         }
-        const parts = req
-            .get('Range')
-            .replace(/bytes=/, '')
-            .split('-');
+        const parts = req.get('Range').replace(/bytes=/, '').split('-');
         const partialstart = parts[0];
         const partialend = parts[1];
 
@@ -169,7 +179,7 @@ export class GridFsStorageFactory implements FilesAdapter {
         return null;
     }
 
-    async signedUrl(filename: string, thumbnail = false): Promise<string> {
+    async signedUrl(filename: string): Promise<string> {
         return this.getFileLocation(filename, config);
     }
 
@@ -184,13 +194,18 @@ export class GridFsStorageFactory implements FilesAdapter {
     //     return this._saveFile(filename, thumbnailBuffer, contentType, bucket, options);
     // }
 
-    private async _saveFile(filename: string, data: any, contentType: string, bucket: GridFSBucket, options: any = {}): Promise<string> {
+    private async _saveFile(filename: string, data: PassThrough | any, contentType: string, bucket: GridFSBucket, options: any = {}): Promise<string> {
         const stream = await bucket.openUploadStream(filename, {
             contentType,
             metadata: options.metadata,
         });
-        await stream.write(data);
-        stream.end();
+        if (data.pipe) {
+            await data.pipe(stream);
+        } else {
+            await stream.write(data);
+            stream.end();
+        }
+
         return new Promise((resolve, reject) => {
             stream.on('finish', () => {
                 resolve(filename);

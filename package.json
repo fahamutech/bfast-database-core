@@ -1,6 +1,6 @@
 {
   "name": "bfast-database-core",
-  "version": "0.0.10-alpha.6",
+  "version": "0.0.10-alpha.7",
   "main": "dist/index.js",
   "license": "MIT",
   "scripts": {
@@ -11,12 +11,7 @@
     "test:web-services:no-build": "mocha specs/rest/all.specs.js",
     "prestart": "yarn run build",
     "prepublishOnly": "npm run build",
-    "publish:beta": "yarn publish --tag beta",
-    "start": "node .",
-    "start:dev": "gulp devStart",
-    "push": "gulp publishContainer",
-    "push:latest": "gulp publishContainerLatest",
-    "push:beta": "gulp publishContainerBeta"
+    "publish:beta": "yarn publish --tag beta"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -28,12 +23,14 @@
     "mime": "^2.4.6",
     "minio": "^7.0.17",
     "mongodb": "^3.6.3",
+    "sharp": "^0.27.0",
     "uuid": "^8.3.1"
   },
   "devDependencies": {
     "@types/minio": "^7.0.6",
     "@types/mongodb": "^3.5.34",
     "@types/node": "^14.14.10",
+    "@types/sharp": "^0.27.1",
     "axios": "^0.21.0",
     "del": "^6.0.0",
     "glob": "^7.1.6",
