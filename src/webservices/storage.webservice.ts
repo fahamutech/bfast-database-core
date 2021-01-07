@@ -95,7 +95,7 @@ export class StorageWebservice {
     }
 
     geThumbnailFromStorage(): FunctionsModel {
-        return BFast.functions().onGetHttpRequest('/storage/:appId/thumbnail/:filename/thumbnail', StorageWebservice.handleGetThumbnail());
+        return BFast.functions().onGetHttpRequest('/storage/:appId/file/:filename/thumbnail', StorageWebservice.handleGetThumbnail());
     }
 
     geThumbnailFromStorageV2(): FunctionsModel {
