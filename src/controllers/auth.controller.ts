@@ -117,11 +117,17 @@ export class AuthController {
     }
 
     async resetPassword(email: string, context?: ContextBlock): Promise<any> {
+        if (!email) {
+            throw {message: 'email required'};
+        }
         return authAdapter.resetPassword(email, context);
     }
 
     async sendVerificationEmail(email: string, context?: ContextBlock): Promise<any> {
-        return Promise.resolve(undefined);
+        if (!email) {
+            throw {message: 'email required'};
+        }
+        return authAdapter.sendVerificationEmail(email, context);
     }
 
     async signIn<T extends BasicUserAttributesModel>(userModel: T, context?: ContextBlock): Promise<T> {
@@ -133,14 +139,27 @@ export class AuthController {
     async signUp<T extends BasicUserAttributesModel>(userModel: T, context?: ContextBlock): Promise<T> {
         AuthController.validateData(userModel);
         userModel.return = [];
+        userModel.emailVerified = false;
         return authAdapter.signUp(userModel, context);
     }
 
     async update<T extends BasicUserAttributesModel>(userModel: T, context?: ContextBlock): Promise<T> {
-        return Promise.resolve(undefined);
+        if (context.auth === true && context.uid && typeof context.uid === 'string') {
+            userModel.return = [];
+            delete userModel.password;
+            delete userModel._hashed_password;
+            delete userModel.emailVerified;
+            return authAdapter.update(userModel, context);
+        } else {
+            return Promise.reject({message: 'please authenticate yourself'});
+        }
     }
 
     async updatePassword(password: string, context?: ContextBlock): Promise<any> {
-        return Promise.resolve(undefined);
+        if (context.uid && typeof context.uid === 'string') {
+            return authAdapter.updatePassword(password, context);
+        } else {
+            return Promise.reject({message: 'Fails to updated password of unknown user id'});
+        }
     }
 }

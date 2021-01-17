@@ -66,14 +66,14 @@ export class StorageWebservice {
         ];
     }
 
-    getUploadFileV2(): FunctionsModel {
-        return BFast.functions().onGetHttpRequest('/storage/:appId',
+    getUploadFileV2(prefix = '/'): FunctionsModel {
+        return BFast.functions().onGetHttpRequest(`${prefix}storage/:appId`,
             (request, response: any) => {
                 // show a file upload form
                 response.writeHead(200, {'content-type': 'text/html'});
                 response.end(`
                     <h2>With Node.js <code>"http"</code> module</h2>
-                    <form action="/v2/storage/${request.params.appId}" enctype="multipart/form-data" method="post">
+                    <form action="${prefix}v2/storage/${request.params.appId}" enctype="multipart/form-data" method="post">
                       <div>Text field title: <input type="text" name="file" /></div>
                       <div>File: <input type="file" name="multipleFiles" multiple="multiple" /></div>
                       <input type="submit" value="Upload" />
@@ -82,39 +82,39 @@ export class StorageWebservice {
             });
     }
 
-    getFileStorageV1(): FunctionsModel {
-        return BFast.functions().onGetHttpRequest('/files/:appId/:filename', StorageWebservice.handleGetFile());
+    getFileStorageV1(prefix = '/'): FunctionsModel {
+        return BFast.functions().onGetHttpRequest(`${prefix}files/:appId/:filename`, StorageWebservice.handleGetFile());
     }
 
-    getFileFromStorage(): FunctionsModel {
-        return BFast.functions().onGetHttpRequest('/storage/:appId/file/:filename', StorageWebservice.handleGetFile());
+    getFileFromStorage(prefix = '/'): FunctionsModel {
+        return BFast.functions().onGetHttpRequest(`${prefix}storage/:appId/file/:filename`, StorageWebservice.handleGetFile());
     }
 
-    getFileFromStorageV2(): FunctionsModel {
-        return BFast.functions().onGetHttpRequest('/v2/storage/:appId/file/:filename', StorageWebservice.handleGetFile());
+    getFileFromStorageV2(prefix = '/'): FunctionsModel {
+        return BFast.functions().onGetHttpRequest(`${prefix}v2/storage/:appId/file/:filename`, StorageWebservice.handleGetFile());
     }
 
-    geThumbnailFromStorage(): FunctionsModel {
-        return BFast.functions().onGetHttpRequest('/storage/:appId/file/:filename/thumbnail', StorageWebservice.handleGetThumbnail());
+    geThumbnailFromStorage(prefix = '/'): FunctionsModel {
+        return BFast.functions().onGetHttpRequest(`${prefix}storage/:appId/file/:filename/thumbnail`, StorageWebservice.handleGetThumbnail());
     }
 
-    geThumbnailFromStorageV2(): FunctionsModel {
-        return BFast.functions().onGetHttpRequest('/v2/storage/:appId/file/:filename/thumbnail', StorageWebservice.handleGetThumbnail());
+    geThumbnailFromStorageV2(prefix = '/'): FunctionsModel {
+        return BFast.functions().onGetHttpRequest(`${prefix}v2/storage/:appId/file/:filename/thumbnail`, StorageWebservice.handleGetThumbnail());
     }
 
-    uploadMultiPartFile(): FunctionsModel {
-        return BFast.functions().onPostHttpRequest('/storage/:appId', StorageWebservice.handleUploadFile());
+    uploadMultiPartFile(prefix = '/'): FunctionsModel {
+        return BFast.functions().onPostHttpRequest(`${prefix}storage/:appId`, StorageWebservice.handleUploadFile());
     }
 
-    uploadMultiPartFileV2(): FunctionsModel {
-        return BFast.functions().onPostHttpRequest('/v2/storage/:appId', StorageWebservice.handleUploadFile());
+    uploadMultiPartFileV2(prefix = '/'): FunctionsModel {
+        return BFast.functions().onPostHttpRequest(`${prefix}v2/storage/:appId`, StorageWebservice.handleUploadFile());
     }
 
-    getFilesFromStorage(): FunctionsModel {
-        return BFast.functions().onGetHttpRequest('/storage/:appId/list', StorageWebservice.handleListFiles());
+    getFilesFromStorage(prefix = '/'): FunctionsModel {
+        return BFast.functions().onGetHttpRequest(`${prefix}storage/:appId/list`, StorageWebservice.handleListFiles());
     }
 
-    getFilesFromStorageV2(): FunctionsModel {
-        return BFast.functions().onGetHttpRequest('/v2/storage/:appId/list', StorageWebservice.handleListFiles());
+    getFilesFromStorageV2(prefix = '/'): FunctionsModel {
+        return BFast.functions().onGetHttpRequest(`${prefix}v2/storage/:appId/list`, StorageWebservice.handleListFiles());
     }
 }

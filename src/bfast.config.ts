@@ -6,6 +6,7 @@ export interface BFastDatabaseConfigAdapter {
   port?: string;
   masterKey?: string;
   applicationId?: string;
+  projectId?: string;
   logs?: boolean,
   // mountPath: string;
   mongoDbUri?: string;

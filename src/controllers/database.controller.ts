@@ -101,6 +101,7 @@ export class DatabaseController {
         updateModel.update = this.sanitizeWithOperator4Db(updateModel?.update as any);
         updateModel.filter = this.sanitizeWithOperator4Db(updateModel?.filter as any);
         updateModel.update = this.addUpdateMetadata(updateModel?.update as any, context);
+        options.dbOptions = updateModel && updateModel.options ? updateModel.options : {};
         const updatedDoc = await this.database.update<any, any>(domain, updateModel, context, options);
         return this.sanitize4User(updatedDoc, returnFields);
     }
@@ -423,6 +424,9 @@ export class DatabaseController {
                 returnedData[value] = data[value];
             });
             returnedData.id = data.id;
+            returnedData.createdAt = data.createdAt;
+            returnedData.updatedAt = data.updatedAt;
+            // returnedData.createdBy = data.createdBy;
             return returnedData;
         }
     }

@@ -9,8 +9,8 @@ export class RealtimeWebservice {
         databaseController = database;
     }
 
-    changesV2(config: { applicationId: string, masterKey: string }): { name: string, onEvent: any } {
-        return BFast.functions().onEvent('/v2/__changes__',
+    changesV2(config: { applicationId: string, masterKey: string }, prefix ='/'): { name: string, onEvent: any } {
+        return BFast.functions().onEvent(`${prefix}v2/__changes__`,
             (request, response) => {
                 if (request.auth.applicationId === config.applicationId) {
                     const bypassDomainVerification: boolean = config.masterKey === request.auth.masterKey;

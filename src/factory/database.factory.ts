@@ -106,7 +106,10 @@ export class DatabaseFactory implements DatabaseAdapter {
     async findOne<T extends BasicAttributesModel>(domain: string, queryModel: QueryModel<T>,
                                                   context: ContextBlock, options?: DatabaseWriteOptions): Promise<any> {
         const conn = await this.connection();
-        const fieldsToReturn = {};
+        const fieldsToReturn = {
+            '_created_at': 1,
+            '_updated_at': 1,
+        };
         if (queryModel?.return && Array.isArray(queryModel?.return) && queryModel.return.length > 0) {
             queryModel.return.forEach(x => {
                 fieldsToReturn[x] = 1;
@@ -114,7 +117,7 @@ export class DatabaseFactory implements DatabaseAdapter {
         }
         const result = await conn.db().collection(domain).findOne<T>({_id: queryModel._id}, {
             session: options && options.transaction ? options.transaction : undefined,
-            projection: fieldsToReturn
+            // projection: fieldsToReturn
         });
         await conn.close();
         return result;
@@ -146,11 +149,14 @@ export class DatabaseFactory implements DatabaseAdapter {
             });
         }
         if (queryModel.return && Array.isArray(queryModel.return) && queryModel.return.length > 0) {
-            const fieldsToReturn = {};
+            const fieldsToReturn = {
+                '_created_at': 1,
+                '_updated_at': 1,
+            };
             queryModel.return.forEach(x => {
                 fieldsToReturn[x] = 1;
             });
-            query.project(fieldsToReturn);
+           // query.project(fieldsToReturn);
         }
         let result;
         if (queryModel?.count === true) {
@@ -165,11 +171,13 @@ export class DatabaseFactory implements DatabaseAdapter {
     async update<T extends BasicAttributesModel, V>(domain: string, updateModel: UpdateRuleRequestModel,
                                                     context: ContextBlock, options?: DatabaseUpdateOptions): Promise<V> {
         const conn = await this.connection();
-        const response = await conn.db().collection(domain).findOneAndUpdate(updateModel.filter, updateModel.update, {
+        let updateOptions = {
             upsert: false, // updateModel.upsert === true,
             returnOriginal: false,
             session: options && options.transaction ? options.transaction : undefined
-        });
+        };
+        updateOptions = Object.assign(updateOptions, options && options.dbOptions ? options.dbOptions : {});
+        const response = await conn.db().collection(domain).findOneAndUpdate(updateModel.filter, updateModel.update, updateOptions);
         await conn.close();
         return response.value;
     }

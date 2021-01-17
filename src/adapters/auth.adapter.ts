@@ -8,7 +8,7 @@ export abstract class AuthAdapter {
 
   abstract resetPassword(email: string, context?: ContextBlock): Promise<any>;
 
-  // updatePassword(password: string, context?: ContextBlock): Promise<any>;
+  abstract updatePassword(password: string, context?: ContextBlock): Promise<any>;
 
   abstract deleteUser(context?: ContextBlock): Promise<any>;
 

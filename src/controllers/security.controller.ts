@@ -1,6 +1,7 @@
 import * as bcrypt from 'bcryptjs';
 import * as _jwt from 'jsonwebtoken';
 import * as uuid from 'uuid';
+import {DatabaseAdapter} from '../adapters/database.adapter';
 
 const jwtPassword =
     `MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDFg6797ocIzEPK
@@ -21,6 +22,7 @@ bzrJW7JZAgMBAAECggEABAX9r5CHUaePjfX8vnil129vDKa1ibKEi0cjI66CQGbB
 JLcWQ6hFDpecIaaCJiqAXvFACr`;
 
 
+//todo: we need to change supplying of dependencies to use DI
 export class SecurityController {
 
     constructor() {
@@ -41,11 +43,35 @@ export class SecurityController {
     }
 
     async revokeToken(token: string): Promise<any> {
-        return {message: 'Token not revoked', value: false};
+        // await this.databaseController.update('_Token', {
+        //     id: token.toString().split('.')[1].trim(),
+        //     update: {
+        //         $set: {
+        //             token: null
+        //         }
+        //     },
+        //     upsert: true,
+        //     options: {
+        //         upsert: true
+        //     }
+        // }, {
+        //     auth: true,
+        //     useMasterKey: true,
+        // }, {
+        //     bypassDomainVerification: true,
+        //     dbOptions: {
+        //         upsert: true
+        //     }
+        // });
+        return {message: 'token not revoked'};
     }
 
-    async generateToken(data: { uid: string, [key: string]: any }, expire?: string): Promise<string> {
+    async generateToken(data: { uid: string, [key: string]: any } = {uid: undefined}, expire?: string): Promise<string> {
         return new Promise((resolve, reject) => {
+            if (!data.uid) {
+                reject({message: 'Invalid data in payload'});
+                return;
+            }
             _jwt.sign(data, jwtPassword, {
                 expiresIn: expire ? expire : '1d',
                 issuer: 'bfast::cloud::database'
@@ -54,7 +80,31 @@ export class SecurityController {
                     reject({message: 'Fails to generate a token', reason: err.toString()});
                     return;
                 }
-                resolve(encoded);
+                // this.databaseController.update('_Token', {
+                //     id: encoded.toString().split('.')[1].trim(),
+                //     update: {
+                //         $set: {
+                //             token: encoded
+                //         }
+                //     },
+                //     upsert: true,
+                //     options: {
+                //         upsert: true
+                //     },
+                //     return: []
+                // }, {
+                //     auth: true,
+                //     useMasterKey: true,
+                // }, {
+                //     bypassDomainVerification: true,
+                //     dbOptions: {
+                //         upsert: true
+                //     }
+                // }).then(_ => {
+                    resolve(encoded);
+                // }).catch(reason => {
+                //     reject(reason);
+                // });
             });
         });
     }
@@ -62,14 +112,30 @@ export class SecurityController {
     async verifyToken<T>(token: string): Promise<T> {
         return new Promise((resolve, reject) => {
             _jwt.verify(token, jwtPassword, {
-                issuer: 'bfast::cloud'
+                issuer: 'bfast::cloud::database'
             }, (err, decoded: any) => {
                 if (err) {
                     reject({message: 'Fails to verify token', reason: err.toString()});
                 } else {
                     const data = JSON.parse(JSON.stringify(decoded));
                     if (data && data.uid) {
-                        resolve(data);
+                        // this.databaseController.query('_Token', {
+                        //     id: token.toString().split('.')[1].trim(),
+                        //     return: []
+                        // }, {
+                        //     useMasterKey: true,
+                        //     auth: true
+                        // }, {
+                        //     bypassDomainVerification: true
+                        // }).then(value => {
+                        //     if (value && value.token === token) {
+                                resolve(data);
+                        //     } else {
+                        //         reject({message: 'Invalid token'});
+                        //     }
+                        // }).catch(_ => {
+                        //     reject({message: 'Invalid token', reason: _ && _.message ? _.message : _.toString()});
+                        // });
                     } else {
                         reject({message: 'Invalid data in token'});
                     }
@@ -78,7 +144,7 @@ export class SecurityController {
         });
     }
 
-    decodeToken(token: string): any {
+    decodeToken(token: string): { uid: string, [key: string]: any } {
         return _jwt.decode(token, {
             complete: true,
             json: true

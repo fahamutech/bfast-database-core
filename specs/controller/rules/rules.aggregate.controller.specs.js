@@ -24,7 +24,7 @@ describe('RulesController::Aggregation Unit Test', function () {
     it('should perform aggregation for a specified domain', async function () {
         const results = await _rulesController.handleAggregationRules({
             context: {
-                useMasterKey: true
+                useMasterKey: false
             },
             aggregateProduct: [
                 {

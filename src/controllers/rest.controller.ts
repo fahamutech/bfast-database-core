@@ -137,7 +137,7 @@ export class RestController {
 
         if (masterKey === restConfig.masterKey) {
             request.body.context.auth = true;
-            request.body.context.uid = `masterKey_${masterKey}`;
+            request.body.context.uid = `masterKey`;
             request.body.context.masterKey = masterKey;
             request.body.context.useMasterKey = true;
             next();

@@ -5,4 +5,5 @@ export interface BasicUserAttributesModel extends BasicAttributesModel {
   email?: string;
   password?: string;
   token?: string;
+  emailVerified?: boolean;
 }

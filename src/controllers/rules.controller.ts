@@ -373,7 +373,6 @@ export class RulesController {
             for (const queryRule of queryRules) {
                 const domain = this.extractDomain(queryRule, 'query');
                 const rulesBlockModelElement = rulesBlockModel[queryRule];
-                // checkPermission
                 const allowed = await authController.hasPermission(`query.${domain}`, rulesBlockModel?.context);
                 if (allowed !== true) {
                     ruleResultModel.errors[`${transactionSession ? 'transactionSession.' : ''}query.${domain}`] = {
@@ -462,7 +461,6 @@ export class RulesController {
             for (const updateRule of updateRules) {
                 const domain = this.extractDomain(updateRule, 'update');
                 const updateRuleRequest: UpdateRuleRequestModel = rules[updateRule];
-                // checkPermission
                 const allowed = await authController.hasPermission(`update.${domain}`, rules.context);
                 if (allowed !== true) {
                     ruleResponse.errors[`${transactionSession ? 'transaction.' : ''}update.${domain}`] = {
@@ -529,16 +527,34 @@ export class RulesController {
             if (aggregateRules.length === 0) {
                 return ruleResultModel;
             }
-            if (!(rulesBlockModel.context && rulesBlockModel.context.useMasterKey === true)) {
-                ruleResultModel.errors.aggregate = {
-                    message: 'aggregate rule require masterKey',
-                    path: 'aggregate',
-                    data: null
-                };
-                return ruleResultModel;
-            }
+            // const allowed = await authController.hasPermission(`query.${domain}`, rulesBlockModel?.context);
+            // if (allowed !== true) {
+            //     ruleResultModel.errors[`${transactionSession ? 'transactionSession.' : ''}query.${domain}`] = {
+            //         message: 'You have insufficient permission to this resource',
+            //         path: `${transactionSession ? 'transactionSession.' : ''}query.${domain}`,
+            //         data: rulesBlockModelElement
+            //     };
+            //     return ruleResultModel;
+            // }
+            // if (!(rulesBlockModel.context && rulesBlockModel.context.useMasterKey === true)) {
+            //     ruleResultModel.errors.aggregate = {
+            //         message: 'aggregate rule require masterKey',
+            //         path: 'aggregate',
+            //         data: null
+            //     };
+            //     return ruleResultModel;
+            // }
             for (const aggregateRule of aggregateRules) {
                 const domain = this.extractDomain(aggregateRule, 'aggregate');
+                const allowed = await authController.hasPermission(`aggregate.${domain}`, rulesBlockModel?.context);
+                if (allowed !== true) {
+                    ruleResultModel.errors[`${transactionSession ? 'transactionSession.' : ''}query.${domain}`] = {
+                        message: 'You have insufficient permission to this resource',
+                        path: `${transactionSession ? 'transactionSession.' : ''}query.${domain}`,
+                        data: rulesBlockModel[aggregateRule]
+                    };
+                    return ruleResultModel;
+                }
                 const data = rulesBlockModel[aggregateRule];
                 try {
                     if (!(data && Array.isArray(data))) {

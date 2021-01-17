@@ -14,7 +14,7 @@ import {RestWebservice} from './webservices/rest.webservice';
 import {StorageWebservice} from './webservices/storage.webservice';
 import {AuthAdapter} from './adapters/auth.adapter';
 import {GridFsStorageFactory} from './factory/grid-fs-storage.factory';
-
+import {WebServices} from './webservices/index.webservice';
 
 export class BfastDatabaseCore {
 
@@ -69,17 +69,22 @@ export class BfastDatabaseCore {
      * @param config {BFastDatabaseConfigAdapter}
      * @private
      */
-    private static async setUpDatabase(config: BFastDatabaseConfigAdapter): Promise<any> {
+    private static async _setUpDatabase(config: BFastDatabaseConfigAdapter): Promise<any> {
         const database: DatabaseController = new DatabaseController(
             (config && config.adapters && config.adapters.database)
                 ? config.adapters.database(config)
                 : new DatabaseFactory(config),
             new SecurityController()
         );
-        return database.init();
+        await database.init();
     }
 
-    initiateServices(config: BFastDatabaseConfigAdapter): void {
+    /**
+     *
+     * @param config
+     * @private
+     */
+    private _initiateServices(config: BFastDatabaseConfigAdapter): void {
         const databaseFactory = config.adapters && config.adapters.database
             ? config.adapters.database(config)
             : new DatabaseFactory(config);
@@ -109,13 +114,21 @@ export class BfastDatabaseCore {
      * initiate bfast::database engine without a built in server
      * @param options {BFastDatabaseConfigAdapter} - configurations
      */
-    async init(options: BFastDatabaseConfigAdapter): Promise<any> {
+    init(options: BFastDatabaseConfigAdapter): WebServices {
         if (BfastDatabaseCore.validateOptions(options, false).valid) {
             if (!options.adapters) {
                 options.adapters = {};
             }
-            this.initiateServices(options);
-            return BfastDatabaseCore.setUpDatabase(options);
+            this._initiateServices(options);
+            BfastDatabaseCore._setUpDatabase(options).catch(_ => {
+                console.error(_);
+                process.exit(-1);
+            });
+            return new WebServices(
+                Provider.get(Provider.names.REST_WEB_SERVICE),
+                Provider.get(Provider.names.REALTIME_WEB_SERVICE),
+                Provider.get(Provider.names.STORAGE_WEB_SERVICE)
+            );
         } else {
             throw new Error(BfastDatabaseCore.validateOptions(options, false).message);
         }

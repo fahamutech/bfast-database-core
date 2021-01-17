@@ -9,8 +9,8 @@ export class RestWebservice {
     restController = rest;
   }
 
-  rulesV2(): { path: string, onRequest: any, method: string } {
-    return BFast.functions().onPostHttpRequest('/v2', [
+  rulesV2(prefix = '/'): { path: string, onRequest: any, method: string } {
+    return BFast.functions().onPostHttpRequest(`${prefix}v2`, [
       restController.verifyMethod,
       restController.verifyBodyData,
       restController.verifyApplicationId,
