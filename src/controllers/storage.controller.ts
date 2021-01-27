@@ -7,15 +7,19 @@ import {PassThrough, Stream} from 'stream';
 import {BFastDatabaseConfigAdapter} from '../bfast.config';
 import {bfast} from 'bfastnode';
 import sharp from 'sharp';
+import {SecurityController} from './security.controller';
 
 
 let filesAdapter: FilesAdapter;
 let config: BFastDatabaseConfigAdapter;
+let security: SecurityController;
 
 export class StorageController {
     constructor(files: FilesAdapter,
+                securityController: SecurityController,
                 configAdapter: BFastDatabaseConfigAdapter) {
         filesAdapter = files;
+        security = securityController;
         config = configAdapter;
     }
 
@@ -170,15 +174,10 @@ export class StorageController {
         if (!type) {
             type = mime.getType(filename);
         }
-        const file = await filesAdapter.createFile(filename, data, type, {});
-        // if (type && type.toString().startsWith('image/') === true) {
-        //     try {
-        //         await this._filesAdapter.createThumbnail(file, Buffer.from(data), type, {});
-        //     } catch (e) {
-        //         console.log(e);
-        //         console.warn('Fails to save thumbnail', e);
-        //     }
-        // }
+        const newFilename = (context && context.storage && context.storage.preserveName === true )
+            ? filename
+            : security.generateUUID() + '-' + filename;
+        const file = await filesAdapter.createFile(newFilename, data, type, {});
         return filesAdapter.getFileLocation(file, config);
     }
 

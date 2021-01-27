@@ -73,7 +73,7 @@ export class StorageWebservice {
                 response.writeHead(200, {'content-type': 'text/html'});
                 response.end(`
                     <h2>With Node.js <code>"http"</code> module</h2>
-                    <form action="${prefix}v2/storage/${request.params.appId}" enctype="multipart/form-data" method="post">
+                    <form action="${prefix}storage/${request.params.appId}" enctype="multipart/form-data" method="post">
                       <div>Text field title: <input type="text" name="file" /></div>
                       <div>File: <input type="file" name="multipleFiles" multiple="multiple" /></div>
                       <input type="submit" value="Upload" />

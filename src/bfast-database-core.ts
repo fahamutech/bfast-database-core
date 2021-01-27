@@ -88,26 +88,26 @@ export class BfastDatabaseCore {
         const databaseFactory = config.adapters && config.adapters.database
             ? config.adapters.database(config)
             : new DatabaseFactory(config);
-        Provider.service('SecurityController', container => new SecurityController());
-        Provider.service('DatabaseController', container => new DatabaseController(databaseFactory, Provider.get('SecurityController')));
-        Provider.service('RealtimeWebservice', container => new RealtimeWebservice(Provider.get('DatabaseController')));
+        Provider.service('SecurityController', _ => new SecurityController());
+        Provider.service('DatabaseController', _ => new DatabaseController(databaseFactory, Provider.get('SecurityController')));
+        Provider.service('RealtimeWebservice', _ => new RealtimeWebservice(Provider.get('DatabaseController')));
         const authFactory: AuthAdapter = config.adapters && config.adapters.auth
             ? config.adapters.auth(config)
             : new AuthFactory(Provider.get('DatabaseController'), Provider.get('SecurityController'));
-        Provider.service('AuthController', container => new AuthController(authFactory, Provider.get('DatabaseController')));
+        Provider.service('AuthController', _ => new AuthController(authFactory, Provider.get('DatabaseController')));
         const fileFactory: FilesAdapter = config.adapters && config.adapters.s3Storage
-            ? new S3StorageFactory(Provider.get('SecurityController'), config)
-            : new GridFsStorageFactory(Provider.get('SecurityController'), config, config.mongoDbUri);
-        Provider.service('StorageController', container => new StorageController(fileFactory, config));
-        Provider.service('RestController', container => new RestController(
+            ? new S3StorageFactory(config)
+            : new GridFsStorageFactory(config, config.mongoDbUri);
+        Provider.service('StorageController', _ => new StorageController(fileFactory, Provider.get('SecurityController'), config));
+        Provider.service('RestController', _ => new RestController(
             Provider.get('SecurityController'),
             Provider.get('AuthController'),
             Provider.get('StorageController'),
             config)
         );
-        Provider.service('RealtimeWebService', container => new RealtimeWebservice(Provider.get('DatabaseController')));
-        Provider.service('RestWebservice', container => new RestWebservice(Provider.get('RestController')));
-        Provider.service('StorageWebservice', container => new StorageWebservice(Provider.get('RestController')));
+        Provider.service('RealtimeWebService', _ => new RealtimeWebservice(Provider.get('DatabaseController')));
+        Provider.service('RestWebservice', _ => new RestWebservice(Provider.get('RestController')));
+        Provider.service('StorageWebservice', _ => new StorageWebservice(Provider.get('RestController')));
     }
 
     /**

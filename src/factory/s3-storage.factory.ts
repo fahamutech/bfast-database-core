@@ -1,20 +1,16 @@
 import {FilesAdapter} from '../adapters/files.adapter';
 import {BFastDatabaseConfigAdapter} from '../bfast.config';
-import {SecurityController} from '../controllers/security.controller';
 import * as Minio from 'minio';
 import {Client} from 'minio';
 import {PassThrough} from 'stream';
 
 const url = require('url');
-let security: SecurityController;
 let config: BFastDatabaseConfigAdapter;
 
 export class S3StorageFactory implements FilesAdapter {
 
-    constructor(securityController: SecurityController,
-                configAdapter: BFastDatabaseConfigAdapter) {
+    constructor(configAdapter: BFastDatabaseConfigAdapter) {
         config = configAdapter;
-        security = securityController;
         this.init(config);
     }
 
@@ -27,8 +23,8 @@ export class S3StorageFactory implements FilesAdapter {
         const bucket = config.adapters.s3Storage.bucket;
         await this.createBucket(bucket);
         await this.validateFilename(filename);
-        const newFilename = security.generateUUID() + '-' + filename;
-        return this.saveFile(newFilename, data, bucket, config.adapters.s3Storage.endPoint, config.adapters.s3Storage.region);
+        // const newFilename = security.generateUUID() + '-' + filename;
+        return this.saveFile(filename, data, bucket, config.adapters.s3Storage.endPoint, config.adapters.s3Storage.region);
     }
 
     async deleteFile(filename: string): Promise<any> {

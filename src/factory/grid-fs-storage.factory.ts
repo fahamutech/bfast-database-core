@@ -6,20 +6,16 @@
 
 import {Db, GridFSBucket, MongoClient} from 'mongodb';
 import {FilesAdapter} from '../adapters/files.adapter';
-import {SecurityController} from '../controllers/security.controller';
 import {PassThrough, Stream} from 'stream';
 import {BFastDatabaseConfigAdapter} from '../bfast.config';
 
-let security: SecurityController;
 let config: BFastDatabaseConfigAdapter;
 
 export class GridFsStorageFactory implements FilesAdapter {
 
-    constructor(securityController: SecurityController,
-                configAdapter: BFastDatabaseConfigAdapter,
+    constructor(configAdapter: BFastDatabaseConfigAdapter,
                 private readonly mongoDatabaseURI: string,
                 private readonly mongoOptions = {}) {
-        security = securityController;
         config = configAdapter;
         if (!this.mongoDatabaseURI) {
             this.mongoDatabaseURI = config.mongoDbUri;
@@ -54,9 +50,9 @@ export class GridFsStorageFactory implements FilesAdapter {
 
     async createFile(filename: string, data: PassThrough, contentType: any, options: any = {}): Promise<string> {
         await this.validateFilename(filename);
-        const newFilename = security.generateUUID() + '-' + filename;
+        // const newFilename = security.generateUUID() + '-' + filename;
         const bucket = await this.getBucket();
-        return this._saveFile(newFilename, data, contentType, bucket, options);
+        return this._saveFile(filename, data, contentType, bucket, options);
     }
 
     async deleteFile(filename: string): Promise<any> {

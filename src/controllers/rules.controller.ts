@@ -46,10 +46,10 @@ export class RulesController {
         authController = new AuthController(auth, databaseController);
 
         fileAdapter = (config && config.adapters && config.adapters.s3Storage)
-            ? new S3StorageFactory(new SecurityController(), config)
-            : new GridFsStorageFactory(new SecurityController(), config, config.mongoDbUri);
+            ? new S3StorageFactory(config)
+            : new GridFsStorageFactory(config, config.mongoDbUri);
 
-        storageController = new StorageController(fileAdapter, config);
+        storageController = new StorageController(fileAdapter, new SecurityController(), config);
 
         messageController = this._messageController;
 

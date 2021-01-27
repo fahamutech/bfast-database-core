@@ -57,6 +57,9 @@ export interface ContextBlock {
   applicationId?: string;
   masterKey?: string;
   useMasterKey?: boolean;
+  storage?: {
+    preserveName?: boolean
+  }
 }
 
 export interface TransactionBlock {
