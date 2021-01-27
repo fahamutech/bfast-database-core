@@ -93,9 +93,9 @@ export class RestController {
                 }
                 const urls = [];
                 if (request && request.query && request.query.pn && request.query.pn.toString() === 'true') {
-                    request.body.context.storage.preserveName = true;
+                    request.body.context.storage = {preserveName: true};
                 } else {
-                    request.body.context.storage.preserveName = false;
+                    request.body.context.storage = {preserveName: false};
                 }
                 const result = await restStorageController.saveFromBuffer({
                     data: passThrough as any,
