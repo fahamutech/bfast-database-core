@@ -156,7 +156,7 @@ export class DatabaseFactory implements DatabaseAdapter {
             queryModel.return.forEach(x => {
                 fieldsToReturn[x] = 1;
             });
-           // query.project(fieldsToReturn);
+            // query.project(fieldsToReturn);
         }
         let result;
         if (queryModel?.count === true) {
@@ -217,7 +217,11 @@ export class DatabaseFactory implements DatabaseAdapter {
 
     async aggregate(domain: string, pipelines: any[], context: ContextBlock, options?: DatabaseWriteOptions): Promise<any> {
         const conn = await this.connection();
-        const result = await conn.db().collection(domain).aggregate(pipelines).toArray();
+        const aggOps = {
+            allowDiskUse: true,
+            session: options && options.transaction ? options.transaction : undefined
+        };
+        const result = await conn.db().collection(domain).aggregate(pipelines, aggOps).toArray();
         await conn.close();
         return result;
     }

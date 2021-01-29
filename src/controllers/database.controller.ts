@@ -382,8 +382,7 @@ export class DatabaseController {
             return null;
         }
         if (data && typeof data._id !== 'boolean') {
-            data.id = data._id?data._id.toString(): '';
-            // data.objectId = data._id.toString();
+            data.id = data._id ? (typeof data._id === 'object' ? data._id : data._id.toString()) : '';
             delete data._id;
         }
         if (data && typeof data._created_at !== 'boolean') {
