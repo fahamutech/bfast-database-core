@@ -1,11 +1,18 @@
 import {BasicAttributesModel} from '../model/basic-attributes.model';
 import {ContextBlock} from '../model/rules.model';
-import {DatabaseAdapter, DatabaseBasicOptions, DatabaseUpdateOptions, DatabaseWriteOptions} from '../adapters/database.adapter';
+import {
+    DatabaseAdapter,
+    DatabaseBasicOptions,
+    DatabaseChangesOptions,
+    DatabaseUpdateOptions,
+    DatabaseWriteOptions
+} from '../adapters/database.adapter';
 import {UpdateRuleRequestModel} from '../model/update-rule-request.model';
 import {DeleteModel} from '../model/delete-model';
 import {QueryModel} from '../model/query-model';
 import {SecurityController} from './security.controller';
 import {ChangesModel} from '../model/changes.model';
+import {ChangeStream} from 'mongodb';
 
 export class DatabaseController {
 
@@ -156,7 +163,7 @@ export class DatabaseController {
      * @param options - write operation options
      */
     async changes(domain: string, pipeline: any[], listener: (doc: any) => void,
-                  options: DatabaseWriteOptions = {bypassDomainVerification: false}): Promise<any> {
+                  options: DatabaseChangesOptions = {bypassDomainVerification: false, resumeToken: undefined}): Promise<ChangeStream> {
         if (options && options.bypassDomainVerification === false) {
             await this.handleDomainValidation(domain);
         }

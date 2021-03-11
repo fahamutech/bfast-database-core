@@ -79,6 +79,10 @@ export interface DatabaseWriteOptions extends DatabaseBasicOptions {
     }[];
 }
 
+export interface DatabaseChangesOptions extends DatabaseWriteOptions{
+    resumeToken?: string;
+}
+
 export interface DatabaseUpdateOptions extends DatabaseBasicOptions {
     indexes?: {
         field?: string;

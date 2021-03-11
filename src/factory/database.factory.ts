@@ -1,5 +1,5 @@
 import {DatabaseAdapter, DatabaseBasicOptions, DatabaseUpdateOptions, DatabaseWriteOptions} from '../adapters/database.adapter';
-import {ChangeEvent, MongoClient} from 'mongodb';
+import {ChangeEvent, ChangeStream, MongoClient} from 'mongodb';
 import {BasicAttributesModel} from '../model/basic-attributes.model';
 import {ContextBlock} from '../model/rules.model';
 import {QueryModel} from '../model/query-model';
@@ -226,11 +226,14 @@ export class DatabaseFactory implements DatabaseAdapter {
         return result;
     }
 
-    async changes(domain: string, pipeline: any[], listener: (doc: ChangeEvent) => void): Promise<any> {
+    async changes(domain: string, pipeline: any[], listener: (doc: ChangeEvent) => void, resumeToken = undefined): Promise<ChangeStream> {
         const conn = await this.connection();
-        conn.db().collection(domain).watch(pipeline, {fullDocument: 'updateLookup'}).on('change', doc => {
+        const options: any = {fullDocument: 'updateLookup'};
+        if (resumeToken && resumeToken.toString() !== 'undefined' && resumeToken.toString() !== 'null') {
+            options.resumeAfter = resumeToken;
+        }
+        return conn.db().collection(domain).watch(pipeline, options).on('change', doc => {
             listener(doc);
         });
-        return;
     }
 }

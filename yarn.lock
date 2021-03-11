@@ -52,10 +52,10 @@
   dependencies:
     "@types/node" "*"
 
-"@types/mongodb@^3.5.34":
-  version "3.6.3"
-  resolved "https://registry.npmjs.org/@types/mongodb/-/mongodb-3.6.3.tgz"
-  integrity sha512-6YNqGP1hk5bjUFaim+QoFFuI61WjHiHE1BNeB41TA00Xd2K7zG4lcWyLLq/XtIp36uMavvS5hoAUJ+1u/GcX2Q==
+"@types/mongodb@^3.6.9":
+  version "3.6.9"
+  resolved "https://registry.yarnpkg.com/@types/mongodb/-/mongodb-3.6.9.tgz#55f7e5b04f33904a12d6f0ab4f5d119a5062ade4"
+  integrity sha512-2XSGr/+IOKeFQ5tU9ATcIiIr7bpHqWyOXNGLOOhp0kg2NnfEvoKZF1SZ25j4zvJRqM2WeSUjfWSvymFJ3HBGJQ==
   dependencies:
     "@types/bson" "*"
     "@types/node" "*"
@@ -413,10 +413,10 @@ bfast-function@^1.12.0:
     node-schedule "^1.3.3"
     socket.io "^3.1.1"
 
-bfastnode@^4.2.0:
-  version "4.2.0"
-  resolved "https://registry.npmjs.org/bfastnode/-/bfastnode-4.2.0.tgz"
-  integrity sha512-EVhgB6ssRGdjsoDjXRK5OPSfgHhlAVifR2HYReA9eaakw9hfZ5AiX1ngH19GN2gls8xp57+FSbC5XqT9g7BJcg==
+bfastnode@^4.2.1:
+  version "4.2.1"
+  resolved "https://registry.yarnpkg.com/bfastnode/-/bfastnode-4.2.1.tgz#43a8bff488c4d94f5eb820aba31e85928526e2fe"
+  integrity sha512-mdzO18NA/6ty+mZ4cu3b1NsXQwlRw/0oHsfuJvLJKIxDbJtk+UxdXQ/k+QeRvD9HjDxKle5BmZmNU5xveXSdgA==
 
 binary-extensions@^1.0.0:
   version "1.13.1"
@@ -2526,9 +2526,9 @@ minimisted@^2.0.0:
   dependencies:
     minimist "^1.2.5"
 
-minio@^7.0.17:
+minio@^7.0.18:
   version "7.0.18"
-  resolved "https://registry.npmjs.org/minio/-/minio-7.0.18.tgz"
+  resolved "https://registry.yarnpkg.com/minio/-/minio-7.0.18.tgz#a2a6dae52a4dde9e35ed47cdf2accc21df4a512d"
   integrity sha512-jVRjkw8A5Spf+ETY5OXQUcQckHriuUA3u2+MAcX36btLT8EytlOVivxIseXvyFf9cNn3dy5w1F1UyjMvHU+nqg==
   dependencies:
     async "^3.1.0"
@@ -2656,10 +2656,10 @@ mongodb@3.6.2:
   optionalDependencies:
     saslprep "^1.0.0"
 
-mongodb@^3.6.3:
-  version "3.6.3"
-  resolved "https://registry.npmjs.org/mongodb/-/mongodb-3.6.3.tgz"
-  integrity sha512-rOZuR0QkodZiM+UbQE5kDsJykBqWi0CL4Ec2i1nrGrUI3KO11r6Fbxskqmq3JK2NH7aW4dcccBuUujAP0ERl5w==
+mongodb@^3.6.4:
+  version "3.6.4"
+  resolved "https://registry.yarnpkg.com/mongodb/-/mongodb-3.6.4.tgz#ca59fd65b06831308262372ef9df6b78f9da97be"
+  integrity sha512-Y+Ki9iXE9jI+n9bVtbTOOdK0B95d6wVGSucwtBkvQ+HIvVdTCfpVRp01FDC24uhC/Q2WXQ8Lpq3/zwtB5Op9Qw==
   dependencies:
     bl "^2.2.1"
     bson "^1.1.4"
@@ -4101,9 +4101,9 @@ uuid@8.3.0:
   resolved "https://registry.npmjs.org/uuid/-/uuid-8.3.0.tgz"
   integrity sha512-fX6Z5o4m6XsXBdli9g7DtWgAx+osMsRRZFKma1mIUsLCz6vRvv+pz5VNbyu9UEDzpMWulZfvpgb/cmDXVulYFQ==
 
-uuid@^8.3.1:
+uuid@^8.3.2:
   version "8.3.2"
-  resolved "https://registry.npmjs.org/uuid/-/uuid-8.3.2.tgz"
+  resolved "https://registry.yarnpkg.com/uuid/-/uuid-8.3.2.tgz#80d5b5ced271bb9af6c445f21a1a04c606cefbe2"
   integrity sha512-+NYs2QeMWy+GWFOEm9xnn6HCDp0l7QBD7ml8zLUmJ+93Q5NF0NocErnwkTkXVFNiX3/fpC6afS8Dhb/gz7R7eg==
 
 v8flags@^3.2.0:
