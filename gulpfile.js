@@ -87,7 +87,7 @@ function devStart(cb) {
             mountPath: await new EnvUtil().getEnv('/'),
             masterKey: 'daas'
         };
-        await daaSServer.initiateServices(options)
+        // await daaSServer.initiateServices(options)
         await daaSServer.init(options).then(console.log).catch(console.log)
     }
 

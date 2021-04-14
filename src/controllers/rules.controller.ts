@@ -13,8 +13,8 @@ import {FilesAdapter} from '../adapters/files.adapter';
 import {S3StorageFactory} from '../factory/s3-storage.factory';
 import {GridFsStorageFactory} from '../factory/grid-fs-storage.factory';
 import {UpdateRuleController} from './update.rule.controller';
-import {BFastDatabaseConfigAdapter} from '../bfast.config';
-import {MessageController} from './message.controller';
+import {BFastDatabaseOptions} from '../bfast-database.option';
+import {LogController} from './log.controller';
 
 let databaseController: DatabaseController;
 let auth: AuthAdapter;
@@ -22,17 +22,17 @@ let authController: AuthController;
 let email: EmailFactory;
 let fileAdapter: FilesAdapter;
 let storageController: StorageController;
-let messageController: MessageController;
+let messageController: LogController;
 
 export class RulesController {
 
     constructor(private readonly updateRuleController: UpdateRuleController,
-                private readonly _messageController: MessageController,
-                private readonly config: BFastDatabaseConfigAdapter) {
+                private readonly _messageController: LogController,
+                private readonly config: BFastDatabaseOptions) {
         databaseController = new DatabaseController(
             (config.adapters && config.adapters.database) ?
                 this.config.adapters.database(config) : new DatabaseFactory(config),
-            new SecurityController()
+            new SecurityController(config)
         );
 
         email = (config && config.adapters && config.adapters.email)
@@ -41,7 +41,7 @@ export class RulesController {
 
         auth = (config && config.adapters && config.adapters.auth)
             ? config.adapters.auth(config)
-            : new AuthFactory(databaseController, new SecurityController());
+            : new AuthFactory(databaseController, new SecurityController(config));
 
         authController = new AuthController(auth, databaseController);
 
@@ -49,7 +49,7 @@ export class RulesController {
             ? new S3StorageFactory(config)
             : new GridFsStorageFactory(config, config.mongoDbUri);
 
-        storageController = new StorageController(fileAdapter, new SecurityController(), config);
+        storageController = new StorageController(fileAdapter, new SecurityController(config), config);
 
         messageController = this._messageController;
 
@@ -460,20 +460,20 @@ export class RulesController {
             }
             for (const updateRule of updateRules) {
                 const domain = this.extractDomain(updateRule, 'update');
-                const updateRuleRequest: UpdateRuleRequestModel = rules[updateRule];
+                const updateRuleRequests: UpdateRuleRequestModel = rules[updateRule];
                 const allowed = await authController.hasPermission(`update.${domain}`, rules.context);
                 if (allowed !== true) {
                     ruleResponse.errors[`${transactionSession ? 'transaction.' : ''}update.${domain}`] = {
                         message: 'You have insufficient permission to this resource',
                         path: `${transactionSession ? 'transaction.' : ''}update.${domain}`,
-                        data: updateRuleRequest
+                        data: updateRuleRequests
                     };
                     return ruleResponse;
                 }
                 try {
-                    if (updateRuleRequest && Array.isArray(updateRuleRequest)) {
+                    if (updateRuleRequests && Array.isArray(updateRuleRequests)) {
                         const partialResults = [];
-                        for (const value of updateRuleRequest) {
+                        for (const value of updateRuleRequests) {
                             const response = await this.updateRuleController.update({
                                 updateRuleRequest: value,
                                 rules,
@@ -486,7 +486,7 @@ export class RulesController {
                         ruleResponse[updateRule] = partialResults;
                     } else {
                         ruleResponse[updateRule] = await this.updateRuleController.update({
-                            updateRuleRequest,
+                            updateRuleRequest: updateRuleRequests,
                             rules,
                             databaseController,
                             domain,
@@ -498,7 +498,7 @@ export class RulesController {
                     ruleResponse.errors[`${transactionSession ? 'transaction.' : ''}update.${domain}`] = {
                         message: e.message ? e.message : e.toString(),
                         path: `${transactionSession ? 'transaction.' : ''}update.${domain}`,
-                        data: updateRuleRequest
+                        data: updateRuleRequests
                     };
                     if (transactionSession) {
                         throw e;

@@ -7,13 +7,13 @@
 import {Db, GridFSBucket, MongoClient} from 'mongodb';
 import {FilesAdapter} from '../adapters/files.adapter';
 import {PassThrough, Stream} from 'stream';
-import {BFastDatabaseConfigAdapter} from '../bfast.config';
+import {BFastDatabaseOptions} from '../bfast-database.option';
 
-let config: BFastDatabaseConfigAdapter;
+let config: BFastDatabaseOptions;
 
 export class GridFsStorageFactory implements FilesAdapter {
 
-    constructor(configAdapter: BFastDatabaseConfigAdapter,
+    constructor(configAdapter: BFastDatabaseOptions,
                 private readonly mongoDatabaseURI: string,
                 private readonly mongoOptions = {}) {
         config = configAdapter;
@@ -100,7 +100,7 @@ export class GridFsStorageFactory implements FilesAdapter {
         return bucket.openDownloadStreamByName(filename);
     }
 
-    async getFileLocation(filename: string, configAdapter: BFastDatabaseConfigAdapter): Promise<string> {
+    async getFileLocation(filename: string, configAdapter: BFastDatabaseOptions): Promise<string> {
         return '/storage/' + configAdapter.applicationId + '/file/' + encodeURIComponent(filename);
     }
 

@@ -1,4 +1,4 @@
-const {getRulesController, mongoRepSet} = require('../../mock.config');
+const {getRulesController, mongoRepSet} = require('../mock.config');
 const {before, after} = require('mocha');
 const assert = require('assert');
 
@@ -26,7 +26,8 @@ describe('RulesController::Auth Unit Test', function () {
                         email: 'doe@doe.com'
                     }
                 }
-            }, results)
+            }, results);
+            console.log(results);
             assert(results.auth['signUp'] !== undefined);
             assert(results.auth['signUp'] !== null);
             assert(results.auth['signUp'].username === 'doe');
@@ -36,7 +37,6 @@ describe('RulesController::Auth Unit Test', function () {
             assert(typeof results.auth['signUp'].id === "string");
             assert(typeof results.auth['signUp'].token === "string");
         });
-
         it('should return error message when email is not present', async function () {
             const results = {errors: {}};
             await _rulesController.handleAuthenticationRule({
@@ -52,7 +52,6 @@ describe('RulesController::Auth Unit Test', function () {
             assert(results.errors['auth.signUp'].message === 'Email required');
             assert(typeof results.errors['auth.signUp'].data === 'object');
         });
-
         it('should return error message when username is not present', async function () {
             const results = {errors: {}};
             await _rulesController.handleAuthenticationRule({
@@ -68,7 +67,6 @@ describe('RulesController::Auth Unit Test', function () {
             assert(results.errors['auth.signUp'].message === 'Username required');
             assert(typeof results.errors['auth.signUp'].data === 'object');
         });
-
         it('should return error message when password is not present', async function () {
             const results = {errors: {}};
             await _rulesController.handleAuthenticationRule({
@@ -84,7 +82,6 @@ describe('RulesController::Auth Unit Test', function () {
             assert(results.errors['auth.signUp'].message === 'Password required');
             assert(typeof results.errors['auth.signUp'].data === 'object');
         });
-
         it('should return error message when signUp is empty object', async function () {
             const results = {errors: {}};
             await _rulesController.handleAuthenticationRule({
@@ -98,7 +95,6 @@ describe('RulesController::Auth Unit Test', function () {
             assert(typeof results.errors['auth.signUp'].data === 'object');
             assert(Object.keys(results.errors['auth.signUp'].data).length === 0);
         });
-
         it('should return error message when signUp is null', async function () {
             const results = {errors: {}};
             await _rulesController.handleAuthenticationRule({
@@ -111,7 +107,6 @@ describe('RulesController::Auth Unit Test', function () {
             assert(results.errors['auth.signUp'].message === 'Invalid user data');
             assert(results.errors['auth.signUp'].data === null);
         });
-
         it('should return error message when signUp is undefined', async function () {
             const results = {errors: {}};
             await _rulesController.handleAuthenticationRule({

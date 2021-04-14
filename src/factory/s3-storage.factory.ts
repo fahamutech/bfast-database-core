@@ -1,15 +1,15 @@
 import {FilesAdapter} from '../adapters/files.adapter';
-import {BFastDatabaseConfigAdapter} from '../bfast.config';
+import {BFastDatabaseOptions} from '../bfast-database.option';
 import * as Minio from 'minio';
 import {Client} from 'minio';
 import {PassThrough} from 'stream';
 
 const url = require('url');
-let config: BFastDatabaseConfigAdapter;
+let config: BFastDatabaseOptions;
 
 export class S3StorageFactory implements FilesAdapter {
 
-    constructor(configAdapter: BFastDatabaseConfigAdapter) {
+    constructor(configAdapter: BFastDatabaseOptions) {
         config = configAdapter;
         this.init(config);
     }
@@ -39,7 +39,7 @@ export class S3StorageFactory implements FilesAdapter {
         return this.s3.getObject(bucket, filename);
     }
 
-    async getFileLocation(filename: string, configAdapter: BFastDatabaseConfigAdapter): Promise<string> {
+    async getFileLocation(filename: string, configAdapter: BFastDatabaseOptions): Promise<string> {
         return '/storage/' + configAdapter.applicationId + '/file/' + encodeURIComponent(filename);
     }
 
@@ -106,7 +106,7 @@ export class S3StorageFactory implements FilesAdapter {
         });
     }
 
-    private init(configAdapter: BFastDatabaseConfigAdapter): void {
+    private init(configAdapter: BFastDatabaseOptions): void {
         const endPoint = configAdapter.adapters.s3Storage.endPoint;
         const accessKey = configAdapter.adapters.s3Storage.accessKey;
         const secretKey = configAdapter.adapters.s3Storage.secretKey;

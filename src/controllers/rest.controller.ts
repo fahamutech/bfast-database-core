@@ -6,21 +6,21 @@ import {StorageController} from './storage.controller';
 import {AuthController} from './auth.controller';
 import {UpdateRuleController} from './update.rule.controller';
 import {PassThrough} from 'stream';
-import {BFastDatabaseConfigAdapter} from '../bfast.config';
+import {BFastDatabaseOptions} from '../bfast-database.option';
 
 import formidable from 'formidable';
-import {MessageController} from './message.controller';
+import {LogController} from './log.controller';
 
 let restSecurity: SecurityController;
 let restAuthController: AuthController;
 let restStorageController: StorageController;
-let restConfig: BFastDatabaseConfigAdapter;
+let restConfig: BFastDatabaseOptions;
 
 export class RestController {
     constructor(security: SecurityController,
                 authController: AuthController,
                 storageController: StorageController,
-                config: BFastDatabaseConfigAdapter) {
+                config: BFastDatabaseOptions) {
         restSecurity = security;
         restAuthController = authController;
         restStorageController = storageController;
@@ -155,7 +155,7 @@ export class RestController {
             request.body.context.uid = null;
             next();
         } else {
-            restSecurity.verifyToken<{ uid: string }>(token).then(value => {
+            restSecurity.verifyToken(token).then(value => {
                 request.body.context.auth = true;
                 request.body.context.uid = value.uid;
                 next();
@@ -188,7 +188,7 @@ export class RestController {
     handleRuleBlocks(request: any, response: any, _: any): void {
         const body = request.body;
         const results: RuleResponse = {errors: {}};
-        const rulesController = new RulesController(new UpdateRuleController(), new MessageController(restConfig), restConfig);
+        const rulesController = new RulesController(new UpdateRuleController(), new LogController(restConfig), restConfig);
         rulesController.handleIndexesRule(body, results).then(__ => {
             return rulesController.handleAuthenticationRule(body, results);
         }).then(_1 => {

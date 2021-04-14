@@ -113,6 +113,48 @@ export class DatabaseController {
         return this.sanitize4User(updatedDoc, returnFields);
     }
 
+    // async updateMany(domain: string, updateModel: UpdateRuleRequestModel, context: ContextBlock,
+    //                  options: DatabaseUpdateOptions = {bypassDomainVerification: false}) {
+    //     if (updateModel.filter && typeof updateModel.filter === 'object' && Object.keys(updateModel.filter).length > 0) {
+    //         if (options && options.bypassDomainVerification === false) {
+    //             await this.handleDomainValidation(domain);
+    //         }
+    //         const returnFields = this.getReturnFields(updateModel as any);
+    //         updateModel.update = this.sanitizeWithOperator4Db(updateModel?.update as any);
+    //         updateModel.filter = this.sanitizeWithOperator4Db(updateModel?.filter as any);
+    //         updateModel.update = this.addUpdateMetadata(updateModel?.update as any, context);
+    //         options.dbOptions = updateModel && updateModel.options ? updateModel.options : {};
+    //         const updatedDoc = await this.transaction(async session => {
+    //             const queryResults: any[] = await this.query(domain, {
+    //                 filter: updateModel.filter,
+    //                 return: updateModel.return,
+    //                 count: false
+    //             }, context, {
+    //                 bypassDomainVerification: context?.useMasterKey === true,
+    //                 transaction: session
+    //             });
+    //             const updateResults = [];
+    //             if (queryResults && Array.isArray(queryResults)) {
+    //                 for (const value of queryResults) {
+    //                     updateModel.id = value.id;
+    //                     updateModel.filter = {
+    //                         _id: value.id
+    //                     };
+    //                     const result = await this.update(domain, updateModel, context, {
+    //                         bypassDomainVerification: context?.useMasterKey === true,
+    //                         transaction: session
+    //                     });
+    //                     updateResults.push(result);
+    //                 }
+    //             }
+    //             return updateResults;
+    //         });
+    //         // const updatedDoc = await this.database.update<any, any>(domain, updateModel, context, options);
+    //         return this.sanitize4User(updatedDoc, returnFields);
+    //     }
+    //     throw {message: 'you must supply filter object in update model'};
+    // }
+
     /**
      * delete a record from bfast::database
      * @param domain - resource name
@@ -193,7 +235,7 @@ export class DatabaseController {
                     snapshot: this.sanitize4User(doc.documentKey, [])
                 });
             }
-        });
+        }, options.resumeToken);
     }
 
     async query(domain: string, queryModel: QueryModel<any>, context: ContextBlock,

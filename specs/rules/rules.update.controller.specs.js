@@ -1,4 +1,4 @@
-const {getRulesController, mongoRepSet} = require('../../mock.config');
+const {getRulesController, mongoRepSet} = require('../mock.config');
 const {before, after} = require('mocha');
 const assert = require('assert');
 
@@ -181,6 +181,26 @@ describe('RulesController::Update Unit Test', function () {
             assert(results.updateProduct !== undefined);
             assert(results.updateProduct['id'] === 'xyz');
             assert(typeof results.updateProduct === 'object');
-        })
+        });
+        it('should create document if not exist and upsert is true', async function () {
+            const results = await _rulesController.handleUpdateRules({
+                updateProduct: {
+                    id: 'xyz123',
+                    update: {
+                        $set: {
+                            name: 'apple',
+                            _created_at: new Date()
+                        }
+                    },
+                    upsert: true,
+                    return: []
+                }
+            }, {errors: {}});
+            assert(results.updateProduct !== null);
+            assert(results.updateProduct.name === 'apple');
+            assert(results.updateProduct.id === 'xyz123');
+            assert(results.updateProduct.createdAt !== null);
+            assert(results.updateProduct.createdAt !== undefined);
+        });
     });
 });

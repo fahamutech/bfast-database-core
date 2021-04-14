@@ -23,6 +23,14 @@ export class UpdateRuleController {
                 transaction: data.transactionSession
             });
         } else if (data.updateRuleRequest?.filter) {
+            // return data.databaseController.updateMany(
+            //     data.domain,
+            //     data.updateRuleRequest,
+            //     data.rules.context,
+            //     {
+            //         bypassDomainVerification: data.rules?.context?.useMasterKey === true,
+            //     }
+            // );
             if (data.updateRuleRequest?.filter && Object.keys(data.updateRuleRequest?.filter).length === 0) {
                 throw new Error('Empty map is not supported in update rule');
             }

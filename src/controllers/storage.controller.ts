@@ -4,20 +4,20 @@ import {ContextBlock} from '../model/rules.model';
 import mime from 'mime';
 import {StatusCodes} from 'http-status-codes';
 import {PassThrough, Stream} from 'stream';
-import {BFastDatabaseConfigAdapter} from '../bfast.config';
+import {BFastDatabaseOptions} from '../bfast-database.option';
 import {bfast} from 'bfastnode';
 import sharp from 'sharp';
 import {SecurityController} from './security.controller';
 
 
 let filesAdapter: FilesAdapter;
-let config: BFastDatabaseConfigAdapter;
+let config: BFastDatabaseOptions;
 let security: SecurityController;
 
 export class StorageController {
     constructor(files: FilesAdapter,
                 securityController: SecurityController,
-                configAdapter: BFastDatabaseConfigAdapter) {
+                configAdapter: BFastDatabaseOptions) {
         filesAdapter = files;
         security = securityController;
         config = configAdapter;

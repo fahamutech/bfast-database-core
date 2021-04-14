@@ -57,7 +57,7 @@ export abstract class DatabaseAdapter {
     abstract query<T extends BasicAttributesModel>(domain: string, queryModel: QueryModel<T>, context: ContextBlock,
                                                    options?: DatabaseWriteOptions): Promise<any>;
 
-    abstract changes(domain: string, pipeline: object[], listener: (doc: any) => void): Promise<any>;
+    abstract changes(domain: string, pipeline: object[], listener: (doc: any) => void, resumeToken: string): Promise<any>;
 
     abstract transaction(operations: (session) => Promise<any>): Promise<any>;
 

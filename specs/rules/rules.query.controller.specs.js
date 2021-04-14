@@ -1,4 +1,4 @@
-const {getRulesController, mongoRepSet} = require('../../mock.config');
+const {getRulesController, mongoRepSet} = require('../mock.config');
 const {before, after} = require('mocha');
 const assert = require('assert');
 
@@ -36,6 +36,15 @@ describe('RulesController::Query Unit Test', function () {
             assert(results.queryProduct.id === 'xyz');
             assert(results.queryProduct.price === 50);
             assert(results.queryProduct.status === 'new');
+        });
+        it('should return null when id supplied is not exist', async function () {
+            const results = await _rulesController.handleQueryRules({
+                queryProduct: {
+                    id: 'xyz1234hint',
+                    return: []
+                }
+            }, {errors: {}});
+            assert(results.queryProduct === null);
         });
         it('should return query result based on filter', async function () {
             const results = await _rulesController.handleQueryRules({

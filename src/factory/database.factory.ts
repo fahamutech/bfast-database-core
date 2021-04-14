@@ -5,14 +5,14 @@ import {ContextBlock} from '../model/rules.model';
 import {QueryModel} from '../model/query-model';
 import {UpdateRuleRequestModel} from '../model/update-rule-request.model';
 import {DeleteModel} from '../model/delete-model';
-import {BFastDatabaseConfigAdapter} from '../bfast.config';
+import {BFastDatabaseOptions} from '../bfast-database.option';
 
-let config: BFastDatabaseConfigAdapter;
+let config: BFastDatabaseOptions;
 
 export class DatabaseFactory implements DatabaseAdapter {
     private mongoClient: MongoClient;
 
-    constructor(configAdapter: BFastDatabaseConfigAdapter) {
+    constructor(configAdapter: BFastDatabaseOptions) {
         config = configAdapter;
     }
 
@@ -30,7 +30,7 @@ export class DatabaseFactory implements DatabaseAdapter {
         : Promise<any> {
         const conn = await this.connection();
         const response = await conn.db().collection(domain).insertOne(data, {
-            w: 'majority',
+            // w: 'majority',
             session: options && options.transaction ? options.transaction : undefined
         });
         return response.insertedId;
@@ -172,7 +172,7 @@ export class DatabaseFactory implements DatabaseAdapter {
                                                     context: ContextBlock, options?: DatabaseUpdateOptions): Promise<V> {
         const conn = await this.connection();
         let updateOptions = {
-            upsert: false, // updateModel.upsert === true,
+            upsert: typeof updateModel.upsert === 'boolean' ? updateModel.upsert : false,
             returnOriginal: false,
             session: options && options.transaction ? options.transaction : undefined
         };
@@ -230,7 +230,7 @@ export class DatabaseFactory implements DatabaseAdapter {
         const conn = await this.connection();
         const options: any = {fullDocument: 'updateLookup'};
         if (resumeToken && resumeToken.toString() !== 'undefined' && resumeToken.toString() !== 'null') {
-            options.resumeAfter = resumeToken;
+            options.startAfter = resumeToken;
         }
         return conn.db().collection(domain).watch(pipeline, options).on('change', doc => {
             listener(doc);
