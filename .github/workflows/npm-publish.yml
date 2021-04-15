@@ -24,7 +24,7 @@ jobs:
         run: |
           npm install -g yarn
           yarn install
-          yarn run test:controllers
+          yarn run test
           yarn publish --non-interactive
         env:
           CI: true
