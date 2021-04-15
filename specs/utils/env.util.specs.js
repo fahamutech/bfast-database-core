@@ -1,4 +1,3 @@
-// const {EnvUtil} = require('../../../dist/daas/esm2015');
 const {EnvUtil} = require("../../dist/utils/env.util");
 
 const assert = require('assert');
@@ -26,5 +25,23 @@ describe('Env Utils Unit Test', function () {
         assert(s3 === __dirname + '/s3');
         assert(s3 !== undefined);
         assert(s3 !== null);
+    });
+
+    it('should return a json if content of a file is JSON', async function () {
+        const rsa = await new EnvUtil().getEnv(__dirname + '/rsakey.valid.json');
+        assert(rsa !== undefined);
+        assert(typeof rsa === "object");
+    });
+    it('should return a string if content of a file is not valid json format', async function () {
+        const rsa = await new EnvUtil().getEnv(__dirname + '/rsakey.invalid.json');
+        assert(rsa !== undefined);
+        assert(typeof rsa === "string");
+    });
+    it('should return a json if env content is object in string', async function () {
+        const objectInString = await new EnvUtil().getEnv('{"name":"joshua"}');
+        assert(objectInString !== undefined);
+        assert(typeof objectInString === "object");
+        assert(objectInString.name === "joshua");
+        assert(typeof objectInString.name === "string");
     });
 });
