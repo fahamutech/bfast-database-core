@@ -12,14 +12,23 @@ export class AuthFactory implements AuthAdapter {
     }
 
     async resetPassword(email: string, context?: ContextBlock): Promise<any> {
-        const users = await this.databaseController.query(this.domainName, {
-            filter: {
-                email: email
-            },
-            return: []
-        }, context, {
-            bypassDomainVerification: true
-        });
+        // const user = await this.databaseController.query(this.domainName, {
+        //     id: context.uid,
+        //     return: []
+        // }, context, {
+        //     bypassDomainVerification: true
+        // });
+        // if (user) {
+        //     return this.emailController.sendMail({
+        //         from: 'fahamutechdevelopers@gmail.com',
+        //         to: user.email,
+        //         subject: 'Password Reset',
+        //         body: ''
+        //     });
+        // } else {
+        //
+        // }
+        return undefined;
     }
 
     async signIn<T extends BasicUserAttributesModel>(userModel: T, context: ContextBlock): Promise<T> {
@@ -60,7 +69,7 @@ export class AuthFactory implements AuthAdapter {
     }
 
     async deleteUser(context?: ContextBlock): Promise<any> {
-        return Promise.resolve(undefined);
+        return undefined;
     }
 
     async sendVerificationEmail(email: string, context?: ContextBlock): Promise<any> {

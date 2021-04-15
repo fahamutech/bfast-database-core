@@ -15,14 +15,11 @@ describe('SecurityController Integration Test', function () {
         assert(decoded.uid === 'test1')
     });
     it('should not verify token when using public jwk and it is expired',  async function () {
-        // this.timeout(11000);
         try{
             const token = await securityController.getToken({uid: 'test1'},0);
             await securityController.verifyToken(token);
         }catch (e){
             assert(e.toString() === 'JwtParseError: Jwt is expired');
         }
-        // assert(typeof decoded === "object");
-        // assert(decoded.uid === 'test1')
     });
 });

@@ -126,7 +126,7 @@ export class RulesController {
                     if (action === 'add' && typeof data === 'object') {
                         const authorizationResults = {};
                         for (const rule of Object.keys(data)) {
-                            authorizationResults[rule] = await authController.addAuthorizationRule(rule, data[rule], rules.context);
+                            authorizationResults[rule] = await authController.addPolicyRule(rule, data[rule], rules.context);
                         }
                         ruleResponse.policy = {};
                         ruleResponse.policy[action] = authorizationResults;

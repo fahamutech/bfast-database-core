@@ -1,3 +1,4 @@
+
 const {LogController} = require("../dist/controllers/log.controller");
 const {BfastDatabaseCore} = require("../dist/bfast-database-core");
 const {MongoMemoryServer} = require('mongodb-memory-server');
@@ -48,6 +49,7 @@ exports.config = {
     adapters: {},
     mountPath: '/',
     masterKey: 'daas',
+    mongoDbUri: 'mongodb://localhost/test',
     rsaKeyPairInJson: {
         "p": "_09LOKJdsMbbJBD-NckTpyer4Hh2D5tz7RJwDsbHAt2zjmQWeAfIA2DVZY-ftwWMA3C77yf0huM5xVfU6DsJL72WtdCCCPggyfKkMuMYfch-MFV6imt6-Fwm9gAH_-BuuToabwjBHGehV_I-Jy0D_wWdIc5hTIGZtDj5rg0cQ8k",
         "kty": "RSA",
@@ -71,6 +73,7 @@ exports.config = {
         "n": "uyJnJwRfX6tobS4swk_KIpS-KOM0QL0L8-yVWiBz7d8hWpwBqzxRX3-6AKslhZL1aC6zGT7Z6y4jqpvdfSrXVbpgJeYtqaW32P5zpN_Rziyg6jG73E3NH3St5y6p6CujMqEfilSgoZbdsIhA_Eu_XGhlACeDUz-D3vJlhHFdY-jymaV6uTW_ojC-oQBpHuTOnUZPlgw9AeL39vuACNsX2ci94T7c8j42Wborr-jVEsxPOQoYOCBOHFNkpRlvie4oqb3o6w5Nvz3rayazRQ2NNv5kLEpw59Fl2sBWP-TInQ_gC8Kkwi_bNShjycgpNQuoHyQSH5Dz9IyIylokghiQ0Q"
     }
 }
+
 /**
  *
  * @return {Promise<RulesController>}

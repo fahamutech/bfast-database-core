@@ -24,30 +24,6 @@ export class SecurityController {
         return await bcrypt.hash(plainText, 10);
     }
 
-    async revokeToken(token: string): Promise<any> {
-        // await this.databaseController.update('_Token', {
-        //     id: token.toString().split('.')[1].trim(),
-        //     update: {
-        //         $set: {
-        //             token: null
-        //         }
-        //     },
-        //     upsert: true,
-        //     options: {
-        //         upsert: true
-        //     }
-        // }, {
-        //     auth: true,
-        //     useMasterKey: true,
-        // }, {
-        //     bypassDomainVerification: true,
-        //     dbOptions: {
-        //         upsert: true
-        //     }
-        // });
-        return {message: 'token not revoked'};
-    }
-
     decodeToken(token: string): { uid: string, [key: string]: any } {
         return _jwt.decode(token, {
             complete: true,
@@ -91,23 +67,6 @@ export class SecurityController {
     async verifyToken(token) {
         const jwk = this.getJwk(this.options.rsaPublicKeyInJson);
         const jwt = njwt.verify(token, jwk.key.toPublicKeyPEM(), jwk.alg);
-        // this.databaseController.query('_Token', {
-        //     id: token.toString().split('.')[1].trim(),
-        //     return: []
-        // }, {
-        //     useMasterKey: true,
-        //     auth: true
-        // }, {
-        //     bypassDomainVerification: true
-        // }).then(value => {
-        //     if (value && value.token === token) {
-        //         resolve(data);
-        //     } else {
-        //         reject({message: 'Invalid token'});
-        //     }
-        // }).catch(_ => {
-        //     reject({message: 'Invalid token', reason: _ && _.message ? _.message : _.toString()});
-        // });
         return jwt.body.toJSON();
     }
 

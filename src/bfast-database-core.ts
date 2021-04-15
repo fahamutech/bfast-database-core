@@ -25,7 +25,17 @@ export class BfastDatabaseCore {
      * @private
      */
     private static validateOptions(options: BFastDatabaseOptions, serverMode = true): { valid: boolean, message: string } {
-        if (!options.port && serverMode === true) {
+        if (!options.rsaPublicKeyInJson){
+            return {
+                valid: false,
+                message: 'rsa public key in json format required, for jwk'
+            };
+        }else if (!options.rsaKeyPairInJson){
+            return {
+                valid: false,
+                message: 'rsa key pair in json format required, for jwk'
+            };
+        }else if (!options.port && serverMode === true) {
             return {
                 valid: false,
                 message: 'Port option required'
@@ -94,7 +104,7 @@ export class BfastDatabaseCore {
             options)
         );
         Provider.service('RealtimeWebService', _ => new RealtimeWebservice(Provider.get('DatabaseController')));
-        Provider.service('RestWebservice', _ => new RestWebservice(Provider.get('RestController')));
+        Provider.service('RestWebservice', _ => new RestWebservice(Provider.get('RestController'), options));
         Provider.service('StorageWebservice', _ => new StorageWebservice(Provider.get('RestController')));
     }
 

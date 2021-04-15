@@ -27,7 +27,6 @@ describe('RulesController::Auth Unit Test', function () {
                     }
                 }
             }, results);
-            console.log(results);
             assert(results.auth['signUp'] !== undefined);
             assert(results.auth['signUp'] !== null);
             assert(results.auth['signUp'].username === 'doe');
