@@ -9,7 +9,7 @@
     "test:web-services": "yarn run build && mocha --exit specs/rest/all.specs.js",
     "test:controllers": "yarn run build && npx mocha --exit specs/controllers/* ",
     "test:rules": "yarn run build && npx mocha --exit specs/rules/* ",
-    "test": "yarn run build && npx mocha --exit specs/rules/* specs/controllers/* ",
+    "test": "yarn run build && npx mocha --exit specs/utils/* specs/rules/* specs/controllers/*",
     "prestart": "yarn run build",
     "prepublishOnly": "npm run build",
     "publish:beta": "yarn publish --tag beta"

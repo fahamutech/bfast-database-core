@@ -4,7 +4,7 @@ const assert = require('assert');
 
 describe('Env Utils Unit Test', function () {
     before(async function () {
-        process.env.S3 = __dirname + '/s3.txt';
+        process.env.S3 = __dirname + '/../s3.txt';
         process.env.PRODUCTION = '1';
     })
     it('should return content of file if env is path', async function () {
@@ -21,19 +21,19 @@ describe('Env Utils Unit Test', function () {
     });
 
     it('should return self env if file path is not valid', async function () {
-        const s3 = await new EnvUtil().getEnv(__dirname + '/s3');
-        assert(s3 === __dirname + '/s3');
+        const s3 = await new EnvUtil().getEnv(__dirname + '/../s3');
+        assert(s3 === __dirname + '/../s3');
         assert(s3 !== undefined);
         assert(s3 !== null);
     });
 
     it('should return a json if content of a file is JSON', async function () {
-        const rsa = await new EnvUtil().getEnv(__dirname + '/rsakey.valid.json');
+        const rsa = await new EnvUtil().getEnv(__dirname + '/../rsakey.valid.json');
         assert(rsa !== undefined);
         assert(typeof rsa === "object");
     });
     it('should return a string if content of a file is not valid json format', async function () {
-        const rsa = await new EnvUtil().getEnv(__dirname + '/rsakey.invalid.json');
+        const rsa = await new EnvUtil().getEnv(__dirname + '/../rsakey.invalid-json.txt');
         assert(rsa !== undefined);
         assert(typeof rsa === "string");
     });
