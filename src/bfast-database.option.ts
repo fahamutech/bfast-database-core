@@ -2,18 +2,20 @@ import {DatabaseAdapter} from './adapters/database.adapter';
 import {AuthAdapter} from './adapters/auth.adapter';
 import {EmailAdapter} from './adapters/email.adapter';
 
-export interface BFastDatabaseConfigAdapter {
+export interface BFastDatabaseOptions {
   port?: string;
   masterKey?: string;
   applicationId?: string;
   projectId?: string;
   logs?: boolean,
-  // mountPath: string;
   mongoDbUri?: string;
+  taarifaToken?: string;
+  rsaKeyPairInJson: any,
+  rsaPublicKeyInJson: any,
   adapters?: {
-    database?: (config: BFastDatabaseConfigAdapter) => DatabaseAdapter;
-    auth?: (config: BFastDatabaseConfigAdapter) => AuthAdapter;
-    email?: (config: BFastDatabaseConfigAdapter) => EmailAdapter;
+    database?: (config: BFastDatabaseOptions) => DatabaseAdapter;
+    auth?: (config: BFastDatabaseOptions) => AuthAdapter;
+    email?: (config: BFastDatabaseOptions) => EmailAdapter;
     s3Storage?: {
       accessKey: string;
       bucket: string;

@@ -4,31 +4,35 @@ import {ContextBlock} from '../model/rules.model';
 import {DatabaseController} from '../controllers/database.controller';
 import {SecurityController} from '../controllers/security.controller';
 
-let databaseController: DatabaseController;
-let securityController: SecurityController;
-
 export class AuthFactory implements AuthAdapter {
     private domainName = '_User';
 
-    constructor(database: DatabaseController,
-                security: SecurityController) {
-        databaseController = database;
-        securityController = security;
+    constructor(private readonly databaseController: DatabaseController,
+                private readonly securityController: SecurityController) {
     }
 
     async resetPassword(email: string, context?: ContextBlock): Promise<any> {
-        const users = await databaseController.query(this.domainName, {
-            filter: {
-                email: email
-            },
-            return: []
-        }, context, {
-            bypassDomainVerification: true
-        });
+        // const user = await this.databaseController.query(this.domainName, {
+        //     id: context.uid,
+        //     return: []
+        // }, context, {
+        //     bypassDomainVerification: true
+        // });
+        // if (user) {
+        //     return this.emailController.sendMail({
+        //         from: 'fahamutechdevelopers@gmail.com',
+        //         to: user.email,
+        //         subject: 'Password Reset',
+        //         body: ''
+        //     });
+        // } else {
+        //
+        // }
+        return undefined;
     }
 
     async signIn<T extends BasicUserAttributesModel>(userModel: T, context: ContextBlock): Promise<T> {
-        const users = await databaseController.query(this.domainName, {
+        const users = await this.databaseController.query(this.domainName, {
             filter: {
                 username: userModel.username
             },
@@ -38,13 +42,13 @@ export class AuthFactory implements AuthAdapter {
         });
         if (users && Array.isArray(users) && users.length === 1) {
             const user = users[0];
-            if (await securityController.comparePassword(userModel.password, user.password ? user.password : user._hashed_password)) {
+            if (await this.securityController.comparePassword(userModel.password, user.password ? user.password : user._hashed_password)) {
                 delete user.password;
                 delete user._hashed_password;
                 delete user._acl;
                 delete user._rperm;
                 delete user._wperm;
-                user.token = await securityController.generateToken({uid: user.id});
+                user.token = await this.securityController.getToken({uid: user.id});
                 return user;
             } else {
                 throw new Error('Password is not valid');
@@ -55,17 +59,17 @@ export class AuthFactory implements AuthAdapter {
     }
 
     async signUp<T extends BasicUserAttributesModel>(userModel: T, context: ContextBlock): Promise<T> {
-        userModel.password = await securityController.hashPlainText(userModel?.password);
-        const user = await databaseController.writeOne(this.domainName, userModel, context, {
+        userModel.password = await this.securityController.hashPlainText(userModel?.password);
+        const user = await this.databaseController.writeOne(this.domainName, userModel, context, {
             bypassDomainVerification: true
         });
         delete user.password;
-        user.token = await securityController.generateToken({uid: user.id});
+        user.token = await this.securityController.getToken({uid: user.id});
         return user;
     }
 
     async deleteUser(context?: ContextBlock): Promise<any> {
-        return Promise.resolve(undefined);
+        return undefined;
     }
 
     async sendVerificationEmail(email: string, context?: ContextBlock): Promise<any> {
@@ -73,7 +77,7 @@ export class AuthFactory implements AuthAdapter {
     }
 
     async update<T extends BasicUserAttributesModel>(userModel: T, context?: ContextBlock): Promise<T> {
-        return databaseController.update(this.domainName, {
+        return this.databaseController.update(this.domainName, {
             id: context.uid,
             update: {
                 $set: userModel
@@ -82,8 +86,8 @@ export class AuthFactory implements AuthAdapter {
     }
 
     async updatePassword(password: string, context?: ContextBlock): Promise<any> {
-        const hashedPassword = await securityController.hashPlainText(password);
-        return databaseController.update(this.domainName, {
+        const hashedPassword = await this.securityController.hashPlainText(password);
+        return this.databaseController.update(this.domainName, {
             id: context.uid,
             update: {
                 $set: {

@@ -38,9 +38,10 @@ export class WebServices {
         };
     }
 
-    rest(prefix = '/'): { rules: FunctionsModel } {
+    rest(prefix = '/'): { rules: FunctionsModel, jwk: FunctionsModel } {
         return {
-            rules: restWebservice.rulesV2(prefix)
+            rules: restWebservice.rulesV2(prefix),
+            jwk: restWebservice.authJwk(),
         };
     }
 }

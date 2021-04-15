@@ -32,39 +32,40 @@ export class AuthController {
         }
     }
 
-    async addAuthorizationRule(ruleId: string, rule: string, context: ContextBlock): Promise<any> {
-        const rules = await databaseController.query(this.policyDomainName, {
+    async addPolicyRule(ruleId: string, rule: string, context: ContextBlock): Promise<any> {
+        // const rules = await databaseController.query(this.policyDomainName, {
+        //     filter: {
+        //         ruleId
+        //     }
+        // }, context, {
+        //     bypassDomainVerification: context && context.useMasterKey === true
+        // });
+        // if (rules && rules.length > 0) {
+        return databaseController.update(this.policyDomainName, {
+            id: ruleId,
             filter: {
-                ruleId
+                id: ruleId
+            },
+            upsert: true,
+            return: [],
+            update: {
+                $set: {
+                    ruleId,
+                    ruleBody: rule,
+                }
             }
         }, context, {
             bypassDomainVerification: context && context.useMasterKey === true
         });
-        if (rules && rules.length > 0) {
-            return databaseController.update(this.policyDomainName, {
-                filter: {
-                    ruleId
-                },
-                upsert: true,
-                return: [],
-                update: {
-                    $set: {
-                        ruleId,
-                        ruleBody: rule,
-                    }
-                }
-            }, context, {
-                bypassDomainVerification: context && context.useMasterKey === true
-            });
-        } else {
-            return databaseController.writeOne(this.policyDomainName, {
-                ruleId,
-                ruleBody: rule,
-                return: [],
-            }, context, {
-                bypassDomainVerification: context && context.useMasterKey === true
-            });
-        }
+        // } else {
+        //     return databaseController.writeOne(this.policyDomainName, {
+        //         ruleId,
+        //         ruleBody: rule,
+        //         return: [],
+        //     }, context, {
+        //         bypassDomainVerification: context && context.useMasterKey === true
+        //     });
+        // }
     }
 
     /**

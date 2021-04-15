@@ -1,5 +1,5 @@
 // const {EnvUtil} = require('../../../dist/daas/esm2015');
-const {EnvUtil} = require("../../../dist/utils/env.util");
+const {EnvUtil} = require("../../dist/utils/env.util");
 
 const assert = require('assert');
 

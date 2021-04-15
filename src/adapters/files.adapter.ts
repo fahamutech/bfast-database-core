@@ -1,6 +1,6 @@
 // @ts-ignore
 import {PassThrough} from 'stream';
-import {BFastDatabaseConfigAdapter} from '../bfast.config';
+import {BFastDatabaseOptions} from '../bfast-database.option';
 
 export abstract class FilesAdapter {
 
@@ -48,7 +48,7 @@ export abstract class FilesAdapter {
      * @param config - configurations
      * @return Absolute URL
      */
-    abstract getFileLocation(filename: string, config: BFastDatabaseConfigAdapter): Promise<string>;
+    abstract getFileLocation(filename: string, config: BFastDatabaseOptions): Promise<string>;
 
     /** Handles Byte-Range Requests for Streaming
      *
