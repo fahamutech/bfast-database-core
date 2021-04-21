@@ -67,7 +67,6 @@ describe('RulesController::Transaction Unit Test', function () {
             assert(Array.isArray(results.transaction.commit.queryProduct));
             assert(results.transaction.commit.createProduct.length === 2);
             assert(results.transaction.commit.queryProduct.length === 5);
-
         });
         it('should perform transaction when update block is array', async function () {
             const results = await _rulesController.handleTransactionRule({
@@ -129,6 +128,36 @@ describe('RulesController::Transaction Unit Test', function () {
             assert(Array.isArray(results.transaction.commit.queryProduct));
             assert(results.transaction.commit.createProduct.length === 2);
             assert(results.transaction.commit.queryProduct.length === 6);
+        });
+        it('should not perform transaction if save to already exist document', async function () {
+            const results = await _rulesController.handleTransactionRule({
+                transaction: {
+                    commit: {
+                        createProduct: [
+                            {id: 'doe', name: 'zxc', price: 100, status: 'new'},
+                            {id: 'doe', name: 'mnb', price: 30, status: 'new'},
+                        ],
+                        updateProduct: {
+                            id: 'xyz',
+                            return: [],
+                            update: {
+                                $set: {
+                                    name: 'apple',
+                                    price: 1000
+                                }
+                            }
+                        },
+                        queryProduct: {
+                            filter: {},
+                            return: []
+                        }
+                    }
+                },
+            }, {errors: {}});
+            assert(results.transaction === undefined);
+            assert(typeof results.errors === 'object');
+            assert(typeof results.errors.transaction === 'object');
+            assert(results.errors.transaction.message.startsWith('E11000'));
         });
     });
 });

@@ -84,6 +84,30 @@ describe('RulesController::Create Unit Test', function () {
             assert(typeof results.createTest['age'] === "undefined");
             assert(results.createTest['home'] === "mars");
         });
+        it('should return duplicate error if save multiple documents with same id', async function () {
+            await _rulesController.handleCreateRules({
+                createTest: {
+                    id: 'doe',
+                    name: 'doe',
+                    age: 20,
+                    home: 'mars',
+                    car: 'monster',
+                }
+            }, {errors: {}});
+            const results = await _rulesController.handleCreateRules({
+                createTest: {
+                    id: 'doe',
+                    name: 'doe',
+                    age: 20,
+                    home: 'mars',
+                    car: 'monster',
+                }
+            }, {errors: {}});
+            assert(results.createTest === undefined);
+            assert(results.errors !== undefined);
+            assert(typeof results.errors['create.Test'] === 'object');
+            assert(results.errors['create.Test'].message.startsWith('E11000'));
+        });
     });
 
     describe('RulesController::Create::Secured', function () {
