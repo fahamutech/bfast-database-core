@@ -11,35 +11,44 @@ import {BFastDatabaseOptions} from '../bfast-database.option';
 import formidable from 'formidable';
 import {LogController} from './log.controller';
 
+let restSecurity: SecurityController;
+let restAuthController: AuthController;
+let restStorageController: StorageController;
+let restConfig: BFastDatabaseOptions;
+
 export class RestController {
-    constructor(private readonly restSecurity: SecurityController,
-                private readonly restAuthController: AuthController,
-                private readonly restStorageController: StorageController,
-                private readonly restConfig: BFastDatabaseOptions) {
+    constructor(_restSecurity: SecurityController,
+                _restAuthController: AuthController,
+                _restStorageController: StorageController,
+                _restConfig: BFastDatabaseOptions) {
+        restSecurity = _restSecurity;
+        restAuthController = _restAuthController;
+        restStorageController = _restStorageController;
+        restConfig = _restConfig;
     }
 
     getFile(request: any, response: any, _: any): void {
-        if (this.restStorageController.isS3() === true) {
-            this.restStorageController.handleGetFileBySignedUrl(request, response, !!request.query.thumbnail);
+        if (restStorageController.isS3() === true) {
+            restStorageController.handleGetFileBySignedUrl(request, response, !!request.query.thumbnail);
             return;
         } else {
-            this.restStorageController.getFileData(request, response, false);
+            restStorageController.getFileData(request, response, false);
             return;
         }
     }
 
     getThumbnail(request: any, response: any, _: any): void {
-        if (this.restStorageController.isS3() === true) {
-            this.restStorageController.handleGetFileBySignedUrl(request, response, true);
+        if (restStorageController.isS3() === true) {
+            restStorageController.handleGetFileBySignedUrl(request, response, true);
             return;
         } else {
-            this.restStorageController.getFileData(request, response, true);
+            restStorageController.getFileData(request, response, true);
             return;
         }
     }
 
     getAllFiles(request: any, response: any, _: any): void {
-        this.restStorageController.listFiles({
+        restStorageController.listFiles({
             skip: request.query.skip ? request.query.skip as number : 0,
             after: request.query.after,
             size: request.query.size ? request.query.size as number : 20,
@@ -88,7 +97,7 @@ export class RestController {
                 } else {
                     request.body.context.storage = {preserveName: false};
                 }
-                const result = await this.restStorageController.saveFromBuffer({
+                const result = await restStorageController.saveFromBuffer({
                     data: passThrough as any,
                     type: fileMeta.type,
                     filename: fileMeta.name
@@ -105,7 +114,7 @@ export class RestController {
 
     verifyApplicationId(request: any, response: any, next: any): void {
         const applicationId = request.body.applicationId;
-        if (applicationId === this.restConfig.applicationId) {
+        if (applicationId === restConfig.applicationId) {
             request.body.context = {
                 applicationId
             };
@@ -116,7 +125,7 @@ export class RestController {
     }
 
     filePolicy(request: any, response: any, next: any): void {
-        this.restAuthController.hasPermission(request.body.ruleId, request.body.context).then(value => {
+        restAuthController.hasPermission(request.body.ruleId, request.body.context).then(value => {
             if (value === true) {
                 next();
             } else {
@@ -131,7 +140,7 @@ export class RestController {
         const token = request.body.token;
         const masterKey = request.body.masterKey;
 
-        if (masterKey === this.restConfig.masterKey) {
+        if (masterKey === restConfig.masterKey) {
             request.body.context.auth = true;
             request.body.context.uid = `masterKey`;
             request.body.context.masterKey = masterKey;
@@ -146,7 +155,7 @@ export class RestController {
             request.body.context.uid = null;
             next();
         } else {
-            this.restSecurity.verifyToken(token).then(value => {
+            restSecurity.verifyToken(token).then(value => {
                 request.body.context.auth = true;
                 request.body.context.uid = value.uid;
                 next();
@@ -179,7 +188,7 @@ export class RestController {
     handleRuleBlocks(request: any, response: any, _: any): void {
         const body = request.body;
         const results: RuleResponse = {errors: {}};
-        const rulesController = new RulesController(new UpdateRuleController(), new LogController(this.restConfig), this.restConfig);
+        const rulesController = new RulesController(new UpdateRuleController(), new LogController(restConfig), restConfig);
         rulesController.handleIndexesRule(body, results).then(__ => {
             return rulesController.handleAuthenticationRule(body, results);
         }).then(_1 => {
