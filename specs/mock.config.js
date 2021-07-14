@@ -1,34 +1,54 @@
 
-const {LogController} = require("../dist/controllers/log.controller");
-const {BfastDatabaseCore} = require("../dist/bfast-database-core");
-const {MongoMemoryServer} = require('mongodb-memory-server');
-const {MongoMemoryReplSet} = require('mongodb-memory-server');
-const {RulesController} = require('../dist/controllers/rules.controller');
-const {UpdateRuleController} = require('../dist/controllers/update.rule.controller');
+const { LogController } = require("../dist/controllers/log.controller");
+const { BfastDatabaseCore } = require("../dist/bfast-database-core");
+const { MongoMemoryServer } = require('mongodb-memory-server');
+const { MongoMemoryReplSet } = require('mongodb-memory-server');
+const { RulesController } = require('../dist/controllers/rules.controller');
+const { UpdateRuleController } = require('../dist/controllers/update.rule.controller');
+const mongodb = require('mongodb');
 
 /**
  *
  * @return {MongoMemoryServer}
  */
-const mongoServer = () => {
-    return new MongoMemoryServer({
-        autoStart: false,
-        replSet: {storageEngine: 'wiredTiger'},
-    });
-}
+// const mongoServer = () => {
+//     return new MongoMemoryServer({
+//         autoStart: false,
+//         replSet: { storageEngine: 'wiredTiger' },
+//     });
+// }
 
 /**
  *
  * @return {MongoMemoryReplSet | MongoMemoryServer}
  */
 const mongoMemoryReplSet = () => {
-    return new MongoMemoryReplSet({
-        autoStart: false,
-        replSet: {
-            count: 3,
-            storageEngine: "wiredTiger",
+    if (process.env.CHROME_OS === 'ndio') {
+        return {
+            getUri: function () {
+                return 'mongodb://localhost/_test?replicaSet=bfast';
+            },
+            start: async function () {
+                const conn = await mongodb.MongoClient.connect(this.getUri());
+                // const db = await conn.db();
+                await conn.db().dropDatabase(); 
+                console.log('***START MONGODB*****');
+            },
+            waitUntilRunning: async function () {
+            },
+            stop: async function(){
+                console.log('***STOP MONGODB*****');
+            }
         }
-    });
+    } else {
+        return new MongoMemoryReplSet({
+            autoStart: true,
+            replSet: {
+                count: 3,
+                storageEngine: "wiredTiger",
+            }
+        });
+    }
 }
 
 /**
@@ -39,7 +59,7 @@ const daas = async () => {
 }
 
 exports.serverUrl = 'http://localhost:3111/';
-exports.mongoServer = mongoServer;
+// exports.mongoServer = mongoServer;
 exports.mongoRepSet = mongoMemoryReplSet;
 exports.daas = daas;
 exports.config = {
@@ -75,7 +95,11 @@ exports.config = {
 }
 
 /**
- *
+ * @params memoryReplSet {{
+ * start: Function,
+ * waitUntilRunning: Function,
+ * getUri: Function
+ * }}
  * @return {Promise<RulesController>}
  */
 exports.getRulesController = async function (memoryReplSet) {

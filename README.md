@@ -4,17 +4,18 @@ Database as a service application to work with mongoDb as a primary and with any
 
 ## 1.0 Introduction
 
-Backend application written to act upon a database to respond to user actions on the client side. Those services written exposed to RESTful API mostly and sometimes to remember all the endpoints of a service become a challenge.
+Backend application written to act upon a database to respond to user actions on the client side. Those services exposed to RESTful API mostly and sometimes to remember all the endpoints of a service become a challenge.
 
 Also we write an application on top of a database inorder to sanitize or validate data. We try to save and apply some validation to data to check if they pass some certain criteria and if a user is authorized to perform that activity.
 
-This tool account for those issues with improvements:
+This tool account for those issues with the following advantages:
 
-1. Single point to access data and if possible a single endpoint
-2. Permissions and Authorization issues to check if agent permitted to perform that action
-3. Power to embedded multiple CRUD operation in single request
+1. Single point to access data ( inspired by graphql )
+2. Permissions and Authorization issues to check if a rule permitted to perform that action.
+3. Power to embedded multiple CRUD operation in single request and save round trips.
 4. Performing transactions
 5. Work with unstructured data like files(e.g images)
+6. Query in sync ( return only data that do not exist on local machine )  mode and save bandwidth costs.
 
 Since it uses a single point for entry point we need an expressive rule to explain CRUD operation. Expressive rule will be transferred as JSON from client to server and server will respond with the respective JSON
 
@@ -23,37 +24,179 @@ Since it uses a single point for entry point we need an expressive rule to expla
 
 ## 1.1 Configurations
 
-**BfastDatabase** must be initialized with some configuration to make it flexible to change it according to environment or requirements. The **BfastDatabase** Adapter must look like this.
+**BfastDatabase** must be initialized with some configuration to make it flexible according to environment or requirements. To initialize a bfastdatabase instance run the following
 
 ```typescript
+const {WebServices, BfastDatabaseCore} = require ('bfast-database-core');
 
-import {BFastDatabaseConfig} from "./src/bfastDatabaseConfig"; import {DatabaseAdapter} from "./DatabaseAdapter"; import {AuthAdapter} from "./AuthAdapter"; import {BfastDatabase} from "bfastnode/dist/bfast.database";
-
-export interface BFastDatabaseAdapter {
-    
-    start(config: BFastDatabaseConfig): Promise<boolean>;
-    
-    stop(): Promise<boolean>;
-
-}
-
-export interface DaaSConfig {
-    port: number;
-    masterKey: string;
-    applicationId: string;
-    mountPath: string;
+const webServices = new BfastDatabaseCore().init({
+    applicationId: 'your app id', // and identifier,
+    projectId: 'your project id', // any identifier,
+    logs: '0', //  either 1 or 0, to show or not respective,
+    masterKey: '8y87yiu', // any string, to be used by administrative operation only,
+    mongoDbUri: 'mongodb://localhost/test', // mongodb database url,
+    rsaKeyPairInJson: {..}, // rsa private key in json,
+    rsaPublicKeyInJson: {..}, // rsa public key in json,
+    port: '3000', // port to that your http server will listen to,
     adapters: {
-        database: (config: DaaSConfig)=>DatabaseAdapter,
-        auth: (config: DaaSConfig)=>AuthAdapter,
+        s3Storage: {..}, // s3 configuration or null for defaut mongodb gridfs api, 
+        email: (c: BFastDatabaseOptions)=> new EmailAdapterImplementation(), //  your deafult email implementation
+        database: (config: BFastDatabaseOptions) => new DatabaseAdapterImplementation(),
+        auth: (config: BFastDatabaseOptions) => new AuthAdapterImplementation(),
     }
+});
+
+// Full bfast-database options is described by the follwing interface
+
+export interface BFastDatabaseOptions {
+  port?: string;
+  masterKey?: string;
+  applicationId?: string;
+  projectId?: string;
+  logs?: boolean,
+  mongoDbUri?: string;
+  taarifaToken?: string;
+  rsaKeyPairInJson: any,
+  rsaPublicKeyInJson: any,
+  adapters?: {
+    database?: (config: BFastDatabaseOptions) => DatabaseAdapter;
+    auth?: (config: BFastDatabaseOptions) => AuthAdapter;
+    email?: (config: BFastDatabaseOptions) => EmailAdapter;
+    s3Storage?: {
+      accessKey: string;
+      bucket: string;
+      direct: boolean;
+      endPoint: string;
+      prefix?: string;
+      region?: string;
+      useSSL?: boolean;
+      port?: null;
+      secretKey: string;
+    } | undefined;
+  };
 }
 
-// And to Start it should be like this.
+// Adapters to implements
 
-new BFastDatabase().start({
-    port:3000
-}).then(_=>console.log("server started at port 3000"));
+export abstract class AuthAdapter {
+  abstract signUp<T extends BasicUserAttributesModel>(userModel: T, context?: ContextBlock): Promise<T>;
+
+  abstract signIn<T extends BasicUserAttributesModel>(userModel: T, context?: ContextBlock): Promise<T>;
+
+  abstract resetPassword(email: string, context?: ContextBlock): Promise<any>;
+
+  abstract updatePassword(password: string, context?: ContextBlock): Promise<any>;
+
+  abstract deleteUser(context?: ContextBlock): Promise<any>;
+
+  abstract update<T extends BasicUserAttributesModel>(userModel: T, context?: ContextBlock): Promise<T>;
+
+  abstract sendVerificationEmail(email: string, context?: ContextBlock): Promise<any>;
+}
+
+export abstract class EmailAdapter {
+  abstract sendMail(mailModel: MailModel): Promise<any>;
+}
+
+export abstract class DatabaseAdapter {
+
+    /**
+     * initialize some database pre operation like indexes
+     */
+    abstract init(): Promise<any>;
+
+    /**
+     * return promise which resolve to string which is id of a created document
+     * @param domain - {string} a domain/table/collection to work with
+     * @param data - {Object} a map of the data to write to bfast::database
+     * @param context - {ContextBlock} current operation context
+     * @param options - {DatabaseWriteOptions} bfast::database write operation
+     * @return Promise resolve with an id of the record created in bfast::database
+     */
+    abstract writeOne<T extends BasicAttributesModel>(domain: string, data: T, context: ContextBlock, options?: DatabaseWriteOptions): Promise<any>;
+
+    /**
+     * return promise which resolve to object of ids of a created documents
+     * @param domain - {string}
+     * @param data - {Array<any>}
+     * @param context - {ContextBlock}
+     * @param options - {Data}
+     */
+    abstract writeMany<T extends BasicAttributesModel, V>(domain: string, data: T[], context: ContextBlock, options?: DatabaseWriteOptions)
+        : Promise<V>;
+
+    abstract update<T extends BasicAttributesModel, V>(domain: string, updateModel: UpdateRuleRequestModel, context: ContextBlock,
+                                                       options?: DatabaseUpdateOptions): Promise<V>;
+
+    abstract deleteOne<T extends BasicAttributesModel, V>(domain: string, deleteModel: DeleteModel<T>, context: ContextBlock,
+                                                          options?: DatabaseBasicOptions): Promise<V>;
+
+    /**
+     * find a single record from a bfast::database
+     * @param domain - {string} a domain/table/collection to work with
+     * @param queryModel - {QueryModel}  a map which represent a desired data to return
+     * @param context - {ContextBlock} current operation context
+     * @param options - {DatabaseWriteOptions} bfast::database write operation
+     */
+    abstract findOne<T extends BasicAttributesModel>(domain: string, queryModel: QueryModel<T>, context: ContextBlock,
+                                                     options?: DatabaseWriteOptions): Promise<any>;
+
+    /**
+     * Query a database to find a result depend on the queryModel supplied
+     * @param domain - {string} a domain/table/collection to work with
+     * @param queryModel - {QueryModel} a map which represent a required data from bfast::database
+     * @param context - {ContextBlock} current operation context
+     * @param options - {DatabaseWriteOptions} bfast::database write options
+     */
+    abstract query<T extends BasicAttributesModel>(domain: string, queryModel: QueryModel<T>, context: ContextBlock,
+                                                   options?: DatabaseWriteOptions): Promise<any>;
+
+    abstract changes(domain: string, pipeline: object[], listener: (doc: any) => void, resumeToken: string): Promise<any>;
+
+    abstract transaction(operations: (session) => Promise<any>): Promise<any>;
+
+    abstract createIndexes(domain: string, indexes: any[]): Promise<any>;
+
+    abstract dropIndexes(domain: string): Promise<boolean>;
+
+    abstract listIndexes(domain: string): Promise<any>;
+
+    abstract aggregate(domain: string, pipelines: object[], context: ContextBlock, options?: DatabaseWriteOptions): Promise<any[]>;
+}
+
+export interface DatabaseWriteOptions extends DatabaseBasicOptions {
+    indexes?: {
+        field?: string,
+        unique?: boolean,
+        collation?: { locale: string, strength: number },
+        expireAfterSeconds?: number;
+    }[];
+}
+
+export interface DatabaseChangesOptions extends DatabaseWriteOptions{
+    resumeToken?: string;
+}
+
+export interface DatabaseUpdateOptions extends DatabaseBasicOptions {
+    indexes?: {
+        field?: string;
+        unique?: boolean;
+        collation?: { locale: string, strength: number };
+        expireAfterSeconds?: number;
+    }[];
+    dbOptions?: { [key: string]: any }
+}
+
+export interface DatabaseBasicOptions {
+    bypassDomainVerification: boolean;
+    transaction?: any;
+}
+
 ```
+
+`BfastDatabaseCore().init({..})` return `WebServices` which contain bfast-functions endpoint 
+to expose them for bfast-functions to register them and expose for http server, jobs and events.
+
 
 ## 1.2 HTTP Endpoint
 
@@ -115,28 +258,24 @@ Crud operation must be mapped to specific rules for the endpoint to understand a
 ```
 
     - **applicationId: string** -> this is a mandatory field for every request
-
+```json
 {
 
-..."applicationId":<your-application-id-used-to-start-a-server>
-
-...
+ "applicationId": <your-application-id-used-to-start-a-server>
 
 }
+```
 
     - **masterKey: string** -> this is optional field
 
 You can use this to override any rule and perform admin level activities
-
+```json
 {
-
-...
-
+    
 "masterKey": "654778757bjbo987t876fjhfiyr8r"
 
-...
-
 }
+```
 
 **NOTE:** By default a server will not return all attributes when create, update or query but you can override that behavior by set **return: []** as its uses will be described in this document. **return** is a reserved keyword must not be used in as a field or a column in a data you want to save.
 
@@ -146,86 +285,64 @@ When a server successfully serves your request you specify in a rule the respons
 
 To specify a create/save operation a JSON field must start with a word **create** then followed by a Domain/Table/Collection name to write data to e.g **createUser** means add new entry to domain/table/collection called **User** in database and data to save must be the value of **create${domain}** field. The word after **create** must be of any length and cases ideally but following CamelCase will be good for readable code. Examples of create operation will be as follows.
 
+```json
 {
-
-"token": "6547fjhfiyr8r",
-
-"createUser": {
-
-"name": "John",
-
-"age": 30
-
+    "token:"annaa",
+    "applicationId: "abs",
+    "createUser": {
+        "name": "John",
+        "age": 30
+    }
 }
-
-}
+```
 
 **token** is optional. That rule means adding a new entry to the domain/table called **User** put **name=John** and **age=30**. Return **id** of created data.
 
+```json
 {
-
-"createUser":{
-
-"id": "6657jg878",
-
+    "createUser":{
+        "id": "6657jg878",
+    }
 }
-
-}
+```
 
 To add many products we just send arrays
 
+```json
 {
-
-"token": "6547fjhfiyr8r",
-
-"createUser": [
-
-{
-
-"name": "John",
-
-"age": 30
-
-},
-
-{
-
-"name": "Doe",
-
-"age": 12,
-
-"h": 100
-
+    "applicationId": "6547fjhfiyr8r",
+    "createUser": [
+        {
+            "name": "John",
+            "age": 30
+        },
+        {
+            "name": "Doe",
+            "age": 12,
+            "h": 100
+        }
+    ]
 }
-
-]
-
-}
+```
 
 Response should be like.
-
+```json
 {
 
-"createUser":[
-
-{
-
-"id": "6657jg878",
-
-},
-
-{
-
-"id": "op65AWjg8",
-
+    "createUser":[
+        {
+            "id": "6657jg878",
+        },
+        {
+            "id": "op65AWjg8",
+        }
+    ]
 }
-
-]
-
-}
+```
 
 In the **create** rule it returns **id** if you want more than one field to return you must specify those fields with the field **return** which is an array of extra fields you want to return. For example,
 
+```json
 {
 
 "token": "6547fjhfiyr8r",
@@ -241,9 +358,11 @@ In the **create** rule it returns **id** if you want more than one field to retu
 }
 
 }
+```
 
 Now the server will respond with the extra field you specify.
 
+```json
 {
 
 "createUser":{
@@ -257,8 +376,9 @@ Now the server will respond with the extra field you specify.
 }
 
 }
-
+```
 If return is empty array like **return: []** server will return all data of that document
+
 
 ## 2.3 Read/Query Domain/Table/Collection
 
@@ -275,6 +395,7 @@ To get or query domain/table/collection a JSON field for that must start with a 
 - **filter: FilterModel** -> this is your query filter you send to server default is **{}** if not specified
 - **return: Array<string>** -> if not specified default is **[]** and will return only **id.** Either you specify or not **id** return id data match your query found.
 - **id: string** -> if this field present will ignore all other values except **return** and will return that specific data or **null** if not found
+- **hashes** -> List of sha1 of data that i have as a result of this operation and will return only changed data with or withouth the given hashes. If given hash exist in a result the hash will be returned if not the hash will be removed from list.If not specified default is [], 
 
 **\*NOTE\*** -> **FilterModel** needs more discussion to find a format of a query to be sent to the server.
 

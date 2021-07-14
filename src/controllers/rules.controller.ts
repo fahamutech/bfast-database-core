@@ -1,20 +1,20 @@
-import {RuleResponse, RulesModel} from '../model/rules.model';
-import {UpdateRuleRequestModel} from '../model/update-rule-request.model';
-import {DeleteModel} from '../model/delete-model';
-import {DatabaseController} from './database.controller';
-import {DatabaseFactory} from '../factory/database.factory';
-import {AuthFactory} from '../factory/auth.factory';
-import {AuthController} from './auth.controller';
-import {SecurityController} from './security.controller';
-import {EmailFactory} from '../factory/email.factory';
-import {AuthAdapter} from '../adapters/auth.adapter';
-import {StorageController} from './storage.controller';
-import {FilesAdapter} from '../adapters/files.adapter';
-import {S3StorageFactory} from '../factory/s3-storage.factory';
-import {GridFsStorageFactory} from '../factory/grid-fs-storage.factory';
-import {UpdateRuleController} from './update.rule.controller';
-import {BFastDatabaseOptions} from '../bfast-database.option';
-import {LogController} from './log.controller';
+import { RuleResponse, RulesModel } from '../model/rules.model';
+import { UpdateRuleRequestModel } from '../model/update-rule-request.model';
+import { DeleteModel } from '../model/delete-model';
+import { DatabaseController } from './database.controller';
+import { DatabaseFactory } from '../factory/database.factory';
+import { AuthFactory } from '../factory/auth.factory';
+import { AuthController } from './auth.controller';
+import { SecurityController } from './security.controller';
+import { EmailFactory } from '../factory/email.factory';
+import { AuthAdapter } from '../adapters/auth.adapter';
+import { StorageController } from './storage.controller';
+import { FilesAdapter } from '../adapters/files.adapter';
+import { S3StorageFactory } from '../factory/s3-storage.factory';
+import { GridFsStorageFactory } from '../factory/grid-fs-storage.factory';
+import { UpdateRuleController } from './update.rule.controller';
+import { BFastDatabaseOptions } from '../bfast-database.option';
+import { LogController } from './log.controller';
 
 let databaseController: DatabaseController;
 let auth: AuthAdapter;
@@ -27,8 +27,8 @@ let messageController: LogController;
 export class RulesController {
 
     constructor(private readonly updateRuleController: UpdateRuleController,
-                private readonly _messageController: LogController,
-                private readonly config: BFastDatabaseOptions) {
+        private readonly _messageController: LogController,
+        private readonly config: BFastDatabaseOptions) {
         databaseController = new DatabaseController(
             (config.adapters && config.adapters.database) ?
                 this.config.adapters.database(config) : new DatabaseFactory(config),
@@ -308,9 +308,9 @@ export class RulesController {
                         rulesBlockModelElement.filter = filter;
                         ruleResultModel[deleteRule]
                             = await databaseController.delete(domain, rulesBlockModelElement, rulesBlockModel?.context, {
-                            bypassDomainVerification: rulesBlockModel?.context?.useMasterKey === true,
-                            transaction: transactionSession
-                        });
+                                bypassDomainVerification: rulesBlockModel?.context?.useMasterKey === true,
+                                transaction: transactionSession
+                            });
                     } else {
                         if (!rulesBlockModelElement?.filter) {
                             throw new Error('filter field is required if you dont supply id field');
@@ -392,9 +392,9 @@ export class RulesController {
                     } else {
                         ruleResultModel[queryRule]
                             = await databaseController.query(domain, rulesBlockModelElement, rulesBlockModel?.context, {
-                            bypassDomainVerification: rulesBlockModel?.context?.useMasterKey === true,
-                            transaction: transactionSession
-                        });
+                                bypassDomainVerification: rulesBlockModel?.context?.useMasterKey === true,
+                                transaction: transactionSession
+                            });
                     }
                 } catch (e) {
                     messageController.print(e);
@@ -432,14 +432,14 @@ export class RulesController {
             const transactionRule = transactionRules[0];
             const transaction = rulesBlockModel[transactionRule];
             const transactionOperationRules = transaction.commit;
-            const resultObject: RuleResponse = {errors: {}};
+            const resultObject: RuleResponse = { errors: {} };
             await databaseController.transaction(async session => {
                 await this.handleCreateRules(transactionOperationRules, resultObject, session);
                 await this.handleUpdateRules(transactionOperationRules, resultObject, session);
                 await this.handleQueryRules(transactionOperationRules, resultObject, session);
                 await this.handleDeleteRules(transactionOperationRules, resultObject, session);
             });
-            ruleResultModel.transaction = {commit: resultObject};
+            ruleResultModel.transaction = { commit: resultObject };
             return ruleResultModel;
         } catch (e) {
             messageController.print(e);
@@ -557,15 +557,30 @@ export class RulesController {
                 }
                 const data = rulesBlockModel[aggregateRule];
                 try {
-                    if (!(data && Array.isArray(data))) {
-                        throw {message: 'A pipeline must be an array'};
+                    if (data
+                        && data.hashes
+                        && data.pipelines
+                        && Array.isArray(data.pipelines)
+                        && Array.isArray(data.hashes)
+                    ) {
+                        ruleResultModel[aggregateRule] = await databaseController.aggregate(
+                            domain,
+                            data.pipelines,
+                            data.hashes,
+                            rulesBlockModel?.context,
+                            { bypassDomainVerification: true, transaction: transactionSession }
+                        );
+                    } else if (data && Array.isArray(data)) {
+                        ruleResultModel[aggregateRule] = await databaseController.aggregate(
+                            domain,
+                            data,
+                            [],
+                            rulesBlockModel?.context,
+                            { bypassDomainVerification: true, transaction: transactionSession }
+                        );
+                    } else {
+                        throw { message: 'A pipeline must be of any[] or {hashes:string[],pipelines: any[]}' };
                     }
-                    ruleResultModel[aggregateRule]
-                        = await databaseController.aggregate(domain, data, rulesBlockModel?.context, {
-                        bypassDomainVerification: true,
-                        transaction: transactionSession
-                    });
-
                 } catch (e) {
                     messageController.print(e);
                     ruleResultModel.errors[`${transactionSession ? 'transaction.' : ''}aggregate.${domain}`] = {
