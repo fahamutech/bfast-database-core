@@ -1,45 +1,55 @@
 {
   "name": "bfast-database-core",
-  "version": "0.1.1-alpha.3",
+  "version": "0.1.1-alpha.4",
   "main": "dist/index.js",
   "license": "MIT",
+  "author": {
+    "name": "FahamuTech",
+    "email": "mama27j@gmail.com",
+    "url": "http://fahamutech.com"
+  },
+  "maintainers": [
+    "joshuamshana(https://github.com/joshuamshana)",
+    "fahamutech(https://github.com/fahamutech)"
+  ],
   "scripts": {
     "build": "gulp build",
     "build:docker": "gulp buildDocker",
     "test:web-services": "yarn run build && mocha --exit specs/rest/all.specs.js",
     "test:controllers": "yarn run build && npx mocha --exit specs/controllers/* ",
     "test:rules": "yarn run build && npx mocha --exit specs/rules/* ",
+    "test:rest": "yarn run build && npx mocha --exit specs/rest/* ",
     "test": "yarn run build && npx mocha --exit specs/utils/* specs/rules/* specs/controllers/*",
     "prestart": "yarn run build",
     "prepublishOnly": "npm run build",
     "publish:beta": "yarn publish --tag beta"
   },
   "dependencies": {
-    "bcryptjs": "^2.4.3",
-    "bfast-function": "^1.12.0",
-    "bfastnode": "^4.2.4",
-    "formidable": "^1.2.2",
-    "http-status-codes": "^2.1.4",
-    "jsonwebtoken": "^8.5.1",
-    "mime": "^2.5.2",
-    "minio": "^7.0.18",
-    "mongodb": "^3.6.6",
-    "njwt": "^1.0.0",
-    "node-jwk": "^0.1.0",
-    "sharp": "^0.28.1",
-    "uuid": "^8.3.2"
+    "bcryptjs": "~2.4.3",
+    "bfast-function": "~1.13.0",
+    "bfastnode": "~4.5.0",
+    "formidable": "~1.2.2",
+    "http-status-codes": "~2.1.4",
+    "jsonwebtoken": "~8.5.1",
+    "mime": "~2.5.2",
+    "minio": "~7.0.18",
+    "mongodb": "~4.0.0",
+    "njwt": "~1.1.0",
+    "node-jwk": "~0.1.0",
+    "sharp": "~0.28.3",
+    "uuid": "~8.3.2"
   },
   "devDependencies": {
-    "@types/minio": "^7.0.7",
-    "@types/mongodb": "^3.6.12",
-    "@types/node": "^14.14.10",
-    "@types/sharp": "^0.27.1",
-    "axios": "^0.21.1",
-    "del": "^6.0.0",
-    "glob": "^7.1.6",
-    "gulp": "^4.0.2",
-    "mocha": "^8.3.2",
-    "mongodb-memory-server": "^6.9.6",
-    "typescript": "^4.1.2"
+    "@types/minio": "~7.0.8",
+    "@types/mongodb": "~3.6.20",
+    "@types/node": "~14.14.10",
+    "@types/sharp": "~0.28.4",
+    "axios": "~0.21.1",
+    "del": "~6.0.0",
+    "glob": "~7.1.7",
+    "gulp": "~4.0.2",
+    "mocha": "~9.0.2",
+    "mongodb-memory-server": "~7.2.0",
+    "typescript": "~4.3.5"
   }
 }

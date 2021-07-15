@@ -1,6 +1,7 @@
-const {getRulesController, mongoRepSet} = require('../mock.config');
-const {before, after} = require('mocha');
+const { getRulesController, mongoRepSet, daas } = require('../mock.config');
+const { before, after } = require('mocha');
 const assert = require('assert');
+const { createHash } = require('crypto');
 
 describe('RulesController::Query Unit Test', function () {
     let _rulesController;
@@ -18,11 +19,11 @@ describe('RulesController::Query Unit Test', function () {
         before(async function () {
             await _rulesController.handleCreateRules({
                 createProduct: [
-                    {name: 'xyz', price: 50, status: 'new', id: 'xyz'},
-                    {name: 'wer', price: 100, status: 'new'},
-                    {name: 'poi', price: 30, status: 'new'},
+                    { name: 'xyz', price: 50, status: 'new', id: 'xyz' },
+                    { id: 'wer_id', name: 'wer', price: 100, status: 'new', createdAt: 'test', updatedAt: 'test' },
+                    { id: 'poi_id', name: 'poi', price: 30, status: 'new', createdAt: 'test', updatedAt: 'test' },
                 ]
-            }, {errors: {}});
+            }, { errors: {} });
         });
         it('should return query result based on id', async function () {
             const results = await _rulesController.handleQueryRules({
@@ -30,7 +31,7 @@ describe('RulesController::Query Unit Test', function () {
                     id: 'xyz',
                     return: []
                 }
-            }, {errors: {}});
+            }, { errors: {} });
             assert(results.queryProduct !== undefined);
             assert(results.queryProduct.name === 'xyz');
             assert(results.queryProduct.id === 'xyz');
@@ -43,7 +44,8 @@ describe('RulesController::Query Unit Test', function () {
                     id: 'xyz1234hint',
                     return: []
                 }
-            }, {errors: {}});
+            }, { errors: {} });
+            console.log(results);
             assert(results.queryProduct === null);
         });
         it('should return query result based on filter', async function () {
@@ -54,7 +56,7 @@ describe('RulesController::Query Unit Test', function () {
                     },
                     return: []
                 }
-            }, {errors: {}});
+            }, { errors: {} });
             assert(results.queryProduct !== undefined);
             assert(Array.isArray(results.queryProduct));
             assert(results.queryProduct[0].name === 'xyz');
@@ -68,7 +70,7 @@ describe('RulesController::Query Unit Test', function () {
                     filter: {},
                     return: ['name', 'price']
                 }
-            }, {errors: {}});
+            }, { errors: {} });
             assert(results.queryProduct !== undefined);
             assert(Array.isArray(results.queryProduct));
             assert(results.queryProduct.length === 3);
@@ -77,10 +79,10 @@ describe('RulesController::Query Unit Test', function () {
             const results = await _rulesController.handleQueryRules({
                 queryProduct: {
                     filter: {},
-                    orderBy: [{'name': 1}],
+                    orderBy: [{ 'name': 1 }],
                     return: ["name"]
                 }
-            }, {errors: {}});
+            }, { errors: {} });
             assert(results.queryProduct !== undefined);
             assert(Array.isArray(results.queryProduct));
             assert(results.queryProduct.length === 3);
@@ -96,10 +98,79 @@ describe('RulesController::Query Unit Test', function () {
                     },
                     count: true,
                 }
-            }, {errors: {}});
+            }, { errors: {} });
             assert(results.queryProduct !== undefined);
             assert(typeof results.queryProduct === "number");
             assert(results.queryProduct === 1);
+        });
+        it('should perform basic query based on empty filter with local hashes supplied', async function () {
+            const hash = createHash('sha256')
+                .update(JSON.stringify({
+                    name: 'poi',
+                    price: 30,
+                    id: 'poi_id',
+                    createdAt: 'test',
+                    updatedAt: 'test'
+                }))
+                .digest('hex');
+            const localData = {
+                [hash]: {
+                    name: 'poi',
+                    price: 30,
+                    id: 'poi_id',
+                    createdAt: 'test',
+                    updatedAt: 'test'
+                }
+            }
+            const results = await _rulesController.handleQueryRules({
+                queryProduct: {
+                    filter: {},
+                    hashes: Object.keys(localData),
+                    return: ['name', 'price']
+                }
+            }, { errors: {} });
+            // console.log(results);
+            // console.log(results.queryProduct.map(x => {
+            //     if (localData[x]) {
+            //         return localData[x];
+            //     } else {
+            //         return x;
+            //     }
+            // }));
+            assert(results.queryProduct !== undefined);
+            assert(Array.isArray(results.queryProduct));
+            assert(results.queryProduct.length === 3);
+            assert(results.queryProduct[2] === hash);
+        });
+        it('should perform query based on id f with local hashes supplied', async function () {
+            const data = {
+                name: 'poi',
+                price: 30,
+                id: 'poi_id',
+                createdAt: 'test',
+                updatedAt: 'test'
+            };
+            const hash = createHash('sha256')
+                .update(JSON.stringify(data))
+                .digest('hex');
+            const localData = {
+                [hash]: data
+            }
+            const results = await _rulesController.handleQueryRules({
+                queryProduct: {
+                    id: 'poi_id',
+                    filter: {},
+                    hashes: Object.keys(localData),
+                    return: ['name', 'price']
+                }
+            }, { errors: {} });
+            // console.log(results);
+            //     if (localData[results.queryProduct]) {
+            //         console.log(localData[results.queryProduct]);
+            //     }
+            assert(results.queryProduct !== undefined);
+            assert(typeof results.queryProduct === 'string');
+            assert(results.queryProduct === hash);
         });
     });
 });

@@ -1,14 +1,22 @@
-const axios = require('axios');
-const {serverUrl} = require('../mock.config');
+const axios = require('axios').default;
+const {serverUrl, daas, config} = require('../mock.config');
 const assert = require('assert');
 
 describe('Aggregation', function () {
+    let _daas ;
+    before(function(){
+        _daas = await daas();
+        _daas.init(config)
+    });
+
+    after(function(){
+        _daas
+    });
 
     it('should be able to perform aggregation', async function () {
         const aggregation = {
             applicationId: 'daas',
-            masterKey: 'daas',
-            CreateTest: [
+            createTest: [
                 {
                     role: 'manager',
                     salary: 20
@@ -22,7 +30,7 @@ describe('Aggregation', function () {
                     salary: 10
                 }
             ],
-            AggregateTest: [
+            aggregateTest: [
                 {
                     $group: {
                         _id: '$role',
@@ -33,7 +41,7 @@ describe('Aggregation', function () {
         }
         const aggregationResponse = await axios.post(serverUrl, aggregation);
         const data = aggregationResponse.data;
-       // console.log(data);
+       console.log(data);
         assert(typeof data !== "undefined");
         assert(typeof data === "object");
         assert(typeof data['ResultOfAggregateTest'] !== "undefined");

@@ -4,6 +4,7 @@ import * as uuid from 'uuid';
 import nodeJwk from 'node-jwk';
 import njwt from 'njwt';
 import {BFastDatabaseOptions} from '../bfast-database.option';
+import { createHash } from 'crypto';
 
 
 export class SecurityController {
@@ -11,8 +12,13 @@ export class SecurityController {
     constructor(private readonly options: BFastDatabaseOptions) {
     }
 
+    sha256OfObject(data: {[key: string]: any}){
+        return createHash('sha256')
+        .update(JSON.stringify(data))
+        .digest('hex');
+    }
+
     dayToMillSecond(days: number): number {
-        // const daysInNumber = parseFloat(days.replace(new RegExp('[^0-9]', 'ig'), ''));
         return (days * 24 * 60 * 60 * 1000);
     }
 
@@ -21,7 +27,7 @@ export class SecurityController {
     }
 
     async hashPlainText(plainText: string): Promise<string> {
-        return await bcrypt.hash(plainText, 10);
+        return await bcrypt.hash(plainText, 3);
     }
 
     decodeToken(token: string): { uid: string, [key: string]: any } {

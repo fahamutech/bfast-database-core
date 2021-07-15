@@ -1,11 +1,12 @@
-import {DatabaseAdapter, DatabaseBasicOptions, DatabaseUpdateOptions, DatabaseWriteOptions} from '../adapters/database.adapter';
-import {ChangeEvent, ChangeStream, MongoClient} from 'mongodb';
-import {BasicAttributesModel} from '../model/basic-attributes.model';
-import {ContextBlock} from '../model/rules.model';
-import {QueryModel} from '../model/query-model';
-import {UpdateRuleRequestModel} from '../model/update-rule-request.model';
-import {DeleteModel} from '../model/delete-model';
-import {BFastDatabaseOptions} from '../bfast-database.option';
+import { DatabaseAdapter, DatabaseBasicOptions, DatabaseUpdateOptions, DatabaseWriteOptions } from '../adapters/database.adapter';
+import { ChangeStreamEvents, ChangeStream, MongoClient, Document, ChangeStreamDocument, ModifyResult } from 'mongodb';
+import { BasicAttributesModel } from '../model/basic-attributes.model';
+import { ContextBlock } from '../model/rules.model';
+import { QueryModel } from '../model/query-model';
+import { UpdateRuleRequestModel } from '../model/update-rule-request.model';
+import { DeleteModel } from '../model/delete-model';
+import { BFastDatabaseOptions } from '../bfast-database.option';
+import { FindOneAndUpdateOptions } from 'mongodb';
 
 let config: BFastDatabaseOptions;
 
@@ -19,9 +20,11 @@ export class DatabaseFactory implements DatabaseAdapter {
     async writeMany<T extends BasicAttributesModel, V>(domain: string, data: T[], context: ContextBlock, options?: DatabaseWriteOptions)
         : Promise<V> {
         const conn = await this.connection();
-        const response = await conn.db().collection(domain).insertMany(data, {
-            session: options && options.transaction ? options.transaction : undefined
-        });
+        const response = await conn.db()
+            .collection(domain)
+            .insertMany(data as any, {
+                session: options && options.transaction ? options.transaction : undefined
+            });
         conn.close().catch(console.warn);
         return response.insertedIds as any;
     }
@@ -29,23 +32,21 @@ export class DatabaseFactory implements DatabaseAdapter {
     async writeOne<T extends BasicAttributesModel>(domain: string, data: T, context: ContextBlock, options?: DatabaseWriteOptions)
         : Promise<any> {
         const conn = await this.connection();
-        const response = await conn.db().collection(domain).insertOne(data, {
-            // w: 'majority',
-            session: options && options.transaction ? options.transaction : undefined
-        });
+        const response = await conn.db().collection(domain)
+            .insertOne(data as any, {
+                // w: 'majority',
+                session: options && options.transaction ? options.transaction : undefined
+            });
         return response.insertedId;
     }
 
     private async connection(): Promise<MongoClient> {
-        if (this.mongoClient && this.mongoClient.isConnected()) {
-            return this.mongoClient;
-        } else {
-            const mongoUri = config.mongoDbUri;
-            return new MongoClient(mongoUri, {
-                useNewUrlParser: true,
-                useUnifiedTopology: true
-            }).connect();
-        }
+        // if (this.mongoClient && this.mongoClient.isConnected()) {
+        //     return this.mongoClient;
+        // } else {
+        const mongoUri = config.mongoDbUri;
+        return new MongoClient(mongoUri).connect();
+        // }
     }
 
     async init(): Promise<any> {
@@ -80,7 +81,7 @@ export class DatabaseFactory implements DatabaseAdapter {
                 const indexOptions: any = {};
                 Object.assign(indexOptions, value);
                 delete indexOptions.field;
-                await conn.db().collection(domain).createIndex({[value.field]: 1}, indexOptions);
+                await conn.db().collection(domain).createIndex({ [value.field]: 1 }, indexOptions);
             }
             await conn.close(); // .catch(console.warn);
             return 'Indexes added';
@@ -91,9 +92,9 @@ export class DatabaseFactory implements DatabaseAdapter {
 
     async dropIndexes(domain: string): Promise<boolean> {
         const conn = await this.connection();
-        const result = await conn.db().collection(domain).dropIndexes();
+        await conn.db().collection(domain).dropIndexes();
         await conn.close();
-        return result;
+        return true;
     }
 
     async listIndexes(domain: string): Promise<any[]> {
@@ -103,8 +104,9 @@ export class DatabaseFactory implements DatabaseAdapter {
         return indexes;
     }
 
-    async findOne<T extends BasicAttributesModel>(domain: string, queryModel: QueryModel<T>,
-                                                  context: ContextBlock, options?: DatabaseWriteOptions): Promise<any> {
+    async findOne<T extends BasicAttributesModel>(
+        domain: string, queryModel: QueryModel<T>,
+        context: ContextBlock, options?: DatabaseWriteOptions): Promise<any> {
         const conn = await this.connection();
         const fieldsToReturn = {
             '_created_at': 1,
@@ -115,16 +117,21 @@ export class DatabaseFactory implements DatabaseAdapter {
                 fieldsToReturn[x] = 1;
             });
         }
-        const result = await conn.db().collection(domain).findOne<T>({_id: queryModel._id}, {
-            session: options && options.transaction ? options.transaction : undefined,
-            // projection: fieldsToReturn
-        });
+        const result = await conn.db()
+            .collection(domain)
+            .findOne(
+                { _id: queryModel._id },
+                {
+                    session: options && options.transaction ? options.transaction : undefined,
+                    // projection: fieldsToReturn
+                }
+            );
         await conn.close();
         return result;
     }
 
     async query<T extends BasicAttributesModel>(domain: string, queryModel: QueryModel<T>,
-                                                context: ContextBlock, options?: DatabaseWriteOptions): Promise<any> {
+        context: ContextBlock, options?: DatabaseWriteOptions): Promise<any> {
         const conn = await this.connection();
         const query = conn.db().collection(domain).find(queryModel.filter, {
             session: options && options.transaction ? options.transaction : undefined
@@ -169,21 +176,34 @@ export class DatabaseFactory implements DatabaseAdapter {
     }
 
     async update<T extends BasicAttributesModel, V>(domain: string, updateModel: UpdateRuleRequestModel,
-                                                    context: ContextBlock, options?: DatabaseUpdateOptions): Promise<V> {
+        context: ContextBlock, options?: DatabaseUpdateOptions): Promise<V> {
         const conn = await this.connection();
-        let updateOptions = {
+        let updateOptions: FindOneAndUpdateOptions = {
             upsert: typeof updateModel.upsert === 'boolean' ? updateModel.upsert : false,
+            // @ts-ignore
             returnOriginal: false,
+            // new: true,
+            returnDocument: 'after',
             session: options && options.transaction ? options.transaction : undefined
         };
         updateOptions = Object.assign(updateOptions, options && options.dbOptions ? options.dbOptions : {});
-        const response = await conn.db().collection(domain).findOneAndUpdate(updateModel.filter, updateModel.update, updateOptions);
+        // @ts-ignore
+        const response: ModifyResult<any> = await conn.db().collection(domain)
+        .findOneAndUpdate(
+            updateModel.filter,
+            updateModel.update,
+            updateOptions
+        );
         await conn.close();
-        return response.value;
+        if(response.ok === 1){
+            return response.value as any;
+        }else{
+            throw "Failt to updae";
+        }
     }
 
     async deleteOne<T extends BasicAttributesModel, V>(domain: string, deleteModel: DeleteModel<T>,
-                                                       context: ContextBlock, options?: DatabaseBasicOptions): Promise<V> {
+        context: ContextBlock, options?: DatabaseBasicOptions): Promise<V> {
         const conn = await this.connection();
         const response = await conn.db()
             .collection(domain)
@@ -201,10 +221,14 @@ export class DatabaseFactory implements DatabaseAdapter {
             await session.withTransaction(async _ => {
                 return await operations(session);
             }, {
-                readPreference: 'primary',
-                readConcern: {
-                    level: 'local'
-                },
+                // readPreference: 'primary',
+                // readConcern: {
+                //     level: 'local'
+                // },
+                // readConcern: {
+                //     level: '',
+                //     toJSON: 
+                // },
                 writeConcern: {
                     w: 'majority'
                 }
@@ -226,9 +250,12 @@ export class DatabaseFactory implements DatabaseAdapter {
         return result;
     }
 
-    async changes(domain: string, pipeline: any[], listener: (doc: ChangeEvent) => void, resumeToken = undefined): Promise<ChangeStream> {
+    async changes(
+        domain: string, pipeline: any[],
+        listener: (doc: ChangeStreamDocument) => void, resumeToken = undefined
+        ): Promise<ChangeStream> {
         const conn = await this.connection();
-        const options: any = {fullDocument: 'updateLookup'};
+        const options: any = { fullDocument: 'updateLookup' };
         if (resumeToken && resumeToken.toString() !== 'undefined' && resumeToken.toString() !== 'null') {
             options.startAfter = resumeToken;
         }

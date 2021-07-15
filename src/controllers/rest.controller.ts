@@ -138,11 +138,12 @@ export class RestController {
 
     verifyToken(request: any, response: any, next: any): void {
         const token = request.body.token;
+        const headerToken = request.headers['x-bfast-token'];
         const masterKey = request.body.masterKey;
 
         if (masterKey === restConfig.masterKey) {
             request.body.context.auth = true;
-            request.body.context.uid = `masterKey`;
+            request.body.context.uid = "masterKey";
             request.body.context.masterKey = masterKey;
             request.body.context.useMasterKey = true;
             next();
@@ -150,18 +151,32 @@ export class RestController {
         }
 
         request.body.context.useMasterKey = false;
-        if (!token) {
-            request.body.context.auth = false;
-            request.body.context.uid = null;
-            next();
-        } else {
+        if(token && token !== ''){
             restSecurity.verifyToken(token).then(value => {
                 request.body.context.auth = true;
                 request.body.context.uid = value.uid;
                 next();
             }).catch(_ => {
-                response.status(httpStatus.UNAUTHORIZED).json({message: 'bad token', code: -1});
+                request.body.context.auth = false;
+                request.body.context.uid = null;
+                next();
+                // response.status(httpStatus.UNAUTHORIZED).json({message: 'bad token', code: -1});
             });
+        }else if(headerToken && headerToken!==''){
+            restSecurity.verifyToken(headerToken).then(value => {
+                request.body.context.auth = true;
+                request.body.context.uid = value.uid;
+                next();
+            }).catch(_ => {
+                request.body.context.auth = false;
+                request.body.context.uid = null;
+                next();
+                // response.status(httpStatus.UNAUTHORIZED).json({message: 'bad token', code: -1});
+            });
+        }else {
+            request.body.context.auth = false;
+            request.body.context.uid = null;
+            next();
         }
     }
 

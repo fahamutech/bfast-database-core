@@ -21,7 +21,11 @@ export class RealtimeWebservice {
                             resumeToken: request.body.resumeToken
                         }).then(_ => {
                             response.socket.on('disconnect', __1 => {
-                                _.close().catch(console.log);
+                                try{
+                                    _.close();
+                                }catch(_12){
+                                    console.log(_12);
+                                }
                                 console.log(`INFO : changes resource released, with reason --> ${__1}`);
                             });
                             response.emit({info: 'start listening for changes'});

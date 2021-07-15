@@ -89,7 +89,7 @@ export class DatabaseController {
         const sanitizedData = this.sanitize4Db(data);
         const sanitizedDataWithCreateMetadata = this.addCreateMetadata(sanitizedData, context);
         sanitizedDataWithCreateMetadata._id = await this.database.writeOne<T>(domain, sanitizedDataWithCreateMetadata, context, options);
-        return this.sanitize4User<T>(sanitizedDataWithCreateMetadata, returnFields) as T;
+        return this.sanitize4User<T>(sanitizedDataWithCreateMetadata, returnFields, []) as T;
     }
 
     /**
@@ -110,7 +110,7 @@ export class DatabaseController {
         updateModel.update = this.addUpdateMetadata(updateModel?.update as any, context);
         options.dbOptions = updateModel && updateModel.options ? updateModel.options : {};
         const updatedDoc = await this.database.update<any, any>(domain, updateModel, context, options);
-        return this.sanitize4User(updatedDoc, returnFields);
+        return this.sanitize4User(updatedDoc, returnFields, []);
     }
 
     // async updateMany(domain: string, updateModel: UpdateRuleRequestModel, context: ContextBlock,
@@ -170,7 +170,7 @@ export class DatabaseController {
         // const returnFields = deleteModel.return;
         deleteModel.filter = this.sanitizeWithOperator4Db(deleteModel?.filter as any);
         const result = await this.database.deleteOne<any, any>(domain, deleteModel, context, options);
-        return this.sanitize4User(result, ['id']);
+        return this.sanitize4User(result, ['id'], []);
     }
 
     /**
@@ -188,13 +188,18 @@ export class DatabaseController {
      * @param context - current operation context
      * @param options - database write operation
      */
-    async aggregate(domain: string, pipelines: any[], context: ContextBlock,
-                    options: DatabaseWriteOptions = {bypassDomainVerification: false}): Promise<any> {
+    async aggregate(
+        domain: string,
+        pipelines: any[],
+        hashes: string[],
+        context: ContextBlock,
+        options: DatabaseWriteOptions = {bypassDomainVerification: false},
+    ): Promise<any> {
         if (options && options.bypassDomainVerification === false) {
             await this.handleDomainValidation(domain);
         }
         const results = await this.database.aggregate(domain, pipelines, context, options);
-        return results.map(result => this.sanitize4User(result, []));
+        return results.map(result => this.sanitize4User(result, [], hashes));
     }
 
     /**
@@ -204,8 +209,10 @@ export class DatabaseController {
      * @param listener - a callback to be executed to respond the pipeline supplied
      * @param options - write operation options
      */
-    async changes(domain: string, pipeline: any[], listener: (doc: any) => void,
-                  options: DatabaseChangesOptions = {bypassDomainVerification: false, resumeToken: undefined}): Promise<ChangeStream> {
+    async changes(
+        domain: string, pipeline: any[], listener: (doc: any) => void,
+        options: DatabaseChangesOptions = {bypassDomainVerification: false,resumeToken: undefined}
+    ): Promise<ChangeStream> {
         if (options && options.bypassDomainVerification === false) {
             await this.handleDomainValidation(domain);
         }
@@ -214,32 +221,36 @@ export class DatabaseController {
                 listener({
                     name: 'create',
                     resumeToken: doc._id,
-                    snapshot: this.sanitize4User(doc.fullDocument, [])
+                    snapshot: this.sanitize4User(doc.fullDocument, [], [])
                 });
             } else if (doc.operationType === 'replace') {
                 listener({
                     name: 'create',
                     resumeToken: doc._id,
-                    snapshot: this.sanitize4User(doc.fullDocument, [])
+                    snapshot: this.sanitize4User(doc.fullDocument, [], [])
                 });
             } else if (doc.operationType === 'update') {
                 listener({
                     name: 'update',
                     resumeToken: doc._id,
-                    snapshot: this.sanitize4User(doc.fullDocument, [])
+                    snapshot: this.sanitize4User(doc.fullDocument, [], [])
                 });
             } else if (doc.operationType === 'delete') {
                 listener({
                     name: 'delete',
                     resumeToken: doc._id,
-                    snapshot: this.sanitize4User(doc.documentKey, [])
+                    snapshot: this.sanitize4User(doc.documentKey, [], [])
                 });
             }
         }, options.resumeToken);
     }
 
-    async query(domain: string, queryModel: QueryModel<any>, context: ContextBlock,
-                options: DatabaseWriteOptions = {bypassDomainVerification: false}): Promise<any> {
+    async query(
+        domain: string,
+        queryModel: QueryModel<any>,
+        context: ContextBlock,
+        options: DatabaseWriteOptions = {bypassDomainVerification: false}
+    ): Promise<any> {
         const returnFields = this.getReturnFields(queryModel as any);
         const returnFields4Db = this.getReturnFields4Db(queryModel as any);
         if (options && options.bypassDomainVerification === false) {
@@ -250,14 +261,14 @@ export class DatabaseController {
             queryModel.filter = this.sanitizeWithOperator4Db(queryModel?.filter as any);
             queryModel.return = returnFields4Db;
             const result = await this.database.findOne(domain, queryModel, context, options);
-            return this.sanitize4User(result, returnFields);
+            return this.sanitize4User(result, returnFields, queryModel?.hashes);
         } else {
             queryModel = this.sanitizeWithOperator4Db(queryModel as any);
             queryModel.filter = this.sanitizeWithOperator4Db(queryModel?.filter as any);
             queryModel.return = returnFields4Db;
             const result = await this.database.query(domain, queryModel, context, options);
             if (result && Array.isArray(result)) {
-                return result.map(value => this.sanitize4User(value, returnFields));
+                return result.map(value => this.sanitize4User(value, returnFields, queryModel?.hashes));
             }
             return result;
         }
@@ -277,7 +288,7 @@ export class DatabaseController {
         const insertedIds = await this.database.writeMany<any, object>(domain, freshData, context, options);
         Object.keys(insertedIds).forEach(index => {
             freshData[index]._id = insertedIds[index];
-            freshData[index] = this.sanitize4User(freshData[index], returnFieldsMap[index]);
+            freshData[index] = this.sanitize4User(freshData[index], returnFieldsMap[index], []);
         });
         return freshData as any;
     }
@@ -312,8 +323,8 @@ export class DatabaseController {
      */
     addCreateMetadata<T extends BasicAttributesModel>(data: T, context?: ContextBlock): T {
         data._created_by = context?.uid;
-        data._created_at = new Date();
-        data._updated_at = new Date();
+        data._created_at = data && data._created_at?data._created_at: new Date();
+        data._updated_at = data && data._updated_at?data._updated_at:new Date();
         if (data && (data._id === undefined || data._id === null) && typeof data !== 'boolean') {
             data._id = this.security.generateUUID();
         }
@@ -376,7 +387,7 @@ export class DatabaseController {
      */
     sanitizeWithOperator4Db<T extends BasicAttributesModel>(data: T): T {
         data = this.sanitize4Db(data);
-        if (!data && typeof data !== 'boolean') {
+        if (data === null || data === undefined) {
             return null;
         }
         Object.keys(data).forEach(key => {
@@ -393,28 +404,28 @@ export class DatabaseController {
      * @param data -
      */
     sanitize4Db<T extends BasicAttributesModel>(data: T): T {
-        if (!data && typeof data !== 'boolean') {
+        if (data === null || data === undefined) {
             return null;
         }
-        if (data.return && typeof data.return !== 'boolean') {
+        if (data && data.hasOwnProperty('return')) {
             delete data.return;
         }
-        if (data && data.id && typeof data.id !== 'boolean') {
+        if (data && data.hasOwnProperty('id')) {
             data._id = data.id;
             delete data.id;
         }
 
-        if (data && data.createdAt && typeof data.createdAt !== 'boolean') {
+        if (data && data.hasOwnProperty('createdAt')) {
             data._created_at = data.createdAt;
             delete data.createdAt;
         }
 
-        if (data && data.updatedAt && typeof data.updatedAt !== 'boolean') {
+        if (data && data.hasOwnProperty('updatedAt')) {
             data._updated_at = data.updatedAt;
             delete data.updatedAt;
         }
 
-        if (data && data.createdBy && typeof data.createdAt !== 'boolean') {
+        if (data && data.hasOwnProperty('createdBy')) {
             data._created_by = data.createdBy;
             delete data.createdBy;
         }
@@ -426,47 +437,54 @@ export class DatabaseController {
      * @param data -
      * @param returnFields -
      */
-    sanitize4User<T extends BasicAttributesModel>(data: T, returnFields: string[]): T {
-        if (!data && typeof data !== 'boolean') {
+    sanitize4User<T extends BasicAttributesModel>(
+        data: T,
+        returnFields: string[],
+        hashes: string[],
+    ): T {
+        if (data === null || data ===undefined) {
             return null;
         }
-        if (data && typeof data._id !== 'boolean') {
+        if (data && data.hasOwnProperty('_id')) {
             data.id = data._id ? (typeof data._id === 'object' ? data._id : data._id.toString()) : '';
             delete data._id;
         }
-        if (data && typeof data._created_at !== 'boolean') {
+        if (data && data.hasOwnProperty('_created_at')) {
             data.createdAt = data._created_at;
             delete data._created_at;
         }
-        if (data && typeof data._updated_at !== 'boolean') {
+        if (data && data.hasOwnProperty('_updated_at')) {
             data.updatedAt = data._updated_at;
             delete data._updated_at;
         }
-        if (data && typeof data._created_by !== 'boolean') {
+        if (data && data.hasOwnProperty('_created_by')) {
             data.createdBy = data?._created_by;
             delete data._created_by;
         }
-        if (data && data._hashed_password && typeof data._hashed_password !== 'boolean') {
+        if (data && data.hasOwnProperty('_hashed_password')) {
             if (!data.password) {
                 data.password = data._hashed_password;
             }
             delete data._hashed_password;
         }
-        if (data && typeof data._rperm !== 'boolean') {
+        if (data && typeof data.hasOwnProperty('_rperm')) {
             delete data._rperm;
         }
-        if (data && typeof data._wperm !== 'boolean') {
+        if (data && typeof data.hasOwnProperty('_wperm')) {
             delete data._wperm;
         }
-        if (data && typeof data._acl !== 'boolean') {
+        if (data && typeof data.hasOwnProperty('_acl')) {
             delete data._acl;
         }
-        const returnedData: any = {};
+        if(!hashes){
+            hashes = [];
+        }
+        let returnedData: any = {};
         if (!returnFields && typeof returnFields !== 'boolean') {
             returnedData.id = data.id;
-            return returnedData;
+            // returnedData;
         } else if (returnFields && Array.isArray(returnFields) && returnFields.length === 0) {
-            return data;
+            returnedData = data;
         } else {
             returnFields.forEach(value => {
                 returnedData[value] = data[value];
@@ -474,7 +492,18 @@ export class DatabaseController {
             returnedData.id = data.id;
             returnedData.createdAt = data.createdAt;
             returnedData.updatedAt = data.updatedAt;
-            // returnedData.createdBy = data.createdBy;
+        }
+
+        if(returnedData === null || returnedData === undefined){
+            return null;
+        }
+        const dataHash = this.security.sha256OfObject(returnedData);
+        const exists = hashes.filter(h=>h===dataHash);
+        if(exists.length === 0){
+            return returnedData;
+        }else if(exists.length===1){
+            return dataHash as any;
+        }else{
             return returnedData;
         }
     }

@@ -50,13 +50,14 @@ export class AuthController {
             return: [],
             update: {
                 $set: {
-                    ruleId,
+                    ruleId: ruleId,
                     ruleBody: rule,
                 }
             }
         }, context, {
             bypassDomainVerification: context && context.useMasterKey === true
-        });
+        }
+        );
         // } else {
         //     return databaseController.writeOne(this.policyDomainName, {
         //         ruleId,
