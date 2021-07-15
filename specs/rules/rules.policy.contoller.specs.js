@@ -143,6 +143,7 @@ describe('RulesController::Policy Unit Test', function () {
                     }
                 }
             }, {errors: {}});
+            console.log(results);
             assert(results.policy !== undefined);
             assert(results.policy.remove === null);
         });

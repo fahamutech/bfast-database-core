@@ -387,7 +387,7 @@ export class DatabaseController {
      */
     sanitizeWithOperator4Db<T extends BasicAttributesModel>(data: T): T {
         data = this.sanitize4Db(data);
-        if (!data && typeof data !== 'boolean') {
+        if (data === null || data === undefined) {
             return null;
         }
         Object.keys(data).forEach(key => {
@@ -404,28 +404,28 @@ export class DatabaseController {
      * @param data -
      */
     sanitize4Db<T extends BasicAttributesModel>(data: T): T {
-        if (!data && typeof data !== 'boolean') {
+        if (data === null || data === undefined) {
             return null;
         }
-        if (data.return && typeof data.return !== 'boolean') {
+        if (data && data.hasOwnProperty('return')) {
             delete data.return;
         }
-        if (data && data.id && typeof data.id !== 'boolean') {
+        if (data && data.hasOwnProperty('id')) {
             data._id = data.id;
             delete data.id;
         }
 
-        if (data && data.createdAt && typeof data.createdAt !== 'boolean') {
+        if (data && data.hasOwnProperty('createdAt')) {
             data._created_at = data.createdAt;
             delete data.createdAt;
         }
 
-        if (data && data.updatedAt && typeof data.updatedAt !== 'boolean') {
+        if (data && data.hasOwnProperty('updatedAt')) {
             data._updated_at = data.updatedAt;
             delete data.updatedAt;
         }
 
-        if (data && data.createdBy && typeof data.createdAt !== 'boolean') {
+        if (data && data.hasOwnProperty('createdBy')) {
             data._created_by = data.createdBy;
             delete data.createdBy;
         }
@@ -442,38 +442,38 @@ export class DatabaseController {
         returnFields: string[],
         hashes: string[],
     ): T {
-        if (!data && typeof data !== 'boolean') {
+        if (data === null || data ===undefined) {
             return null;
         }
-        if (data && typeof data._id !== 'boolean') {
+        if (data && data.hasOwnProperty('_id')) {
             data.id = data._id ? (typeof data._id === 'object' ? data._id : data._id.toString()) : '';
             delete data._id;
         }
-        if (data && data._created_at!==null && data._created_at!==undefined && typeof data._created_at !== 'boolean') {
+        if (data && data.hasOwnProperty('_created_at')) {
             data.createdAt = data._created_at;
             delete data._created_at;
         }
-        if (data && data._updated_at !==null && data._updated_at!==undefined && typeof data._updated_at !== 'boolean') {
+        if (data && data.hasOwnProperty('_updated_at')) {
             data.updatedAt = data._updated_at;
             delete data._updated_at;
         }
-        if (data && data._created_by!==null && data._created_by!==undefined && typeof data._created_by !== 'boolean') {
+        if (data && data.hasOwnProperty('_created_by')) {
             data.createdBy = data?._created_by;
             delete data._created_by;
         }
-        if (data && data._hashed_password && typeof data._hashed_password !== 'boolean') {
+        if (data && data.hasOwnProperty('_hashed_password')) {
             if (!data.password) {
                 data.password = data._hashed_password;
             }
             delete data._hashed_password;
         }
-        if (data && typeof data._rperm !== 'boolean') {
+        if (data && typeof data.hasOwnProperty('_rperm')) {
             delete data._rperm;
         }
-        if (data && typeof data._wperm !== 'boolean') {
+        if (data && typeof data.hasOwnProperty('_wperm')) {
             delete data._wperm;
         }
-        if (data && typeof data._acl !== 'boolean') {
+        if (data && typeof data.hasOwnProperty('_acl')) {
             delete data._acl;
         }
         if(!hashes){
@@ -492,8 +492,10 @@ export class DatabaseController {
             returnedData.id = data.id;
             returnedData.createdAt = data.createdAt;
             returnedData.updatedAt = data.updatedAt;
-            // returnedData.createdBy = data.createdBy;
-            // return returnedData;
+        }
+
+        if(returnedData === null || returnedData === undefined){
+            return null;
         }
         const dataHash = this.security.sha256OfObject(returnedData);
         const exists = hashes.filter(h=>h===dataHash);

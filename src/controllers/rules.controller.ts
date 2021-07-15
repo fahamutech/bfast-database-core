@@ -145,7 +145,7 @@ export class RulesController {
                                 ruleId: data.ruleId
                             },
                             return: [],
-                            id: null
+                            // id: null
                         }, rules.context, {
                             bypassDomainVerification: true
                         });

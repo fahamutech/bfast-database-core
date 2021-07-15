@@ -104,7 +104,6 @@ describe('RulesController::Aggregation Unit Test', function () {
                 ]
             }
         }, {errors: {}});
-        console.log(results);
         assert(results.aggregateProduct !== undefined);
         assert(Array.isArray(results.aggregateProduct));
         assert(results.aggregateProduct.length === 1);
