@@ -1,6 +1,6 @@
 {
   "name": "bfast-database-core",
-  "version": "0.1.1-alpha.6",
+  "version": "0.1.1-alpha.7",
   "main": "dist/index.js",
   "license": "MIT",
   "author": {

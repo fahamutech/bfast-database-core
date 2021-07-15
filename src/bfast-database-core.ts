@@ -114,12 +114,12 @@ export class BfastDatabaseCore {
      * @param serveMode {boolean}
      */
     init(options: BFastDatabaseOptions, serveMode = false): WebServices {
-        if(options && options.rsaKeyPairInJson && typeof options.rsaKeyPairInJson === "string"){
-            options.rsaKeyPairInJson = JSON.parse(options.rsaKeyPairInJson);
-        }
-        if(options && options.rsaPublicKeyInJson && typeof options.rsaPublicKeyInJson === "string"){
-            options.rsaPublicKeyInJson = JSON.parse(options.rsaPublicKeyInJson);
-        }
+        // if(options && options.rsaKeyPairInJson && typeof options.rsaKeyPairInJson === "string"){
+        //     options.rsaKeyPairInJson = JSON.parse(options.rsaKeyPairInJson);
+        // }
+        // if(options && options.rsaPublicKeyInJson && typeof options.rsaPublicKeyInJson === "string"){
+        //     options.rsaPublicKeyInJson = JSON.parse(options.rsaPublicKeyInJson);
+        // }
         if (BfastDatabaseCore.validateOptions(options, serveMode).valid) {
             if (!options.adapters) {
                 options.adapters = {};
