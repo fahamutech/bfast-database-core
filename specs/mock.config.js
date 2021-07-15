@@ -11,12 +11,6 @@ const mongodb = require('mongodb');
  *
  * @return {MongoMemoryServer}
  */
-// const mongoServer = () => {
-//     return new MongoMemoryServer({
-//         autoStart: false,
-//         replSet: { storageEngine: 'wiredTiger' },
-//     });
-// }
 
 /**
  *

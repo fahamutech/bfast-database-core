@@ -1,20 +1,20 @@
-import {DatabaseFactory} from './factory/database.factory';
-import {DatabaseController} from './controllers/database.controller';
-import {SecurityController} from './controllers/security.controller';
-import {BFastDatabaseOptions} from './bfast-database.option';
-import {Provider} from './provider';
-import {RealtimeWebservice} from './webservices/realtime.webservice';
-import {AuthController} from './controllers/auth.controller';
-import {AuthFactory} from './factory/auth.factory';
-import {StorageController} from './controllers/storage.controller';
-import {S3StorageFactory} from './factory/s3-storage.factory';
-import {FilesAdapter} from './adapters/files.adapter';
-import {RestController} from './controllers/rest.controller';
-import {RestWebservice} from './webservices/rest.webservice';
-import {StorageWebservice} from './webservices/storage.webservice';
-import {AuthAdapter} from './adapters/auth.adapter';
-import {GridFsStorageFactory} from './factory/grid-fs-storage.factory';
-import {WebServices} from './webservices/index.webservice';
+import { DatabaseFactory } from './factory/database.factory';
+import { DatabaseController } from './controllers/database.controller';
+import { SecurityController } from './controllers/security.controller';
+import { BFastDatabaseOptions } from './bfast-database.option';
+import { Provider } from './provider';
+import { RealtimeWebservice } from './webservices/realtime.webservice';
+import { AuthController } from './controllers/auth.controller';
+import { AuthFactory } from './factory/auth.factory';
+import { StorageController } from './controllers/storage.controller';
+import { S3StorageFactory } from './factory/s3-storage.factory';
+import { FilesAdapter } from './adapters/files.adapter';
+import { RestController } from './controllers/rest.controller';
+import { RestWebservice } from './webservices/rest.webservice';
+import { StorageWebservice } from './webservices/storage.webservice';
+import { AuthAdapter } from './adapters/auth.adapter';
+import { GridFsStorageFactory } from './factory/grid-fs-storage.factory';
+import { WebServices } from './webservices/index.webservice';
 
 export class BfastDatabaseCore {
 
@@ -25,17 +25,17 @@ export class BfastDatabaseCore {
      * @private
      */
     private static validateOptions(options: BFastDatabaseOptions, serverMode = true): { valid: boolean, message: string } {
-        if (!options.rsaPublicKeyInJson){
+        if (!options.rsaPublicKeyInJson) {
             return {
                 valid: false,
                 message: 'rsa public key in json format required, for jwk'
             };
-        }else if (!options.rsaKeyPairInJson){
+        } else if (!options.rsaKeyPairInJson) {
             return {
                 valid: false,
                 message: 'rsa key pair in json format required, for jwk'
             };
-        }else if (!options.port && serverMode === true) {
+        } else if (!options.port && serverMode === true) {
             return {
                 valid: false,
                 message: 'Port option required'
@@ -114,13 +114,15 @@ export class BfastDatabaseCore {
      * @param serveMode {boolean}
      */
     init(options: BFastDatabaseOptions, serveMode = false): WebServices {
-        // if(options && options.rsaKeyPairInJson && typeof options.rsaKeyPairInJson === "string"){
-        //     options.rsaKeyPairInJson = JSON.parse(options.rsaKeyPairInJson);
-        // }
-        // if(options && options.rsaPublicKeyInJson && typeof options.rsaPublicKeyInJson === "string"){
-        //     options.rsaPublicKeyInJson = JSON.parse(options.rsaPublicKeyInJson);
-        // }
         if (BfastDatabaseCore.validateOptions(options, serveMode).valid) {
+            if (options && options.rsaKeyPairInJson && typeof options.rsaKeyPairInJson === "object") {
+                options.rsaKeyPairInJson.alg = 'RS256';
+                options.rsaKeyPairInJson.use = 'sig';
+            }
+            if (options && options.rsaPublicKeyInJson && typeof options.rsaPublicKeyInJson === "object") {
+                options.rsaPublicKeyInJson.alg = 'RS256';
+                options.rsaPublicKeyInJson.use = 'sig';
+            }
             if (!options.adapters) {
                 options.adapters = {};
             }
