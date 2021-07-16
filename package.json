@@ -1,6 +1,6 @@
 {
   "name": "bfast-database-core",
-  "version": "0.1.1-alpha.9",
+  "version": "0.1.1-alpha.10",
   "main": "dist/index.js",
   "license": "MIT",
   "author": {
@@ -28,7 +28,7 @@
     "base64url": "^3.0.1",
     "bcryptjs": "~2.4.3",
     "bfast-function": "~1.13.0",
-    "bfastnode": "~4.5.1-alpha.2",
+    "bfastnode": "~4.5.1-alpha.3",
     "formidable": "~1.2.2",
     "glob-parent": "^6.0.0",
     "http-status-codes": "~2.1.4",
