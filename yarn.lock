@@ -435,10 +435,10 @@ bfast-function@~1.13.0:
     node-schedule "~2.0.0"
     socket.io "~4.1.2"
 
-bfastnode@~4.5.0:
-  version "4.5.0"
-  resolved "https://registry.yarnpkg.com/bfastnode/-/bfastnode-4.5.0.tgz#cc76009980d738370adb6b7f87c0367e8b24a88c"
-  integrity sha512-W3Ia58pWdSwPNZzLOReC5PSvS5Oyw1lQIVwfm8Atzx7Z997UqXiCs9xnRARgZe3/x4F8p0KCq++VUOoQ9akb9Q==
+bfastnode@~4.5.1-alpha.2:
+  version "4.5.1-alpha.2"
+  resolved "https://registry.yarnpkg.com/bfastnode/-/bfastnode-4.5.1-alpha.2.tgz#9ad67c4761e6ec08894e466994213de714ad6367"
+  integrity sha512-xV5Oql9/ZZlgnjYyYnXwixIW3UBqBF2gnNk4QnPABvnbYGX7QKQ/cjYcHR0xwXal/9ss0MQECAso7gvNm2DpGA==
 
 binary-extensions@^1.0.0:
   version "1.13.1"
