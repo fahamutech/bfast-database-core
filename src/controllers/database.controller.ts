@@ -256,7 +256,7 @@ export class DatabaseController {
         if (options && options.bypassDomainVerification === false) {
             await this.handleDomainValidation(domain);
         }
-        if (queryModel && typeof queryModel !== 'boolean' && queryModel.id && typeof queryModel.id !== 'boolean') {
+        if (queryModel && queryModel.id) {
             queryModel = this.sanitizeWithOperator4Db(queryModel as any);
             queryModel.filter = this.sanitizeWithOperator4Db(queryModel?.filter as any);
             queryModel.return = returnFields4Db;
