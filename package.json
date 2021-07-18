@@ -1,6 +1,6 @@
 {
   "name": "bfast-database-core",
-  "version": "0.1.1-alpha.11",
+  "version": "0.1.1-alpha.12",
   "main": "dist/index.js",
   "license": "MIT",
   "author": {
@@ -25,12 +25,12 @@
     "publish:beta": "yarn publish --tag beta"
   },
   "dependencies": {
-    "base64url": "^3.0.1",
+    "base64url": "~3.0.1",
     "bcryptjs": "~2.4.3",
     "bfast-function": "~1.13.0",
     "bfastnode": "~4.5.1-alpha.3",
     "formidable": "~1.2.2",
-    "glob-parent": "^6.0.0",
+    "glob-parent": "~6.0.0",
     "http-status-codes": "~2.1.4",
     "jsonwebtoken": "~8.5.1",
     "mime": "~2.5.2",

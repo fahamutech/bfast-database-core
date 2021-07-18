@@ -202,12 +202,15 @@ export class StorageController {
                 // response.send('image thumbnail');
                 const width = parseInt(request.query.width ? request.query.width : 100);
                 const height = parseInt(request.query.height ? request.query.height : 0);
-                bfast.init({projectId: '', applicationId: ''});
-                bfast.functions().request(value).get<Stream>({
+                // find a way remove this
+                bfast.init({projectId: '_bfast_core_', applicationId: '_bfast_core_'},'_bfast_core_');
+                bfast.functions('_bfast_core_').request(value).get<Stream>({
                     // @ts-ignore
                     responseType: 'stream'
                 }).then(value1 => {
-                    value1.pipe(sharp().resize(width, height !== 0 ? height : null)).pipe(response);
+                    value1
+                    .pipe(sharp().resize(width, height !== 0 ? height : null))
+                    .pipe(response);
                 }).catch(_ => {
                     console.log(_);
                     response.redirect(value);
