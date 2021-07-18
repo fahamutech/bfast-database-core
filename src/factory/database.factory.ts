@@ -1,5 +1,5 @@
 import { DatabaseAdapter, DatabaseBasicOptions, DatabaseUpdateOptions, DatabaseWriteOptions } from '../adapters/database.adapter';
-import { ChangeStreamEvents, ChangeStream, MongoClient, Document, ChangeStreamDocument, ModifyResult } from 'mongodb';
+import { ChangeStream, MongoClient, ChangeStreamDocument, ModifyResult } from 'mongodb';
 import { BasicAttributesModel } from '../model/basic-attributes.model';
 import { ContextBlock } from '../model/rules.model';
 import { QueryModel } from '../model/query-model';
