@@ -123,6 +123,7 @@ export class DatabaseFactory implements DatabaseAdapter {
                 { _id: queryModel._id },
                 {
                     session: options && options.transaction ? options.transaction : undefined,
+                    allowDiskUse: true,
                     // projection: fieldsToReturn
                 }
             );
@@ -134,7 +135,8 @@ export class DatabaseFactory implements DatabaseAdapter {
         context: ContextBlock, options?: DatabaseWriteOptions): Promise<any> {
         const conn = await this.connection();
         const query = conn.db().collection(domain).find(queryModel.filter, {
-            session: options && options.transaction ? options.transaction : undefined
+            session: options && options.transaction ? options.transaction : undefined,
+            allowDiskUse: true,
         });
         if (queryModel.skip) {
             query.skip(queryModel.skip);
@@ -182,6 +184,8 @@ export class DatabaseFactory implements DatabaseAdapter {
             upsert: typeof updateModel.upsert === 'boolean' ? updateModel.upsert : false,
             // @ts-ignore
             returnOriginal: false,
+            // @ts-ignore
+            allowDiskUse: true,
             // new: true,
             returnDocument: 'after',
             session: options && options.transaction ? options.transaction : undefined
@@ -208,7 +212,7 @@ export class DatabaseFactory implements DatabaseAdapter {
         const response = await conn.db()
             .collection(domain)
             .findOneAndDelete(deleteModel.filter, {
-                session: options && options.transaction ? options.transaction : undefined
+                session: options && options.transaction ? options.transaction : undefined,
             });
         await conn.close();
         return response.value as any;
