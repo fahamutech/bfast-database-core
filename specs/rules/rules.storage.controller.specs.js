@@ -17,6 +17,7 @@ describe('RulesController::Storage Unit Test', function () {
 
     describe('RulesController::Storage::Save', function () {
         it('should return url of saved file', async function () {
+            this.timeout(10000000000000000);
             const results = {errors: {}};
             await _rulesController.handleStorageRule({
                 applicationId: 'daas',
