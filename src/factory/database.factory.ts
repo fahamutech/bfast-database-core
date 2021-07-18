@@ -134,8 +134,10 @@ export class DatabaseFactory implements DatabaseAdapter {
         context: ContextBlock, options?: DatabaseWriteOptions): Promise<any> {
         const conn = await this.connection();
         const query = conn.db().collection(domain).find(queryModel.filter, {
-            session: options && options.transaction ? options.transaction : undefined
+            session: options && options.transaction ? options.transaction : undefined,
+            allowDiskUse: true
         });
+        // query.allowDiskUse();
         if (queryModel.skip) {
             query.skip(queryModel.skip);
         } else {
@@ -152,7 +154,7 @@ export class DatabaseFactory implements DatabaseAdapter {
         // }
         if (queryModel.orderBy && Array.isArray(queryModel.orderBy) && queryModel.orderBy?.length > 0) {
             queryModel.orderBy.forEach(value => {
-                query.sort(value).allowDiskUse();
+                query.sort(value);
             });
         }
         if (queryModel.return && Array.isArray(queryModel.return) && queryModel.return.length > 0) {
@@ -166,6 +168,7 @@ export class DatabaseFactory implements DatabaseAdapter {
             // query.project(fieldsToReturn);
         }
         let result;
+        // quwquery.();
         if (queryModel?.count === true) {
             result = await query.count();
         } else {
