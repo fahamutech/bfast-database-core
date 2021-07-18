@@ -135,7 +135,7 @@ export class DatabaseFactory implements DatabaseAdapter {
         const conn = await this.connection();
         const query = conn.db().collection(domain).find(queryModel.filter, {
             session: options && options.transaction ? options.transaction : undefined,
-            allowDiskUse: true
+            // allowDiskUse: true
         });
         // query.allowDiskUse();
         if (queryModel.skip) {
