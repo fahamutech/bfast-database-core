@@ -47,7 +47,7 @@ describe('Delete document anonymous', function () {
             }
         }
         const deleteResponse = await axios.post(serverUrl, deleteTest);
-        console.log(deleteResponse.data);
+        // console.log(deleteResponse.data);
         const queryTest = {
             applicationId: 'daas',
             QueryTest: {

@@ -23,7 +23,7 @@ describe('Authorization', function () {
             };
             const response = await axios.post(serverUrl, authorization);
             const data = response.data;
-            console.log(JSON.stringify(data));
+            // console.log(JSON.stringify(data));
             assert(typeof data !== "undefined");
             assert(typeof data === "object");
             assert(typeof data['ResultOfAuthorization'] === "object");
@@ -49,7 +49,7 @@ describe('Authorization', function () {
                 }
             };
             const response = await axios.post(serverUrl, authorization);
-            console.log(response.data);
+            // console.log(response.data);
         });
     });
 

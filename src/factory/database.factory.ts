@@ -143,15 +143,12 @@ export class DatabaseFactory implements DatabaseAdapter {
         } else {
             query.skip(0);
         }
-        // if (queryModel.size) {
-        //     if (queryModel.size !== -1) {
-        //         query.limit(queryModel.size);
-        //     }
-        // } else {
-        //     if (!queryModel.count) {
-        //         query.limit(50);
-        //     }
-        // }
+        if (queryModel.size && queryModel.size !== -1) {
+            query.limit(queryModel.size);
+            console.log(queryModel.size);
+        } else if(!queryModel.count){
+                query.limit(50);
+        }
         if (queryModel.orderBy && Array.isArray(queryModel.orderBy) && queryModel.orderBy?.length > 0) {
             queryModel.orderBy.forEach(value => {
                 query.sort(value);

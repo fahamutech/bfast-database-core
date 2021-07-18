@@ -41,7 +41,7 @@ describe('Aggregation', function () {
         }
         const aggregationResponse = await axios.post(serverUrl, aggregation);
         const data = aggregationResponse.data;
-       console.log(data);
+    //    console.log(data);
         assert(typeof data !== "undefined");
         assert(typeof data === "object");
         assert(typeof data['ResultOfAggregateTest'] !== "undefined");

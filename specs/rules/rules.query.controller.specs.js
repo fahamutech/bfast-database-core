@@ -45,7 +45,7 @@ describe('RulesController::Query Unit Test', function () {
                     return: []
                 }
             }, { errors: {} });
-            console.log(results);
+            // console.log(results);
             assert(results.queryProduct === null);
         });
         it('should return query result based on filter', async function () {
