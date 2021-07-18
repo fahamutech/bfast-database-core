@@ -123,7 +123,6 @@ export class DatabaseFactory implements DatabaseAdapter {
                 { _id: queryModel._id },
                 {
                     session: options && options.transaction ? options.transaction : undefined,
-                    allowDiskUse: true,
                     // projection: fieldsToReturn
                 }
             );
@@ -135,8 +134,7 @@ export class DatabaseFactory implements DatabaseAdapter {
         context: ContextBlock, options?: DatabaseWriteOptions): Promise<any> {
         const conn = await this.connection();
         const query = conn.db().collection(domain).find(queryModel.filter, {
-            session: options && options.transaction ? options.transaction : undefined,
-            allowDiskUse: true,
+            session: options && options.transaction ? options.transaction : undefined
         });
         if (queryModel.skip) {
             query.skip(queryModel.skip);
@@ -154,7 +152,7 @@ export class DatabaseFactory implements DatabaseAdapter {
         // }
         if (queryModel.orderBy && Array.isArray(queryModel.orderBy) && queryModel.orderBy?.length > 0) {
             queryModel.orderBy.forEach(value => {
-                query.sort(value);
+                query.sort(value).allowDiskUse();
             });
         }
         if (queryModel.return && Array.isArray(queryModel.return) && queryModel.return.length > 0) {
@@ -184,8 +182,6 @@ export class DatabaseFactory implements DatabaseAdapter {
             upsert: typeof updateModel.upsert === 'boolean' ? updateModel.upsert : false,
             // @ts-ignore
             returnOriginal: false,
-            // @ts-ignore
-            allowDiskUse: true,
             // new: true,
             returnDocument: 'after',
             session: options && options.transaction ? options.transaction : undefined
