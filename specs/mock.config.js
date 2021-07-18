@@ -40,6 +40,9 @@ const mongoMemoryReplSet = () => {
             replSet: {
                 count: 3,
                 storageEngine: "wiredTiger",
+            },
+            binary: {
+                version: '5.0.0'
             }
         });
     }
