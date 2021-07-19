@@ -143,7 +143,7 @@ export class DatabaseFactory implements DatabaseAdapter {
         } else {
             query.skip(0);
         }
-        if (queryModel.size && queryModel.size !== -1) {
+        if (queryModel.size && queryModel.size !== -1 && queryModel.size!==100) {
             query.limit(queryModel.size);
             console.log(queryModel.size);
         } else if(!queryModel.count){
