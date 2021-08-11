@@ -80,8 +80,12 @@ export class DatabaseController {
      * @param context current operation context
      * @param options database write operation options
      */
-    async writeOne<T extends BasicAttributesModel>(domain: string, data: T, context: ContextBlock,
-                                                   options: DatabaseWriteOptions = {bypassDomainVerification: false}): Promise<T> {
+    async writeOne<T extends BasicAttributesModel>(
+        domain: string,
+        data: T,
+        context: ContextBlock,
+        options: DatabaseWriteOptions = {bypassDomainVerification: false}
+    ): Promise<T> {
         if (options && options.bypassDomainVerification === false) {
             await this.handleDomainValidation(domain);
         }
@@ -99,10 +103,19 @@ export class DatabaseController {
      * @param context - current operation context
      * @param options - bfast::database update options
      */
-    async update(domain: string, updateModel: UpdateRuleRequestModel, context: ContextBlock,
-                 options: DatabaseUpdateOptions = {bypassDomainVerification: false}): Promise<any> {
+    async update(
+        domain: string,
+        updateModel: UpdateRuleRequestModel,
+        context: ContextBlock,
+        options: DatabaseUpdateOptions = {bypassDomainVerification: false}
+    ): Promise<any> {
         if (options && options.bypassDomainVerification === false) {
             await this.handleDomainValidation(domain);
+        }
+        if (updateModel.upsert === true) {
+            if (!updateModel.update.hasOwnProperty('$set')) {
+                updateModel.update.$set = {id: this.security.generateUUID()}
+            }
         }
         const returnFields = this.getReturnFields(updateModel as any);
         updateModel.update = this.sanitizeWithOperator4Db(updateModel?.update as any);
@@ -113,47 +126,42 @@ export class DatabaseController {
         return this.sanitize4User(updatedDoc, returnFields, []);
     }
 
-    // async updateMany(domain: string, updateModel: UpdateRuleRequestModel, context: ContextBlock,
-    //                  options: DatabaseUpdateOptions = {bypassDomainVerification: false}) {
-    //     if (updateModel.filter && typeof updateModel.filter === 'object' && Object.keys(updateModel.filter).length > 0) {
-    //         if (options && options.bypassDomainVerification === false) {
-    //             await this.handleDomainValidation(domain);
-    //         }
-    //         const returnFields = this.getReturnFields(updateModel as any);
-    //         updateModel.update = this.sanitizeWithOperator4Db(updateModel?.update as any);
-    //         updateModel.filter = this.sanitizeWithOperator4Db(updateModel?.filter as any);
-    //         updateModel.update = this.addUpdateMetadata(updateModel?.update as any, context);
-    //         options.dbOptions = updateModel && updateModel.options ? updateModel.options : {};
-    //         const updatedDoc = await this.transaction(async session => {
-    //             const queryResults: any[] = await this.query(domain, {
-    //                 filter: updateModel.filter,
-    //                 return: updateModel.return,
-    //                 count: false
-    //             }, context, {
-    //                 bypassDomainVerification: context?.useMasterKey === true,
-    //                 transaction: session
-    //             });
-    //             const updateResults = [];
-    //             if (queryResults && Array.isArray(queryResults)) {
-    //                 for (const value of queryResults) {
-    //                     updateModel.id = value.id;
-    //                     updateModel.filter = {
-    //                         _id: value.id
-    //                     };
-    //                     const result = await this.update(domain, updateModel, context, {
-    //                         bypassDomainVerification: context?.useMasterKey === true,
-    //                         transaction: session
-    //                     });
-    //                     updateResults.push(result);
-    //                 }
-    //             }
-    //             return updateResults;
-    //         });
-    //         // const updatedDoc = await this.database.update<any, any>(domain, updateModel, context, options);
-    //         return this.sanitize4User(updatedDoc, returnFields);
-    //     }
-    //     throw {message: 'you must supply filter object in update model'};
-    // }
+    async updateMany(
+        domain: string,
+        updateModel: UpdateRuleRequestModel,
+        context: ContextBlock,
+        options: DatabaseUpdateOptions = {bypassDomainVerification: false}
+    ) {
+        if (
+            updateModel.filter &&
+            typeof updateModel.filter === 'object' &&
+            Object.keys(updateModel.filter).length > 0
+        ) {
+            if (options && options.bypassDomainVerification === false) {
+                await this.handleDomainValidation(domain);
+            }
+            if (updateModel.upsert === true) {
+                if (!updateModel.update.hasOwnProperty('$set')) {
+                    updateModel.update.$set = {}
+                }
+                if (!updateModel.update.$set.hasOwnProperty('_id')) {
+                    updateModel.update.$set._id = this.security.generateUUID();
+                }
+            }
+            updateModel.update = this.sanitizeWithOperator4Db(updateModel?.update as any);
+            updateModel.filter = this.sanitizeWithOperator4Db(updateModel?.filter as any);
+            updateModel.update = this.addUpdateMetadata(updateModel?.update as any, context);
+            options.dbOptions = updateModel && updateModel.options ? updateModel.options : {};
+            await this.database.updateMany(
+                domain,
+                updateModel,
+                context,
+                options
+            );
+            return 'ok';
+        }
+        throw {message: 'you must supply filter object in update model'};
+    }
 
     /**
      * delete a record from bfast::database
@@ -162,12 +170,15 @@ export class DatabaseController {
      * @param context - current context
      * @param options - configurations
      */
-    async delete(domain: string, deleteModel: DeleteModel<any>, context: ContextBlock,
-                 options: DatabaseBasicOptions = {bypassDomainVerification: false}): Promise<any> {
+    async delete(
+        domain: string,
+        deleteModel: DeleteModel<any>,
+        context: ContextBlock,
+        options: DatabaseBasicOptions = {bypassDomainVerification: false}
+    ): Promise<any> {
         if (options && options.bypassDomainVerification === false) {
             await this.handleDomainValidation(domain);
         }
-        // const returnFields = deleteModel.return;
         deleteModel.filter = this.sanitizeWithOperator4Db(deleteModel?.filter as any);
         const result = await this.database.deleteOne<any, any>(domain, deleteModel, context, options);
         return this.sanitize4User(result, ['id'], []);
@@ -185,6 +196,7 @@ export class DatabaseController {
      * perform aggregation operation to bfast::database
      * @param domain - resource name
      * @param pipelines - for now work with mongodb database only
+     * @param hashes
      * @param context - current operation context
      * @param options - database write operation
      */
@@ -210,8 +222,10 @@ export class DatabaseController {
      * @param options - write operation options
      */
     async changes(
-        domain: string, pipeline: any[], listener: (doc: any) => void,
-        options: DatabaseChangesOptions = {bypassDomainVerification: false,resumeToken: undefined}
+        domain: string,
+        pipeline: any[],
+        listener: (doc: any) => void,
+        options: DatabaseChangesOptions = {bypassDomainVerification: false, resumeToken: undefined}
     ): Promise<ChangeStream> {
         if (options && options.bypassDomainVerification === false) {
             await this.handleDomainValidation(domain);
@@ -274,8 +288,12 @@ export class DatabaseController {
         }
     }
 
-    async writeMany<T extends BasicAttributesModel>(domain: string, data: T[], context: ContextBlock,
-                                                    options: DatabaseWriteOptions = {bypassDomainVerification: false}): Promise<any[]> {
+    async writeMany<T extends BasicAttributesModel>(
+        domain: string,
+        data: T[],
+        context: ContextBlock,
+        options: DatabaseWriteOptions = {bypassDomainVerification: false}
+    ): Promise<any[]> {
         if (options && options.bypassDomainVerification === false) {
             await this.handleDomainValidation(domain);
         }
@@ -298,7 +316,10 @@ export class DatabaseController {
      * @param data -
      * @param context -
      */
-    addUpdateMetadata<T extends BasicAttributesModel>(data: T, context?: ContextBlock): T {
+    addUpdateMetadata<T extends BasicAttributesModel>(
+        data: T,
+        context?: ContextBlock
+    ): T {
         if (data && typeof data !== 'boolean') {
             data.$currentDate = {_updated_at: true};
             return data;
@@ -321,10 +342,13 @@ export class DatabaseController {
      * @param data -
      * @param context -
      */
-    addCreateMetadata<T extends BasicAttributesModel>(data: T, context?: ContextBlock): T {
+    addCreateMetadata<T extends BasicAttributesModel>(
+        data: T,
+        context?: ContextBlock
+    ): T {
         data._created_by = context?.uid;
-        data._created_at = data && data._created_at?data._created_at: new Date();
-        data._updated_at = data && data._updated_at?data._updated_at:new Date();
+        data._created_at = data && data._created_at ? data._created_at : new Date();
+        data._updated_at = data && data._updated_at ? data._updated_at : new Date();
         if (data && (data._id === undefined || data._id === null) && typeof data !== 'boolean') {
             data._id = this.security.generateUUID();
         }
@@ -436,13 +460,14 @@ export class DatabaseController {
      * sanitize data to return to a request
      * @param data -
      * @param returnFields -
+     * @param hashes
      */
     sanitize4User<T extends BasicAttributesModel>(
         data: T,
         returnFields: string[],
         hashes: string[],
     ): T {
-        if (data === null || data ===undefined) {
+        if (data === null || data === undefined) {
             return null;
         }
         if (data && data.hasOwnProperty('_id')) {
@@ -476,13 +501,12 @@ export class DatabaseController {
         if (data && typeof data.hasOwnProperty('_acl')) {
             delete data._acl;
         }
-        if(!hashes){
+        if (!hashes) {
             hashes = [];
         }
         let returnedData: any = {};
         if (!returnFields && typeof returnFields !== 'boolean') {
             returnedData.id = data.id;
-            // returnedData;
         } else if (returnFields && Array.isArray(returnFields) && returnFields.length === 0) {
             returnedData = data;
         } else {
@@ -494,16 +518,16 @@ export class DatabaseController {
             returnedData.updatedAt = data.updatedAt;
         }
 
-        if(returnedData === null || returnedData === undefined){
+        if (returnedData === null || returnedData === undefined) {
             return null;
         }
         const dataHash = this.security.sha256OfObject(returnedData);
-        const exists = hashes.filter(h=>h===dataHash);
-        if(exists.length === 0){
+        const exists = hashes.filter(h => h === dataHash);
+        if (exists.length === 0) {
             return returnedData;
-        }else if(exists.length===1){
+        } else if (exists.length === 1) {
             return dataHash as any;
-        }else{
+        } else {
             return returnedData;
         }
     }

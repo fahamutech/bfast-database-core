@@ -80,18 +80,16 @@ export class AuthController {
         if (context && context?.useMasterKey === true) {
             return true;
         }
-        const filter = {
-            $or: []
-        };
+        const filter = [];
         const originalRule = ruleId;
         let globalRule;
         const ruleIdInArray = ruleId.split('.');
         if (ruleIdInArray.length >= 2) {
             ruleIdInArray[1] = '*';
             globalRule = ruleIdInArray.join('.');
-            filter.$or.push({ruleId: globalRule});
+            filter.push({ruleId: globalRule});
         }
-        filter.$or.push({ruleId: originalRule});
+        filter.push({ruleId: originalRule});
         const query: any[] = await databaseController.query(this.policyDomainName, {
             return: [],
             filter,

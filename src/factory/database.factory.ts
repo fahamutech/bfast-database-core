@@ -1,52 +1,232 @@
-import { DatabaseAdapter, DatabaseBasicOptions, DatabaseUpdateOptions, DatabaseWriteOptions } from '../adapters/database.adapter';
-import { ChangeStream, MongoClient, ChangeStreamDocument, ModifyResult } from 'mongodb';
-import { BasicAttributesModel } from '../model/basic-attributes.model';
-import { ContextBlock } from '../model/rules.model';
-import { QueryModel } from '../model/query-model';
-import { UpdateRuleRequestModel } from '../model/update-rule-request.model';
-import { DeleteModel } from '../model/delete-model';
-import { BFastDatabaseOptions } from '../bfast-database.option';
-import { FindOneAndUpdateOptions } from 'mongodb';
+import {
+    DatabaseAdapter,
+    DatabaseBasicOptions,
+    DatabaseUpdateOptions,
+    DatabaseWriteOptions
+} from '../adapters/database.adapter';
+import {ChangeStream, ChangeStreamDocument, FindOneAndUpdateOptions, ModifyResult, MongoClient} from 'mongodb';
+import {BasicAttributesModel} from '../model/basic-attributes.model';
+import {ContextBlock} from '../model/rules.model';
+import {QueryModel} from '../model/query-model';
+import {UpdateRuleRequestModel} from '../model/update-rule-request.model';
+import {DeleteModel} from '../model/delete-model';
+import {BFastDatabaseOptions} from '../bfast-database.option';
+import {TreeController} from 'bfast-database-tree';
+import {Web3Storage, File} from 'web3.storage';
+import {bfast} from "bfastnode";
+import {create, IPFS} from "ipfs";
+// import {createHash} from "crypto";
 
-let config: BFastDatabaseOptions;
+let web3Storage: Web3Storage;
+const treeController = new TreeController();
+bfast.init({applicationId: '', projectId: ''}, '_ignore')
 
 export class DatabaseFactory implements DatabaseAdapter {
-    private mongoClient: MongoClient;
+    private ipfs: IPFS;
 
-    constructor(configAdapter: BFastDatabaseOptions) {
-        config = configAdapter;
+    constructor(private readonly config: BFastDatabaseOptions, _ipfs = null) {
+        if (_ipfs) {
+            this.ipfs = _ipfs;
+        }
+        web3Storage = new Web3Storage({
+            token: config.web3Token
+        });
     }
 
-    async writeMany<T extends BasicAttributesModel, V>(domain: string, data: T[], context: ContextBlock, options?: DatabaseWriteOptions)
-        : Promise<V> {
-        const conn = await this.connection();
-        const response = await conn.db()
-            .collection(domain)
-            .insertMany(data as any, {
-                session: options && options.transaction ? options.transaction : undefined
-            });
-        conn.close().catch(console.warn);
-        return response.insertedIds as any;
+    private async dataCid(data: any, buffer: Buffer, domain: string): Promise<string> {
+        try {
+            if (!this.ipfs) {
+                this.ipfs = await create();
+            }
+            const results = await this.ipfs.add(JSON.stringify(data));
+            return results.cid.toString();
+        } catch (e) {
+            console.log(e);
+            return null;
+        }
+        // try {
+        //     return web3Storage.put(
+        //         [
+        //             new File([buffer], `${domain}_${data._id}.json`)
+        //         ],
+        //         {
+        //             wrapWithDirectory: false,
+        //             name: `${domain}_${data._id}.json`
+        //         }
+        //     );
+        // } catch (e) {
+        //     console.log(e);
+        //     throw e;
+        // }
     }
 
-    async writeOne<T extends BasicAttributesModel>(domain: string, data: T, context: ContextBlock, options?: DatabaseWriteOptions)
-        : Promise<any> {
+    private async getDataFromCid(cid: string): Promise<any> {
+        try {
+            if (!this.ipfs) {
+                this.ipfs = await create();
+            }
+            const results = await this.ipfs.cat(cid);
+            let data = ''
+            for await (const chunk of results) {
+                data += chunk.toString();
+            }
+            return JSON.parse(data);
+        } catch (e) {
+            console.log(e);
+            return null;
+        }
+        // try {
+        //     const data = await web3Storage.get(cid);
+        //     if (data.ok && await data.files) {
+        //         const file = await bfast.functions('_ignore').request('https://' + cid + '.ipfs.dweb.link').get();
+        //         return typeof file === "string" ? JSON.parse(file) : file;
+        //     } else {
+        //         throw await data.json();
+        //     }
+        // } catch (e) {
+        //     console.log(e);
+        //     throw e;
+        // }
+    }
+
+    private nodeProcess(cid: string, options) {
+        return {
+            nodeHandler: async ({path, node}) => {
+                const keys = Object.keys(node);
+                for (const key of keys) {
+                    let $setMap = {};
+                    if (typeof node[key] === "object") {
+                        $setMap = Object.keys(node[key]).reduce((a, b) => {
+                            a[`value.${b}`] = node[key][b];
+                            return a;
+                        }, {});
+                    } else {
+                        $setMap = {
+                            value: node[key]
+                        }
+                    }
+                    const conn = await this.connection();
+                    await conn
+                        .db()
+                        .collection(path.toString().replace('/', '_'))
+                        .updateOne({
+                                _id: isNaN(Number(key)) ? key.trim() : Number(key),
+                            }, {
+                                $set: $setMap
+                            }, {
+                                upsert: true,
+                                session: options && options.transaction ? options.transaction : undefined
+                            }
+                        );
+                }
+            },
+            nodeIdHandler: async function () {
+                return cid.toString();
+            }
+        }
+    }
+
+    private async handleQueryObjectTree(
+        queryTree: { [key: string]: any },
+        domain: string,
+        queryModel: QueryModel<any>
+    ): Promise<any[] | number> {
+        const keys = Object.keys(queryTree);
         const conn = await this.connection();
-        const response = await conn.db().collection(domain)
-            .insertOne(data as any, {
-                // w: 'majority',
-                session: options && options.transaction ? options.transaction : undefined
-            });
-        return response.insertedId;
+        let cids = [];
+        const cidMap = {};
+        if (keys.length === 0) {
+            const result = await conn.db().collection(`${domain}__id`).find({}).toArray();
+            await conn.close();
+            if (result && Array.isArray(result)) {
+                return Promise.all(result.map(x => this.getDataFromCid(x?.value)));
+            } else {
+                return [];
+            }
+        }
+        for (const key of keys) {
+            const nodeTable = key.replace('/', '_').trim();
+            const id = queryTree[key];
+            let result;
+            if (typeof id === "function") {
+                const cursor = conn.db().collection(nodeTable).find({});
+                const docs = [];
+                while (await cursor.hasNext()) {
+                    const next = await cursor.next();
+                    id(next._id) === true ? docs.push(next) : null
+                }
+                result = docs.reduce((a, b) => {
+                    a.value = Object.assign(a.value, b.value);
+                    return a;
+                }, {value: {}});
+            } else {
+                result = await conn.db().collection(nodeTable).findOne({_id: id});
+            }
+            if (result && result.value) {
+                if (typeof result.value === "object") {
+                    Object.values(result.value).forEach((v: string) => {
+                        cids.push(v);
+                        if (cidMap[v]) {
+                            cidMap[v] += 1;
+                        } else {
+                            cidMap[v] = 1;
+                        }
+                    });
+                } else if (typeof result.value === 'string') {
+                    cids.push(result.value);
+                    if (cidMap[result.value]) {
+                        cidMap[result.value] += 1;
+                    } else {
+                        cidMap[result.value] = 1;
+                    }
+                }
+            }
+        }
+        await conn.close();
+        cids = cids
+            .filter(x => cidMap[x] === keys.length)
+            .reduce((a, b) => a.add(b), new Set());
+        cids = Array.from(cids);
+        if (queryModel?.count === true) {
+            return cids.length;
+        }
+        return Promise.all(cids.map(async x => await this.getDataFromCid(x as string)));
+    }
+
+    async writeMany<T extends BasicAttributesModel, V>(
+        domain: string,
+        data: T[],
+        context: ContextBlock,
+        options?: DatabaseWriteOptions
+    ): Promise<V> {
+        for (const _data of data) {
+            const buffer = Buffer.from(JSON.stringify(_data));
+            const cid = await this.dataCid(_data, buffer, domain);
+            await treeController.objectToTree(_data, domain, this.nodeProcess(cid, options));
+        }
+        return data.map(d => d._id) as any;
+    }
+
+    async writeOne<T extends BasicAttributesModel>(
+        domain: string,
+        data: T,
+        context: ContextBlock,
+        options?: DatabaseWriteOptions
+    ): Promise<any> {
+        const buffer = Buffer.from(JSON.stringify(data));
+        const cid = await this.dataCid(data, buffer, domain);
+        await treeController.objectToTree(data, domain, this.nodeProcess(cid, options));
+        return data._id;
     }
 
     private async connection(): Promise<MongoClient> {
-        // if (this.mongoClient && this.mongoClient.isConnected()) {
-        //     return this.mongoClient;
-        // } else {
-        const mongoUri = config.mongoDbUri;
-        return new MongoClient(mongoUri).connect();
-        // }
+        const mongoUri = this.config.mongoDbUri;
+        return new MongoClient(mongoUri, {
+            w: "majority",
+            readConcern: {
+                level: "majority"
+            }
+        }).connect();
     }
 
     async init(): Promise<any> {
@@ -81,7 +261,7 @@ export class DatabaseFactory implements DatabaseAdapter {
                 const indexOptions: any = {};
                 Object.assign(indexOptions, value);
                 delete indexOptions.field;
-                await conn.db().collection(domain).createIndex({ [value.field]: 1 }, indexOptions);
+                await conn.db().collection(domain).createIndex({[value.field]: 1}, indexOptions);
             }
             await conn.close(); // .catch(console.warn);
             return 'Indexes added';
@@ -105,105 +285,111 @@ export class DatabaseFactory implements DatabaseAdapter {
     }
 
     async findOne<T extends BasicAttributesModel>(
-        domain: string, queryModel: QueryModel<T>,
-        context: ContextBlock, options?: DatabaseWriteOptions): Promise<any> {
+        domain: string,
+        queryModel: QueryModel<T>,
+        context: ContextBlock,
+        options?: DatabaseWriteOptions
+    ): Promise<any> {
+        const queryTree = await treeController.query(domain, {
+            _id: queryModel._id
+        });
+        const table = Object.keys(queryTree)[0].replace('/', '_').trim();
+        const id = Object.values(queryTree)[0];
         const conn = await this.connection();
-        const fieldsToReturn = {
-            '_created_at': 1,
-            '_updated_at': 1,
-        };
-        if (queryModel?.return && Array.isArray(queryModel?.return) && queryModel.return.length > 0) {
-            queryModel.return.forEach(x => {
-                fieldsToReturn[x] = 1;
-            });
-        }
-        const result = await conn.db()
-            .collection(domain)
-            .findOne(
-                { _id: queryModel._id },
-                {
-                    session: options && options.transaction ? options.transaction : undefined,
-                    // projection: fieldsToReturn
-                }
-            );
+        const result = await conn.db().collection(table).findOne(
+            {_id: id},
+            {
+                session: options && options.transaction ? options.transaction : undefined,
+            }
+        );
         await conn.close();
-        return result;
+        if (!result) {
+            return null;
+        }
+        const cid = result.value;
+        return await this.getDataFromCid(cid);
     }
 
     async query<T extends BasicAttributesModel>(domain: string, queryModel: QueryModel<T>,
-        context: ContextBlock, options?: DatabaseWriteOptions): Promise<any> {
-        const conn = await this.connection();
-        const query = conn.db().collection(domain).find(queryModel.filter, {
-            session: options && options.transaction ? options.transaction : undefined,
-            // allowDiskUse: true
-        });
-        // query.allowDiskUse();
-        if (queryModel.skip) {
-            query.skip(queryModel.skip);
+                                                context: ContextBlock, options?: DatabaseWriteOptions): Promise<any> {
+        let queryTree;
+        try {
+            queryTree = await treeController.query(domain, queryModel.filter);
+        } catch (e) {
+            console.log(e);
+            queryTree = {};
+        }
+        if (Array.isArray(queryTree)) {
+            const result = [];
+            for (const _tree of queryTree) {
+                const r = await this.handleQueryObjectTree(_tree, domain, queryModel);
+                Array.isArray(r) ? result.push(...r) : result.push(r);
+            }
+            return queryModel?.count ? result.reduce((a, b) => a + b, 0) : result;
         } else {
-            query.skip(0);
+            return this.handleQueryObjectTree(queryTree, domain, queryModel);
         }
-        if (queryModel.size && queryModel.size !== -1 && queryModel.size!==100) {
-            query.limit(queryModel.size);
-            console.log(queryModel.size);
-        } else if(!queryModel.count){
-                query.limit(50);
-        }
-        if (queryModel.orderBy && Array.isArray(queryModel.orderBy) && queryModel.orderBy?.length > 0) {
-            queryModel.orderBy.forEach(value => {
-                query.sort(value);
-            });
-        }
-        if (queryModel.return && Array.isArray(queryModel.return) && queryModel.return.length > 0) {
-            const fieldsToReturn = {
-                '_created_at': 1,
-                '_updated_at': 1,
-            };
-            queryModel.return.forEach(x => {
-                fieldsToReturn[x] = 1;
-            });
-            // query.project(fieldsToReturn);
-        }
-        let result;
-        // quwquery.();
-        if (queryModel?.count === true) {
-            result = await query.count();
-        } else {
-            result = await query.toArray();
-        }
-        await conn.close();
-        return result;
     }
 
-    async update<T extends BasicAttributesModel, V>(domain: string, updateModel: UpdateRuleRequestModel,
-        context: ContextBlock, options?: DatabaseUpdateOptions): Promise<V> {
+    async update<T extends BasicAttributesModel, V>(
+        domain: string,
+        updateModel: UpdateRuleRequestModel,
+        context: ContextBlock, options?: DatabaseUpdateOptions
+    ): Promise<V> {
         const conn = await this.connection();
         let updateOptions: FindOneAndUpdateOptions = {
             upsert: typeof updateModel.upsert === 'boolean' ? updateModel.upsert : false,
-            // @ts-ignore
-            returnOriginal: false,
-            // new: true,
             returnDocument: 'after',
             session: options && options.transaction ? options.transaction : undefined
         };
         updateOptions = Object.assign(updateOptions, options && options.dbOptions ? options.dbOptions : {});
-        // @ts-ignore
-        const response: ModifyResult<any> = await conn.db().collection(domain)
-        .findOneAndUpdate(
-            updateModel.filter,
-            updateModel.update,
-            updateOptions
-        );
+        const response: ModifyResult<any> = await conn.db()
+            .collection(domain)
+            .findOneAndUpdate(
+                updateModel.filter,
+                updateModel.update,
+                updateOptions
+            );
         await conn.close();
-        if(response.ok === 1){
+        if (response.ok === 1) {
             return response.value as any;
-        }else{
-            throw "Failt to updae";
+        } else {
+            throw "Fail to update";
         }
     }
 
-    async deleteOne<T extends BasicAttributesModel, V>(domain: string, deleteModel: DeleteModel<T>,
-        context: ContextBlock, options?: DatabaseBasicOptions): Promise<V> {
+    async updateMany<T extends BasicAttributesModel>(
+        domain: string,
+        updateModel: UpdateRuleRequestModel,
+        context: ContextBlock,
+        options?: DatabaseUpdateOptions
+    ): Promise<string> {
+        const conn = await this.connection();
+        let updateOptions: FindOneAndUpdateOptions = {
+            upsert: typeof updateModel.upsert === 'boolean' ? updateModel.upsert : false,
+            session: options && options.transaction ? options.transaction : undefined
+        };
+        updateOptions = Object.assign(updateOptions, options && options.dbOptions ? options.dbOptions : {});
+        const response = await conn.db()
+            .collection(domain)
+            .updateMany(
+                updateModel.filter,
+                updateModel.update,
+                updateOptions
+            );
+        await conn.close();
+        if ((response.matchedCount + response.modifiedCount + response.upsertedCount) !== 0) {
+            return 'done update';
+        } else {
+            throw 'Fail to update, no match or modification found';
+        }
+    }
+
+    async deleteOne<T extends BasicAttributesModel, V>(
+        domain: string,
+        deleteModel: DeleteModel<T>,
+        context: ContextBlock, options?: DatabaseBasicOptions
+    ): Promise<V> {
         const conn = await this.connection();
         const response = await conn.db()
             .collection(domain)
@@ -221,14 +407,6 @@ export class DatabaseFactory implements DatabaseAdapter {
             await session.withTransaction(async _ => {
                 return await operations(session);
             }, {
-                // readPreference: 'primary',
-                // readConcern: {
-                //     level: 'local'
-                // },
-                // readConcern: {
-                //     level: '',
-                //     toJSON: 
-                // },
                 writeConcern: {
                     w: 'majority'
                 }
@@ -253,9 +431,9 @@ export class DatabaseFactory implements DatabaseAdapter {
     async changes(
         domain: string, pipeline: any[],
         listener: (doc: ChangeStreamDocument) => void, resumeToken = undefined
-        ): Promise<ChangeStream> {
+    ): Promise<ChangeStream> {
         const conn = await this.connection();
-        const options: any = { fullDocument: 'updateLookup' };
+        const options: any = {fullDocument: 'updateLookup'};
         if (resumeToken && resumeToken.toString() !== 'undefined' && resumeToken.toString() !== 'null') {
             options.startAfter = resumeToken;
         }

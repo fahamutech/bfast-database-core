@@ -1,20 +1,20 @@
 const {getRulesController, mongoRepSet} = require('../mock.config');
 const {before, after} = require('mocha');
 const assert = require('assert');
+const {should, expect} = require("chai");
 
-describe('RulesController::Update Unit Test', function () {
+describe('RulesController', function () {
+    this.timeout(10000000000000000);
     let _rulesController;
     let mongoMemoryReplSet;
     before(async function () {
-        this.timeout(10000000000000000);
         mongoMemoryReplSet = mongoRepSet();
         _rulesController = await getRulesController(mongoMemoryReplSet);
     });
     after(async function () {
-        this.timeout(10000000000000000);
         await mongoMemoryReplSet.stop();
     });
-    describe('RulesController::Update::Anonymous', function () {
+    describe('update', function () {
         before(async function () {
             await _rulesController.handleCreateRules({
                 createProduct: [
@@ -57,14 +57,7 @@ describe('RulesController::Update Unit Test', function () {
                 }
             }, {errors: {}});
             assert(results.updateProduct !== null);
-            assert(Array.isArray(results.updateProduct));
-            assert(results.updateProduct.length === 3);
-            assert(results.updateProduct[0].name === 'apple');
-            assert(results.updateProduct[0].status === 'old');
-            assert(results.updateProduct[1].name === 'apple');
-            assert(results.updateProduct[1].status === 'old');
-            assert(results.updateProduct[2].name === 'apple');
-            assert(results.updateProduct[2].status === 'old');
+            expect(results.updateProduct).equal('ok');
         });
         it('should update many documents by filter', async function () {
             const results = await _rulesController.handleUpdateRules({
@@ -96,8 +89,8 @@ describe('RulesController::Update Unit Test', function () {
             assert(results.updateProduct !== undefined);
             assert(Array.isArray(results.updateProduct));
             assert(results.updateProduct.length === 2);
-            assert(Array.isArray(results.updateProduct[0]));
-            assert(Array.isArray(results.updateProduct[1]));
+            expect(results.updateProduct[0]).equal('ok');
+            expect(results.updateProduct[1]).equal('ok');
         });
         it('should update many documents by id', async function () {
             const results = await _rulesController.handleUpdateRules({
@@ -129,7 +122,7 @@ describe('RulesController::Update Unit Test', function () {
             assert(Array.isArray(results.updateProduct));
             assert(results.updateProduct.length === 2);
             assert(results.updateProduct[0].id === 'xyz');
-            assert(Array.isArray(results.updateProduct[1]));
+            expect(results.updateProduct[1]).equal('ok');
         });
         it('should not update many documents when empty filter exist', async function () {
             const results = await _rulesController.handleUpdateRules({
@@ -182,7 +175,7 @@ describe('RulesController::Update Unit Test', function () {
             assert(results.updateProduct['id'] === 'xyz');
             assert(typeof results.updateProduct === 'object');
         });
-        it('should create document if not exist and upsert is true', async function () {
+        it('should create document if not exist and upsert is true, with query by id', async function () {
             const results = await _rulesController.handleUpdateRules({
                 updateProduct: {
                     id: 'xyz123',
@@ -201,6 +194,35 @@ describe('RulesController::Update Unit Test', function () {
             assert(results.updateProduct.id === 'xyz123');
             assert(results.updateProduct.createdAt !== null);
             assert(results.updateProduct.createdAt !== undefined);
+        });
+        it('should create document if not exist and upsert is true, with query by filter', async function () {
+            const results = await _rulesController.handleUpdateRules({
+                updateProduct: {
+                    filter: {
+                      status: 'mixer'
+                    },
+                    update: {
+                        $set: {
+                            name: 'apple',
+                            _created_at: new Date()
+                        }
+                    },
+                    upsert: true,
+                    return: []
+                }
+            }, {errors: {}});
+            const r = await _rulesController.handleQueryRules({
+                queryProduct: {
+                    filter: {
+                        status: 'mixer'
+                    },
+                    return: []
+                }
+            }, {errors: {}});
+            assert(results.updateProduct !== null);
+            expect(results.updateProduct).equal('ok');
+            expect(r.queryProduct[0].status).equal('mixer');
+            expect(typeof r.queryProduct[0].id).equal('string');
         });
     });
 });

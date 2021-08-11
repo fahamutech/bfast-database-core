@@ -15,6 +15,7 @@ import { StorageWebservice } from './webservices/storage.webservice';
 import { AuthAdapter } from './adapters/auth.adapter';
 import { GridFsStorageFactory } from './factory/grid-fs-storage.factory';
 import { WebServices } from './webservices/index.webservice';
+import ipfs from 'ipfs';
 
 export class BfastDatabaseCore {
 
@@ -24,7 +25,10 @@ export class BfastDatabaseCore {
      * @param serverMode {boolean} - if true will check for port option is is set
      * @private
      */
-    private static validateOptions(options: BFastDatabaseOptions, serverMode = true): { valid: boolean, message: string } {
+    private static validateOptions(
+        options: BFastDatabaseOptions,
+        serverMode = true
+    ): { valid: boolean, message: string } {
         if (!options.rsaPublicKeyInJson) {
             return {
                 valid: false,
@@ -112,9 +116,11 @@ export class BfastDatabaseCore {
      * initiate bfast::database engine without a built in server
      * @param options {BFastDatabaseOptions} - configurations
      * @param serveMode {boolean}
+     * @return Promise<WebServices>
      */
-    init(options: BFastDatabaseOptions, serveMode = false): WebServices {
+    async init(options: BFastDatabaseOptions, serveMode = false): Promise<WebServices> {
         if (BfastDatabaseCore.validateOptions(options, serveMode).valid) {
+
             if (options && options.rsaKeyPairInJson && typeof options.rsaKeyPairInJson === "object") {
                 options.rsaKeyPairInJson.alg = 'RS256';
                 options.rsaKeyPairInJson.use = 'sig';

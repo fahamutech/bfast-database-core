@@ -5,6 +5,7 @@ const { MongoMemoryServer } = require('mongodb-memory-server');
 const { MongoMemoryReplSet } = require('mongodb-memory-server');
 const { RulesController } = require('../dist/controllers/rules.controller');
 const { UpdateRuleController } = require('../dist/controllers/update.rule.controller');
+const {EnvUtil} = require('../dist/index')
 const mongodb = require('mongodb');
 
 /**
@@ -25,13 +26,13 @@ const mongoMemoryReplSet = () => {
             start: async function () {
                 const conn = await mongodb.MongoClient.connect(this.getUri());
                 // const db = await conn.db();
-                await conn.db().dropDatabase(); 
-                console.log('***START MONGODB*****');
+                await conn.db().dropDatabase();
+                // console.log('***START MONGODB*****');
             },
             waitUntilRunning: async function () {
             },
             stop: async function(){
-                console.log('***STOP MONGODB*****');
+                // console.log('***STOP MONGODB*****');
             }
         }
     } else {
@@ -63,10 +64,12 @@ exports.config = {
     applicationId: 'daas',
     port: 3111,
     logs: false,
+    web3Token: new EnvUtil().getEnv(process.env['WEB_3_TOKEN']),
     adapters: {},
     mountPath: '/',
     masterKey: 'daas',
     mongoDbUri: 'mongodb://localhost/test',
+    ipfsNode: true,
     rsaKeyPairInJson: {
         "p": "_09LOKJdsMbbJBD-NckTpyer4Hh2D5tz7RJwDsbHAt2zjmQWeAfIA2DVZY-ftwWMA3C77yf0huM5xVfU6DsJL72WtdCCCPggyfKkMuMYfch-MFV6imt6-Fwm9gAH_-BuuToabwjBHGehV_I-Jy0D_wWdIc5hTIGZtDj5rg0cQ8k",
         "kty": "RSA",

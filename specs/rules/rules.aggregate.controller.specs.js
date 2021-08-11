@@ -4,10 +4,10 @@ const assert = require('assert');
 const { createHash } = require('crypto');
 
 describe('RulesController::Aggregation Unit Test', function () {
+    this.timeout(10000000000000000);
     let _rulesController;
     let mongoMemoryReplSet
     before(async function () {
-        this.timeout(10000000000000000);
         mongoMemoryReplSet = mongoRepSet();
         _rulesController = await getRulesController(mongoMemoryReplSet);
         await _rulesController.handleCreateRules({
@@ -21,7 +21,6 @@ describe('RulesController::Aggregation Unit Test', function () {
         }, {errors: {}});
     });
     after(async function () {
-        this.timeout(10000000000000000);
         await mongoMemoryReplSet.stop();
     });
 

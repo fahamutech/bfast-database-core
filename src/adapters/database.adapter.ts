@@ -19,7 +19,12 @@ export abstract class DatabaseAdapter {
      * @param options - {DatabaseWriteOptions} bfast::database write operation
      * @return Promise resolve with an id of the record created in bfast::database
      */
-    abstract writeOne<T extends BasicAttributesModel>(domain: string, data: T, context: ContextBlock, options?: DatabaseWriteOptions): Promise<any>;
+    abstract writeOne<T extends BasicAttributesModel>(
+        domain: string,
+        data: T,
+        context: ContextBlock,
+        options?: DatabaseWriteOptions
+    ): Promise<any>;
 
     /**
      * return promise which resolve to object of ids of a created documents
@@ -28,14 +33,33 @@ export abstract class DatabaseAdapter {
      * @param context - {ContextBlock}
      * @param options - {Data}
      */
-    abstract writeMany<T extends BasicAttributesModel, V>(domain: string, data: T[], context: ContextBlock, options?: DatabaseWriteOptions)
-        : Promise<V>;
+    abstract writeMany<T extends BasicAttributesModel, V>(
+        domain: string,
+        data: T[],
+        context: ContextBlock,
+        options?: DatabaseWriteOptions
+    ): Promise<V>;
 
-    abstract update<T extends BasicAttributesModel, V>(domain: string, updateModel: UpdateRuleRequestModel, context: ContextBlock,
-                                                       options?: DatabaseUpdateOptions): Promise<V>;
+    abstract update<T extends BasicAttributesModel, V>(
+        domain: string,
+        updateModel: UpdateRuleRequestModel,
+        context: ContextBlock,
+        options?: DatabaseUpdateOptions
+    ): Promise<V>;
 
-    abstract deleteOne<T extends BasicAttributesModel, V>(domain: string, deleteModel: DeleteModel<T>, context: ContextBlock,
-                                                          options?: DatabaseBasicOptions): Promise<V>;
+    abstract updateMany<T extends BasicAttributesModel>(
+        domain: string,
+        updateModel: UpdateRuleRequestModel,
+        context: ContextBlock,
+        options?: DatabaseUpdateOptions
+    ): Promise<string>;
+
+    abstract deleteOne<T extends BasicAttributesModel, V>(
+        domain: string,
+        deleteModel: DeleteModel<T>,
+        context: ContextBlock,
+        options?: DatabaseBasicOptions
+    ): Promise<V>;
 
     /**
      * find a single record from a bfast::database
@@ -44,8 +68,12 @@ export abstract class DatabaseAdapter {
      * @param context - {ContextBlock} current operation context
      * @param options - {DatabaseWriteOptions} bfast::database write operation
      */
-    abstract findOne<T extends BasicAttributesModel>(domain: string, queryModel: QueryModel<T>, context: ContextBlock,
-                                                     options?: DatabaseWriteOptions): Promise<any>;
+    abstract findOne<T extends BasicAttributesModel>(
+        domain: string,
+        queryModel: QueryModel<T>,
+        context: ContextBlock,
+        options?: DatabaseWriteOptions
+    ): Promise<any>;
 
     /**
      * Query a database to find a result depend on the queryModel supplied
@@ -54,8 +82,12 @@ export abstract class DatabaseAdapter {
      * @param context - {ContextBlock} current operation context
      * @param options - {DatabaseWriteOptions} bfast::database write options
      */
-    abstract query<T extends BasicAttributesModel>(domain: string, queryModel: QueryModel<T>, context: ContextBlock,
-                                                   options?: DatabaseWriteOptions): Promise<any>;
+    abstract query<T extends BasicAttributesModel>(
+        domain: string,
+        queryModel: QueryModel<T>,
+        context: ContextBlock,
+        options?: DatabaseWriteOptions
+    ): Promise<any>;
 
     abstract changes(domain: string, pipeline: object[], listener: (doc: any) => void, resumeToken: string): Promise<any>;
 

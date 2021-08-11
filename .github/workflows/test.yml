@@ -1,7 +1,7 @@
-name: Publish to npm
+name: Run test on pull
 
 on:
-  push:
+  pull_request:
     branches:
       - master
 
@@ -25,7 +25,6 @@ jobs:
           npm install -g yarn
           yarn install
           yarn run test
-          yarn publish --non-interactive
         env:
           CI: true
           NPM_TOKEN: ${{secrets.NPM_TOKEN}}

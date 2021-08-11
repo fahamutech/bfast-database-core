@@ -1,40 +1,38 @@
-const { getRulesController, mongoRepSet, daas } = require('../mock.config');
-const { before, after } = require('mocha');
-const assert = require('assert');
-const { createHash } = require('crypto');
+const {getRulesController, mongoRepSet, daas} = require('../mock.config');
+const {createHash} = require('crypto');
+const {expect, should, assert} = require('chai');
 
-describe('RulesController::Query Unit Test', function () {
+describe('RulesController', function () {
+    this.timeout(10000000000000000);
     let _rulesController;
     let mongoMemoryReplSet;
     before(async function () {
-        this.timeout(10000000000000000);
         mongoMemoryReplSet = mongoRepSet();
         _rulesController = await getRulesController(mongoMemoryReplSet);
     });
     after(async function () {
-        this.timeout(10000000000000000);
         await mongoMemoryReplSet.stop();
     });
-    describe('RulesController::Query::Anonymous', function () {
+    describe('Query::Anonymous', function () {
         before(async function () {
             await _rulesController.handleCreateRules({
                 createProduct: [
-                    { name: 'xyz', price: 50, status: 'new', id: 'xyz' },
-                    { id: 'wer_id', name: 'wer', price: 100, status: 'new', createdAt: 'test', updatedAt: 'test' },
-                    { id: 'poi_id', name: 'poi', price: 30, status: 'new', createdAt: 'test', updatedAt: 'test' },
+                    {name: 'xyz', price: 50, status: 'new', id: 'xyzid', createdAt: 'test', updatedAt: 'test'},
+                    {id: 'wer_id', name: 'wer', price: 100, status: 'new', createdAt: 'test', updatedAt: 'test'},
+                    {id: 'poi_id', name: 'poi', price: 50, status: 'new', createdAt: 'test', updatedAt: 'test'},
                 ]
-            }, { errors: {} });
+            }, {errors: {}});
         });
         it('should return query result based on id', async function () {
             const results = await _rulesController.handleQueryRules({
                 queryProduct: {
-                    id: 'xyz',
+                    id: 'xyzid',
                     return: []
                 }
-            }, { errors: {} });
+            }, {errors: {}});
             assert(results.queryProduct !== undefined);
             assert(results.queryProduct.name === 'xyz');
-            assert(results.queryProduct.id === 'xyz');
+            assert(results.queryProduct.id === 'xyzid');
             assert(results.queryProduct.price === 50);
             assert(results.queryProduct.status === 'new');
         });
@@ -44,8 +42,7 @@ describe('RulesController::Query Unit Test', function () {
                     id: 'xyz1234hint',
                     return: []
                 }
-            }, { errors: {} });
-            // console.log(results);
+            }, {errors: {}});
             assert(results.queryProduct === null);
         });
         it('should return query result based on filter', async function () {
@@ -56,13 +53,14 @@ describe('RulesController::Query Unit Test', function () {
                     },
                     return: []
                 }
-            }, { errors: {} });
-            assert(results.queryProduct !== undefined);
-            assert(Array.isArray(results.queryProduct));
-            assert(results.queryProduct[0].name === 'xyz');
-            assert(results.queryProduct[0].id === 'xyz');
-            assert(results.queryProduct[0].price === 50);
-            assert(results.queryProduct[0].status === 'new');
+            }, {errors: {}});
+            should().exist(results.queryProduct);
+            expect(Array.isArray(results.queryProduct)).equal(true);
+            should().exist(results.queryProduct[0]);
+            expect(results.queryProduct[0].name).equal('xyz');
+            expect(results.queryProduct[0].id).equal('xyzid');
+            expect(results.queryProduct[0].price).equal(50);
+            expect(results.queryProduct[0].status).equal('new');
         });
         it('should perform basic query based on empty filter', async function () {
             const results = await _rulesController.handleQueryRules({
@@ -70,26 +68,27 @@ describe('RulesController::Query Unit Test', function () {
                     filter: {},
                     return: ['name', 'price']
                 }
-            }, { errors: {} });
-            assert(results.queryProduct !== undefined);
-            assert(Array.isArray(results.queryProduct));
-            assert(results.queryProduct.length === 3);
+            }, {errors: {}});
+            should().exist(results.queryProduct);
+            expect(Array.isArray(results.queryProduct)).equal(true);
+            expect(results.queryProduct.length).equal(3);
+            expect(results.queryProduct).eql([
+                {name: 'xyz', price: 50, id: 'xyzid', createdAt: 'test', updatedAt: 'test'},
+                {id: 'wer_id', name: 'wer', price: 100, createdAt: 'test', updatedAt: 'test'},
+                {id: 'poi_id', name: 'poi', price: 50, createdAt: 'test', updatedAt: 'test'},
+            ])
         });
         it('should perform basic query based on empty filter with orderBy', async function () {
             const results = await _rulesController.handleQueryRules({
                 queryProduct: {
                     filter: {},
-                    orderBy: [{ 'name': 1 }],
+                    orderBy: [{'name': 1}],
                     return: ["name"]
                 }
-            }, { errors: {} });
-            console.log(results);
-            assert(results.queryProduct !== undefined);
-            assert(Array.isArray(results.queryProduct));
-            assert(results.queryProduct.length === 3);
-            assert(results.queryProduct[0].name === 'poi');
-            assert(results.queryProduct[1].name === 'wer');
-            assert(results.queryProduct[2].name === 'xyz');
+            }, {errors: {}});
+            should().exist(results.queryProduct);
+            expect(Array.isArray(results.queryProduct)).equal(true);
+            expect(results.queryProduct.length).equal(3);
         });
         it('should count object based on filter', async function () {
             const results = await _rulesController.handleQueryRules({
@@ -99,7 +98,7 @@ describe('RulesController::Query Unit Test', function () {
                     },
                     count: true,
                 }
-            }, { errors: {} });
+            }, {errors: {}});
             assert(results.queryProduct !== undefined);
             assert(typeof results.queryProduct === "number");
             assert(results.queryProduct === 1);
@@ -108,7 +107,7 @@ describe('RulesController::Query Unit Test', function () {
             const hash = createHash('sha256')
                 .update(JSON.stringify({
                     name: 'poi',
-                    price: 30,
+                    price: 50,
                     id: 'poi_id',
                     createdAt: 'test',
                     updatedAt: 'test'
@@ -117,7 +116,7 @@ describe('RulesController::Query Unit Test', function () {
             const localData = {
                 [hash]: {
                     name: 'poi',
-                    price: 30,
+                    price: 50,
                     id: 'poi_id',
                     createdAt: 'test',
                     updatedAt: 'test'
@@ -129,24 +128,16 @@ describe('RulesController::Query Unit Test', function () {
                     hashes: Object.keys(localData),
                     return: ['name', 'price']
                 }
-            }, { errors: {} });
-            // console.log(results);
-            // console.log(results.queryProduct.map(x => {
-            //     if (localData[x]) {
-            //         return localData[x];
-            //     } else {
-            //         return x;
-            //     }
-            // }));
-            assert(results.queryProduct !== undefined);
-            assert(Array.isArray(results.queryProduct));
-            assert(results.queryProduct.length === 3);
-            assert(results.queryProduct[2] === hash);
+            }, {errors: {}});
+            should().exist(results.queryProduct);
+            expect(Array.isArray(results.queryProduct)).equal(true);
+            expect(results.queryProduct.length).equal(3);
+            expect(results.queryProduct[2]).equal(hash);
         });
         it('should perform query based on id f with local hashes supplied', async function () {
             const data = {
                 name: 'poi',
-                price: 30,
+                price: 50,
                 id: 'poi_id',
                 createdAt: 'test',
                 updatedAt: 'test'
@@ -164,14 +155,113 @@ describe('RulesController::Query Unit Test', function () {
                     hashes: Object.keys(localData),
                     return: ['name', 'price']
                 }
-            }, { errors: {} });
-            // console.log(results);
-            //     if (localData[results.queryProduct]) {
-            //         console.log(localData[results.queryProduct]);
-            //     }
-            assert(results.queryProduct !== undefined);
-            assert(typeof results.queryProduct === 'string');
-            assert(results.queryProduct === hash);
+            }, {errors: {}});
+            should().exist(results.queryProduct);
+            expect(typeof results.queryProduct).equal('string');
+            expect(results.queryProduct).equal(hash);
+        });
+        it('should perform query when filter is in or format/array', async function () {
+            const results = await _rulesController.handleQueryRules({
+                queryProduct: {
+                    filter: [
+                        {name: 'xyz'},
+                        {name: 'poi'}
+                    ],
+                    return: []
+                }
+            }, {errors: {}});
+            should().exist(results.queryProduct);
+            expect(Array.isArray(results.queryProduct)).equal(true);
+            expect(results.queryProduct.length).equal(2);
+            expect(results.queryProduct).eql([
+                {name: 'xyz', price: 50, status: 'new', id: 'xyzid', createdAt: 'test', updatedAt: 'test'},
+                {id: 'poi_id', name: 'poi', price: 50, status: 'new', createdAt: 'test', updatedAt: 'test'},
+            ]);
+        });
+        it('should perform query when filter is in or format/array and one query is false', async function () {
+            const results = await _rulesController.handleQueryRules({
+                queryProduct: {
+                    filter: [
+                        {name: 'xyz'},
+                        {name: 'joshua'}
+                    ],
+                    return: []
+                }
+            }, {errors: {}});
+            should().exist(results.queryProduct);
+            expect(Array.isArray(results.queryProduct)).equal(true);
+            expect(results.queryProduct.length).equal(1);
+            expect(results.queryProduct).eql([
+                {name: 'xyz', price: 50, status: 'new', id: 'xyzid', createdAt: 'test', updatedAt: 'test'},
+            ]);
+        });
+        it('should perform count query when filter is in or format/array', async function () {
+            const results = await _rulesController.handleQueryRules({
+                queryProduct: {
+                    filter: [
+                        {name: 'xyz'},
+                        {name: 'poi'}
+                    ],
+                    count: true,
+                    return: []
+                }
+            }, {errors: {}});
+            should().exist(results.queryProduct);
+            expect(results.queryProduct).equal(2);
+        });
+        it('should return empty when and operation not met', async function () {
+            const results = await _rulesController.handleQueryRules({
+                queryProduct: {
+                    filter: {name: 'xyz', tag: 'joshua'},
+                    return: []
+                }
+            }, {errors: {}});
+            should().exist(results.queryProduct);
+            expect(Array.isArray(results.queryProduct)).equal(true);
+            expect(results.queryProduct.length).equal(0);
+        });
+        it('should return docs when full doc supplied in query', async function () {
+            const results = await _rulesController.handleQueryRules({
+                queryProduct: {
+                    filter: {
+                        name: 'xyz',
+                        price: 50,
+                        status: 'new',
+                        id: 'xyzid',
+                        createdAt: 'test',
+                        updatedAt: 'test'
+                    },
+                    return: []
+                }
+            }, {errors: {}});
+            should().exist(results.queryProduct);
+            expect(Array.isArray(results.queryProduct)).equal(true);
+            expect(results.queryProduct.length).equal(1);
+            expect(results.queryProduct).eql([
+                {name: 'xyz', price: 50, status: 'new', id: 'xyzid', createdAt: 'test', updatedAt: 'test'}
+            ]);
+        });
+        it('should perform query with expression', async function () {
+            const results = await _rulesController.handleQueryRules({
+                queryProduct: {
+                    filter: {
+                        price: function (p) {
+                            return (p === 50 || p === 100);
+                        },
+                        // name: 'xyz'
+                    },
+                    return: []
+                }
+            }, {errors: {}});
+            // console.log(results.queryProduct);
+            // expect(results.queryProduct).to.have.members([
+            //     {id: 'wer_id', name: 'wer', price: 100, status: 'new', createdAt: 'test', updatedAt: 'test'},
+            //     {name: 'xyz', price: 50, status: 'new', id: 'xyzid', createdAt: 'test', updatedAt: 'test'},
+            //     {id: 'poi_id', name: 'poi', price: 50, status: 'new', createdAt: 'test', updatedAt: 'test'},
+            // ]);
+            should().exist(results.queryProduct);
+            expect(Array.isArray(results.queryProduct)).equal(true);
+            expect(results.queryProduct.length).equal(3);
         });
     });
 });

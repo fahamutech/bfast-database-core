@@ -1,6 +1,6 @@
 {
   "name": "bfast-database-core",
-  "version": "0.1.1-alpha.17",
+  "version": "1.0.0-alpha.0",
   "main": "dist/index.js",
   "license": "MIT",
   "author": {
@@ -27,19 +27,21 @@
   "dependencies": {
     "base64url": "~3.0.1",
     "bcryptjs": "~2.4.3",
+    "bfast-database-tree": "^1.0.0-aplha.1",
     "bfast-function": "~1.13.0",
-    "bfastnode": "~4.5.1-alpha.3",
+    "bfastnode": "~4.5.2",
     "formidable": "~1.2.2",
-    "glob-parent": "~6.0.0",
     "http-status-codes": "~2.1.4",
+    "ipfs": "^0.56.1",
     "jsonwebtoken": "~8.5.1",
     "mime": "~2.5.2",
     "minio": "~7.0.18",
-    "mongodb": "~4.0.0",
+    "mongodb": "~4.0.1",
     "njwt": "~1.1.0",
     "node-jwk": "~0.1.0",
     "sharp": "~0.28.3",
-    "uuid": "~8.3.2"
+    "uuid": "~8.3.2",
+    "web3.storage": "^3.1.0"
   },
   "devDependencies": {
     "@types/minio": "~7.0.8",
@@ -47,11 +49,13 @@
     "@types/node": "~14.14.10",
     "@types/sharp": "~0.28.4",
     "axios": "~0.21.1",
+    "chai": "^4.3.4",
     "del": "~6.0.0",
     "glob": "~7.1.7",
+    "glob-parent": "~6.0.1",
     "gulp": "~4.0.2",
-    "mocha": "~9.0.2",
-    "mongodb-memory-server": "~7.2.1",
+    "mocha": "~9.0.3",
+    "mongodb-memory-server": "~7.3.4",
     "typescript": "~4.3.5"
   }
 }

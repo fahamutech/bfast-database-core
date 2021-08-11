@@ -2,20 +2,19 @@ const {getRulesController, mongoRepSet} = require('../mock.config');
 const {before, after} = require('mocha');
 const assert = require('assert');
 
-describe('RulesController::Policy Unit Test', function () {
+describe('RulesController', function () {
+    this.timeout(10000000000000000);
     let _rulesController;
     let mongoMemoryReplSet
     before(async function () {
-        this.timeout(10000000000000000);
         mongoMemoryReplSet = mongoRepSet();
         _rulesController = await getRulesController(mongoMemoryReplSet);
     });
     after(async function () {
-        this.timeout(10000000000000000);
         await mongoMemoryReplSet.stop();
     });
 
-    describe('RulesController::Policy::Create', function () {
+    describe('create', function () {
         it('should return added policy when masterKey is valid', async function () {
             const results = await _rulesController.handleAuthorizationRule({
                 context: {
@@ -51,7 +50,7 @@ describe('RulesController::Policy Unit Test', function () {
             assert(results.errors['policy']['message'] === 'policy rule require masterKey');
         });
     });
-    describe('RulesController::Policy::Query', function () {
+    describe('query', function () {
         before(async function () {
             await _rulesController.handleAuthorizationRule({
                 context: {
@@ -92,7 +91,7 @@ describe('RulesController::Policy Unit Test', function () {
             assert(results.policy['list'][0]['ruleId'] === 'query.*');
         });
     });
-    describe('RulesController::Policy::Remove', function () {
+    describe('remove', function () {
         before(async function () {
             await _rulesController.handleAuthorizationRule({
                 context: {
@@ -143,7 +142,6 @@ describe('RulesController::Policy Unit Test', function () {
                     }
                 }
             }, {errors: {}});
-            console.log(results);
             assert(results.policy !== undefined);
             assert(results.policy.remove === null);
         });

@@ -3,10 +3,10 @@ const {before, after} = require('mocha');
 const assert = require('assert');
 
 describe('RulesController::Indexes Unit Test', function () {
+    this.timeout(10000000000000000);
     let _rulesController;
     let mongoMemoryReplSet;
     before(async function () {
-        this.timeout(10000000000000000);
         mongoMemoryReplSet = mongoRepSet();
         _rulesController = await getRulesController(mongoMemoryReplSet);
         await _rulesController.handleCreateRules({
@@ -17,7 +17,6 @@ describe('RulesController::Indexes Unit Test', function () {
         }, {errors: {}});
     });
     after(async function () {
-        this.timeout(10000000000000000);
         await mongoMemoryReplSet.stop();
     });
 
