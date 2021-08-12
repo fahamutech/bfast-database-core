@@ -54,12 +54,12 @@ export abstract class DatabaseAdapter {
         options?: DatabaseUpdateOptions
     ): Promise<string>;
 
-    abstract deleteOne<T extends BasicAttributesModel, V>(
+    abstract delete<T extends BasicAttributesModel>(
         domain: string,
         deleteModel: DeleteModel<T>,
         context: ContextBlock,
         options?: DatabaseBasicOptions
-    ): Promise<V>;
+    ): Promise<{ _id: string }[]>;
 
     /**
      * find a single record from a bfast::database

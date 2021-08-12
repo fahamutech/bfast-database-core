@@ -1,8 +1,8 @@
 const {getRulesController, mongoRepSet} = require('../mock.config');
 const {before, after} = require('mocha');
-const assert = require('assert');
+const {assert, expect, should} = require('chai');
 
-describe('RulesController', function () {
+describe('policy', function () {
     this.timeout(10000000000000000);
     let _rulesController;
     let mongoMemoryReplSet
@@ -14,7 +14,7 @@ describe('RulesController', function () {
         await mongoMemoryReplSet.stop();
     });
 
-    describe('create', function () {
+    describe('add', function () {
         it('should return added policy when masterKey is valid', async function () {
             const results = await _rulesController.handleAuthorizationRule({
                 context: {
@@ -26,13 +26,22 @@ describe('RulesController', function () {
                     }
                 }
             }, {errors: {}});
-            assert(results.policy !== undefined);
-            assert(results.policy['add']['query.*'] !== undefined);
-            assert(typeof results.policy['add']['query.*'] === 'object');
-            assert(typeof results.policy['add']['query.*']['ruleId'] === 'string');
-            assert(typeof results.policy['add']['query.*']['id'] === 'string');
-            assert(results.policy['add']['query.*']['ruleId'] === 'query.*');
-            assert(results.policy['add']['query.*']['ruleBody'] === 'return false;');
+            should().exist(results.policy);
+            expect(results.policy?.add?.['query.*']).haveOwnProperty('createdBy');
+            expect(results.policy?.add?.['query.*']).haveOwnProperty('createdAt');
+            expect(results.policy?.add?.['query.*']).haveOwnProperty('updatedAt');
+            delete results.policy?.add?.['query.*']?.createdBy;
+            delete results.policy?.add?.['query.*']?.createdAt;
+            delete results.policy?.add?.['query.*']?.updatedAt;
+            expect(results.policy).eql({
+                add: {
+                    'query.*': {
+                        id: 'query.*',
+                        ruleId: 'query.*',
+                        ruleBody: 'return false;'
+                    }
+                }
+            });
         });
         it('should return error message when masterKey is invalid', async function () {
             const results = await _rulesController.handleAuthorizationRule({
@@ -45,12 +54,12 @@ describe('RulesController', function () {
                     }
                 }
             }, {errors: {}});
-            assert(results.errors['policy'] !== undefined);
-            assert(results['policy'] === undefined);
-            assert(results.errors['policy']['message'] === 'policy rule require masterKey');
+            should().exist(results.errors['policy']);
+            should().not.exist(results['policy']);
+            expect(results.errors['policy']['message']).equal('policy rule require masterKey');
         });
     });
-    describe('query', function () {
+    describe('list', function () {
         before(async function () {
             await _rulesController.handleAuthorizationRule({
                 context: {
@@ -127,9 +136,9 @@ describe('RulesController', function () {
                     }
                 }
             }, {errors: {}});
-            assert(results.policy !== undefined);
-            assert(results.policy.remove !== undefined);
-            assert(typeof results.policy['remove']['id'] === 'string');
+            should().exist(results.policy);
+            should().exist(results.policy.remove);
+            expect(results.policy.remove[0].id).equal('read.category');
         });
         it('should return empty map when remove non exist rule', async function () {
             const results = await _rulesController.handleAuthorizationRule({
@@ -142,8 +151,8 @@ describe('RulesController', function () {
                     }
                 }
             }, {errors: {}});
-            assert(results.policy !== undefined);
-            assert(results.policy.remove === null);
+            should().exist(results.policy);
+            expect(results.policy.remove).eql([]);
         });
     });
 

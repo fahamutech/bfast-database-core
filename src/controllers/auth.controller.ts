@@ -32,41 +32,52 @@ export class AuthController {
         }
     }
 
-    async addPolicyRule(ruleId: string, rule: string, context: ContextBlock): Promise<any> {
-        // const rules = await databaseController.query(this.policyDomainName, {
-        //     filter: {
-        //         ruleId
-        //     }
-        // }, context, {
-        //     bypassDomainVerification: context && context.useMasterKey === true
-        // });
-        // if (rules && rules.length > 0) {
-        return databaseController.update(this.policyDomainName, {
-            id: ruleId,
-            filter: {
-                id: ruleId
-            },
-            upsert: true,
-            return: [],
-            update: {
-                $set: {
-                    ruleId: ruleId,
-                    ruleBody: rule,
-                }
-            }
-        }, context, {
-            bypassDomainVerification: context && context.useMasterKey === true
+    private static sanitizePolicy(_p1) {
+        if (_p1.id) {
+            _p1.id = _p1.id.replace('%id', '').replace(new RegExp('[%]', 'ig'), '.');
         }
+        if (_p1.ruleId) {
+            _p1.ruleId = _p1.ruleId.replace(new RegExp('[%]', 'ig'), '.');
+        }
+        if (_p1.ruleBody) {
+            _p1.ruleBody = _p1.ruleBody.replace(new RegExp('[%]', 'ig'), '.');
+        }
+        return _p1;
+    }
+
+    async addPolicyRule(ruleId: string, rule: string, context: ContextBlock): Promise<any> {
+        const _p1 = await databaseController.writeOne(this.policyDomainName, {
+                id: ruleId.replace('.', '%').concat('%id'),
+                ruleId: ruleId.replace('.', '%'),
+                ruleBody: rule.replace('.', '%'),
+                return: []
+            }, context, {
+                bypassDomainVerification: context && context.useMasterKey === true
+            }
         );
-        // } else {
-        //     return databaseController.writeOne(this.policyDomainName, {
-        //         ruleId,
-        //         ruleBody: rule,
-        //         return: [],
-        //     }, context, {
-        //         bypassDomainVerification: context && context.useMasterKey === true
-        //     });
-        // }
+        return AuthController.sanitizePolicy(_p1);
+    }
+
+    async listPolicyRule(context: ContextBlock) {
+        const _j1 = await databaseController.query('_Policy', {
+            filter: {},
+            return: []
+        }, context, {
+            bypassDomainVerification: true
+        });
+        return _j1.map(x => AuthController.sanitizePolicy(x));
+    }
+
+    async removePolicyRule(ruleId: string, context: ContextBlock) {
+        const _y89 = await databaseController.delete('_Policy', {
+            filter: {
+                ruleId: ruleId.replace('.', '%'),
+            },
+            return: ['id'],
+        }, context, {
+            bypassDomainVerification: true
+        });
+        return _y89.map(z => AuthController.sanitizePolicy(z));
     }
 
     /**
@@ -87,15 +98,16 @@ export class AuthController {
         if (ruleIdInArray.length >= 2) {
             ruleIdInArray[1] = '*';
             globalRule = ruleIdInArray.join('.');
-            filter.push({ruleId: globalRule});
+            filter.push({ruleId: globalRule.replace('.', '%')});
         }
-        filter.push({ruleId: originalRule});
-        const query: any[] = await databaseController.query(this.policyDomainName, {
+        filter.push({ruleId: originalRule.replace('.', '%')});
+        let query: any[] = await databaseController.query(this.policyDomainName, {
             return: [],
             filter,
         }, context, {
             bypassDomainVerification: true
         });
+        query = query.map(x => AuthController.sanitizePolicy(x));
         if (query.length === 0) {
             return true;
         }

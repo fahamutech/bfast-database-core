@@ -1,6 +1,6 @@
 const {getRulesController, mongoRepSet} = require('../mock.config');
-const {before, after} = require('mocha');
-const assert = require('assert');
+const {should, expect, assert} = require("chai");
+const exp = require("constants");
 
 describe('RulesController', function () {
     this.timeout(10000000000000000);
@@ -14,7 +14,7 @@ describe('RulesController', function () {
         await mongoMemoryReplSet.stop();
     });
 
-    describe('RulesControllerAnonymous', function () {
+    describe('Create::Anonymous', function () {
         it('should save single document', async function () {
             const results = await _rulesController.handleCreateRules({
                 createTest: {
@@ -23,11 +23,11 @@ describe('RulesController', function () {
                     return: []
                 }
             }, {errors: {}});
-            assert(results.createTest !== undefined);
-            assert(typeof results.createTest === 'object');
-            assert(typeof results.createTest['id'] === 'string');
-            assert(results.createTest['name'] === 'doe');
-            assert(results.createTest['age'] === 20);
+            should().exist(results.createTest);
+            expect(typeof results.createTest).equal('object');
+            expect(typeof results.createTest['id']).equal('string');
+            expect(results.createTest['name']).equals('doe');
+            expect(results.createTest['age']).equal(20);
         });
         it('should save single document with custom id', async function () {
             const results = await _rulesController.handleCreateRules({
@@ -38,12 +38,12 @@ describe('RulesController', function () {
                     return: []
                 }
             }, {errors: {}});
-            assert(results.createTest !== undefined);
-            assert(typeof results.createTest === 'object');
-            assert(typeof results.createTest['id'] === 'string');
-            assert(results.createTest['id'] === 'doedoedoe');
-            assert(results.createTest['name'] === 'doe');
-            assert(results.createTest['age'] === 20);
+            should().exist(results.createTest);
+            expect(typeof results.createTest).equal('object');
+            expect(typeof results.createTest['id']).equal('string');
+            expect(results.createTest['id']).equal('doedoedoe');
+            expect(results.createTest['name']).equal('doe');
+            expect(results.createTest['age']).equal(20);
         });
         it('should save many document', async function () {
             const results = await _rulesController.handleCreateRules({
@@ -59,13 +59,13 @@ describe('RulesController', function () {
                     },
                 ]
             }, {errors: {}});
-            assert(results.createTest !== undefined);
-            assert(Array.isArray(results.createTest));
-            assert(results.createTest.length === 2);
-            assert(typeof results.createTest[0]['id'] === 'string');
-            assert(results.createTest[0]['name'] === 'doe2');
-            assert(results.createTest[0]['age'] === 20);
-            assert(typeof results.createTest[1]['id'] === "string");
+            should().exist(results.createTest);
+            expect(Array.isArray(results.createTest)).equal(true);
+            expect(results.createTest.length).equal(2);
+            expect(typeof results.createTest[0]['id']).equal('string');
+            expect(results.createTest[0]['name']).equal('doe2');
+            expect(results.createTest[0]['age']).equal(20);
+            expect(typeof results.createTest[1]['id']).equal("string");
         });
         it('should save document and return only specified fields', async function () {
             const results = await _rulesController.handleCreateRules({
@@ -77,13 +77,13 @@ describe('RulesController', function () {
                     return: ['name', 'home']
                 }
             }, {errors: {}});
-            assert(results.createTest !== undefined);
-            assert(typeof results.createTest['id'] === 'string');
-            assert(results.createTest['name'] === 'john');
-            assert(typeof results.createTest['age'] === "undefined");
-            assert(results.createTest['home'] === "mars");
+            should().exist(results.createTest);
+            expect(typeof results.createTest['id']).equal('string');
+            expect(results.createTest['name']).equal('john');
+            expect(typeof results.createTest['age']).equal("undefined");
+            expect(results.createTest['home']).equal("mars");
         });
-        it('should return duplicate error if save multiple documents with same id', async function () {
+        it('should return same document if saved multiple times', async function () {
             await _rulesController.handleCreateRules({
                 createTest: {
                     id: 'doe',
@@ -100,16 +100,25 @@ describe('RulesController', function () {
                     age: 20,
                     home: 'mars',
                     car: 'monster',
+                    return: []
                 }
             }, {errors: {}});
-            assert(results.createTest === undefined);
-            assert(results.errors !== undefined);
-            assert(typeof results.errors['create.Test'] === 'object');
-            assert(results.errors['create.Test'].message.startsWith('E11000'));
+            const _results = await _rulesController.handleQueryRules({
+                queryTest: {
+                    filter: {
+                        _id: 'doe'
+                    },
+                    count: true
+                }
+            }, {errors: {}});
+            should().exist(results.createTest);
+            expect(results.createTest.id).equal('doe');
+            expect(results.createTest.name).equal('doe');
+            expect(_results.queryTest).equal(1);
         });
     });
 
-    describe('RulesController::Create::Secured', function () {
+    describe('Create::Secured', function () {
         before(async function () {
             await _rulesController.handleAuthorizationRule({
                 context: {
@@ -154,10 +163,10 @@ describe('RulesController', function () {
                     return: []
                 }
             }, {errors: {}});
-            assert(results.errors !== undefined);
-            assert(results.errors['create.Product'] !== undefined);
-            assert(results.errors['create.Product']['message'] === 'You have insufficient permission to this resource');
-            assert(typeof results.errors['create.Product']['data'] === "object");
+            should().exist(results.errors);
+            should().exist(results.errors['create.Product']);
+            expect(results.errors['create.Product']['message']).equal('You have insufficient permission to this resource');
+            expect(typeof results.errors['create.Product']['data']).equal("object");
         });
         it('should return saved data when have access to domain domain', async function () {
             const results = await _rulesController.handleCreateRules({
@@ -170,11 +179,11 @@ describe('RulesController', function () {
                     return: []
                 }
             }, {errors: {}});
-            assert(results.createName !== undefined);
-            assert(typeof results.createName === 'object');
-            assert(typeof results.createName['id'] === 'string');
-            assert(results.createName['name'] === 'xyz');
-            assert(results.createName['age'] === 40);
+            should().exist(results.createName);
+            expect(typeof results.createName).equal('object');
+            expect(typeof results.createName['id']).equal('string');
+            expect(results.createName['name']).equal('xyz');
+            expect(results.createName['age']).equal(40);
         });
     });
 });

@@ -132,23 +132,10 @@ export class RulesController {
                         ruleResponse.policy[action] = authorizationResults;
                     } else if (action === 'list' && typeof data === 'object') {
                         ruleResponse.policy = {};
-                        ruleResponse.policy[action] = await databaseController.query('_Policy', {
-                            filter: {},
-                            return: []
-                        }, rules.context, {
-                            bypassDomainVerification: true
-                        });
+                        ruleResponse.policy[action] = await authController.listPolicyRule(rules.context);
                     } else if (action === 'remove' && typeof data === 'object') {
                         ruleResponse.policy = {};
-                        ruleResponse.policy[action] = await databaseController.delete('_Policy', {
-                            filter: {
-                                ruleId: data.ruleId
-                            },
-                            return: [],
-                            // id: null
-                        }, rules.context, {
-                            bypassDomainVerification: true
-                        });
+                        ruleResponse.policy[action] = await authController.removePolicyRule(data.ruleId, rules.context);
                     }
                 } catch (e) {
                     messageController.print(e);
@@ -281,7 +268,11 @@ export class RulesController {
         }
     }
 
-    async handleDeleteRules(rulesBlockModel: RulesModel, ruleResultModel: RuleResponse, transactionSession?: any): Promise<RuleResponse> {
+    async handleDeleteRules(
+        rulesBlockModel: RulesModel,
+        ruleResultModel: RuleResponse,
+        transactionSession?: any
+    ): Promise<RuleResponse> {
         try {
             const deleteRules = this.getRulesKey(rulesBlockModel).filter(rule => rule.startsWith('delete'));
             if (deleteRules.length === 0) {
@@ -306,11 +297,15 @@ export class RulesController {
                         delete rulesBlockModelElement.filter;
                         filter._id = rulesBlockModelElement.id;
                         rulesBlockModelElement.filter = filter;
-                        ruleResultModel[deleteRule]
-                            = await databaseController.delete(domain, rulesBlockModelElement, rulesBlockModel?.context, {
-                            bypassDomainVerification: rulesBlockModel?.context?.useMasterKey === true,
-                            transaction: transactionSession
-                        });
+                        ruleResultModel[deleteRule] = await databaseController.delete(
+                            domain,
+                            rulesBlockModelElement,
+                            rulesBlockModel?.context,
+                            {
+                                bypassDomainVerification: rulesBlockModel?.context?.useMasterKey === true,
+                                transaction: transactionSession
+                            }
+                        );
                     } else {
                         if (!rulesBlockModelElement?.filter) {
                             throw new Error('filter field is required if you dont supply id field');
@@ -318,24 +313,32 @@ export class RulesController {
                         if (rulesBlockModelElement?.filter && Object.keys(rulesBlockModelElement?.filter).length === 0) {
                             throw new Error('Empty filter map is not supported in delete rule');
                         }
-                        const query: any[] = await databaseController.query(domain, rulesBlockModelElement, rulesBlockModel?.context, {
-                            bypassDomainVerification: rulesBlockModel?.context?.useMasterKey === true,
-                            transaction: transactionSession
-                        });
-                        const deleteResults = [];
-                        if (query && Array.isArray(query)) {
-                            for (const value of query) {
-                                rulesBlockModelElement.filter = {
-                                    _id: value.id
-                                };
-                                const result = await databaseController.delete(domain, rulesBlockModelElement, rulesBlockModel?.context, {
-                                    bypassDomainVerification: rulesBlockModel?.context?.useMasterKey === true,
-                                    transaction: transactionSession
-                                });
-                                deleteResults.push(result);
+                        // const query: any[] = await databaseController.query(domain, rulesBlockModelElement, rulesBlockModel?.context, {
+                        //     bypassDomainVerification: rulesBlockModel?.context?.useMasterKey === true,
+                        //     transaction: transactionSession
+                        // });
+                        // const deleteResults = [];
+                        // if (query && Array.isArray(query)) {
+                        //     for (const value of query) {
+                        //         rulesBlockModelElement.filter = {
+                        //             _id: value.id
+                        //         };
+                        //         const result = await databaseController.delete(domain, rulesBlockModelElement, rulesBlockModel?.context, {
+                        //             bypassDomainVerification: rulesBlockModel?.context?.useMasterKey === true,
+                        //             transaction: transactionSession
+                        //         });
+                        //         deleteResults.push(result);
+                        //     }
+                        // }
+                        ruleResultModel[deleteRule] = await databaseController.delete(
+                            domain,
+                            rulesBlockModelElement,
+                            rulesBlockModel?.context,
+                            {
+                                bypassDomainVerification: rulesBlockModel?.context?.useMasterKey === true,
+                                transaction: transactionSession
                             }
-                        }
-                        ruleResultModel[deleteRule] = deleteResults;
+                        );
                     }
                 } catch (e) {
                     messageController.print(e);

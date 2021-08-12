@@ -180,8 +180,8 @@ export class DatabaseController {
             await this.handleDomainValidation(domain);
         }
         deleteModel.filter = this.sanitizeWithOperator4Db(deleteModel?.filter as any);
-        const result = await this.database.deleteOne<any, any>(domain, deleteModel, context, options);
-        return this.sanitize4User(result, ['id'], []);
+        const result = await this.database.delete<any>(domain, deleteModel, context, options);
+        return result.map(t=>this.sanitize4User(t, deleteModel.return, []));
     }
 
     /**

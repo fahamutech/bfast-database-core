@@ -1,6 +1,7 @@
 const {getRulesController, mongoRepSet} = require('../mock.config');
 const {before, after} = require('mocha');
-const assert = require('assert');
+const {assert, should, expect} = require('chai');
+const exp = require("constants");
 
 describe('RulesController::Delete Unit Test', function () {
     this.timeout(10000000000000000);
@@ -33,8 +34,8 @@ describe('RulesController::Delete Unit Test', function () {
                     return: []
                 }
             }, {errors: {}});
-            assert(results.deleteProduct !== null);
-            assert(results.deleteProduct.id === 'xyz');
+            should().exist(results.deleteProduct);
+            expect(results.deleteProduct[0].id).equal('xyz');
         });
         it('should delete a document by filter', async function () {
             const results = await _rulesController.handleDeleteRules({
@@ -45,29 +46,33 @@ describe('RulesController::Delete Unit Test', function () {
                     return: []
                 }
             }, {errors: {}});
-            assert(results.deleteProduct !== null);
-            assert(Array.isArray(results.deleteProduct));
-            assert(results.deleteProduct.length === 1);
-            assert(typeof results.deleteProduct[0].id === 'string');
+            should().exist(results.deleteProduct);
+            expect(Array.isArray(results.deleteProduct)).equal(true);
+            expect(results.deleteProduct.length).equal(1);
+            expect(typeof results.deleteProduct[0].id === "string").equal(true);
         });
         it('should delete documents given many ids in filter', async function () {
             const results = await _rulesController.handleDeleteRules({
                 deleteProduct: {
                     filter: {
-                        id: {
-                            $in: ['16b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b', '2', '3']
+                        id: function (i) {
+                            return [
+                                '16b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b',
+                                2,
+                                3
+                            ].includes(i);
                         }
                     },
                     return: []
                 }
             }, {errors: {}});
-            assert(results.deleteProduct !== null);
-            assert(Array.isArray(results.deleteProduct));
-            assert(results.deleteProduct.length === 3);
-            assert(typeof results.deleteProduct[0].id === 'string');
-            assert(results.deleteProduct[0].id === '16b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b');
-            assert(results.deleteProduct[1].id === '2');
-            assert(results.deleteProduct[2].id === '3');
+            // console.log(results.deleteProduct);
+            should().exist(results.deleteProduct);
+            expect(Array.isArray(results.deleteProduct)).equal(true);
+            expect(results.deleteProduct.length).equal(3);
+            expect(results.deleteProduct.map(x => x.id)).to.be.members(
+                ['16b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b', '2', '3']
+            );
         });
         it('should not delete objects by empty filter', async function () {
             const results = await _rulesController.handleDeleteRules({

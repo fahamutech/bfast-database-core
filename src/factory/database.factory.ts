@@ -12,21 +12,21 @@ import {UpdateRuleRequestModel} from '../model/update-rule-request.model';
 import {DeleteModel} from '../model/delete-model';
 import {BFastDatabaseOptions} from '../bfast-database.option';
 import {TreeController} from 'bfast-database-tree';
-import {Web3Storage, File} from 'web3.storage';
+import {Web3Storage} from 'web3.storage';
 import {bfast} from "bfastnode";
 import {create, IPFS} from "ipfs";
 // import {createHash} from "crypto";
 
 let web3Storage: Web3Storage;
 const treeController = new TreeController();
-bfast.init({applicationId: '', projectId: ''}, '_ignore')
+bfast.init({applicationId: '', projectId: ''}, '_ignore');
+let ipfs: IPFS;
 
 export class DatabaseFactory implements DatabaseAdapter {
-    private ipfs: IPFS;
 
     constructor(private readonly config: BFastDatabaseOptions, _ipfs = null) {
         if (_ipfs) {
-            this.ipfs = _ipfs;
+            ipfs = _ipfs;
         }
         web3Storage = new Web3Storage({
             token: config.web3Token
@@ -35,10 +35,10 @@ export class DatabaseFactory implements DatabaseAdapter {
 
     private async dataCid(data: any, buffer: Buffer, domain: string): Promise<string> {
         try {
-            if (!this.ipfs) {
-                this.ipfs = await create();
+            if (!ipfs) {
+                ipfs = await create();
             }
-            const results = await this.ipfs.add(JSON.stringify(data));
+            const results = await ipfs.add(JSON.stringify(data));
             return results.cid.toString();
         } catch (e) {
             console.log(e);
@@ -62,10 +62,10 @@ export class DatabaseFactory implements DatabaseAdapter {
 
     private async getDataFromCid(cid: string): Promise<any> {
         try {
-            if (!this.ipfs) {
-                this.ipfs = await create();
+            if (!ipfs) {
+                ipfs = await create();
             }
-            const results = await this.ipfs.cat(cid);
+            const results = await ipfs.cat(cid);
             let data = ''
             for await (const chunk of results) {
                 data += chunk.toString();
@@ -164,6 +164,21 @@ export class DatabaseFactory implements DatabaseAdapter {
             }
             if (result && result.value) {
                 if (typeof result.value === "object") {
+                    for (const k of Object.keys(result.value)) {
+                        const _r1 = await conn.db().collection(`${domain}__id`).findOne({
+                            _id: k
+                        });
+                        if (!_r1) {
+                            delete result.value[k];
+                            await conn.db().collection(nodeTable).updateOne({
+                                _id: id
+                            }, {
+                                $unset: {
+                                    [`value.${k}`]: 1
+                                }
+                            });
+                        }
+                    }
                     Object.values(result.value).forEach((v: string) => {
                         cids.push(v);
                         if (cidMap[v]) {
@@ -173,11 +188,25 @@ export class DatabaseFactory implements DatabaseAdapter {
                         }
                     });
                 } else if (typeof result.value === 'string') {
-                    cids.push(result.value);
-                    if (cidMap[result.value]) {
-                        cidMap[result.value] += 1;
+                    const _r1 = await conn.db().collection(`${domain}__id`).findOne({
+                        _id: result._id
+                    });
+                    if (!_r1) {
+                        result.value = null;
+                        await conn.db().collection(nodeTable).updateOne({
+                            _id: id
+                        }, {
+                            $unset: {
+                                value: 1
+                            }
+                        });
                     } else {
-                        cidMap[result.value] = 1;
+                        cids.push(result.value);
+                        if (cidMap[result.value]) {
+                            cidMap[result.value] += 1;
+                        } else {
+                            cidMap[result.value] = 1;
+                        }
                     }
                 }
             }
@@ -191,6 +220,85 @@ export class DatabaseFactory implements DatabaseAdapter {
             return cids.length;
         }
         return Promise.all(cids.map(async x => await this.getDataFromCid(x as string)));
+    }
+
+    private async handleDeleteObjectTree(
+        deleteTree: { [key: string]: any },
+        domain: string,
+    ): Promise<{ _id: string }[]> {
+        const keys = Object.keys(deleteTree);
+        const conn = await this.connection();
+        let cids = [];
+        const cidMap = {};
+        if (keys.length === 0) {
+            return [];
+        }
+        for (const key of keys) {
+            const nodeTable = key.replace('/', '_').trim();
+            const id = deleteTree[key];
+            let result;
+            if (typeof id === "function") {
+                const cursor = conn.db().collection(nodeTable).find({});
+                const docs = [];
+                while (await cursor.hasNext()) {
+                    const next = await cursor.next();
+                    id(next._id) === true ? docs.push(next) : null
+                }
+                result = docs.reduce((a, b) => {
+                    a.value = Object.assign(a.value, typeof b.value === "string" ? {[b._id]:b.value} : b.value);
+                    a._id.push(b._id);
+                    return a;
+                }, {value: {}, _id: []});
+            } else {
+                result = await conn.db().collection(nodeTable).findOne({_id: id});
+            }
+            if (result && result.value) {
+                // console.log(result, '------> result');
+                if (typeof result.value === "object") {
+                    await conn.db().collection(`${domain}__id`).deleteMany({
+                        _id: {
+                            $in: Object.keys(result.value)
+                        }
+                    });
+                    await conn.db().collection(nodeTable).deleteMany({
+                        _id: {
+                            $in: Array.isArray(result._id) ? result._id : [result._id]
+                        }
+                    });
+                    Object.keys(result.value).forEach((v: string) => {
+                        cids.push(v);
+                        if (cidMap[v]) {
+                            cidMap[v] += 1;
+                        } else {
+                            cidMap[v] = 1;
+                        }
+                    });
+                } else if (typeof result.value === 'string') {
+                    await conn.db().collection(`${domain}__id`).deleteOne({
+                        _id: result._id
+                    });
+                    await conn.db().collection(nodeTable).deleteMany({
+                        _id: id
+                    });
+                    cids.push(result._id);
+                    if (cidMap[result._id]) {
+                        cidMap[result._id] += 1;
+                    } else {
+                        cidMap[result._id] = 1;
+                    }
+                }
+            }
+        }
+        await conn.close();
+        // console.log(cids);
+        cids = cids
+            // .filter(x => cidMap[x] === keys.length)
+            .reduce((a, b) => a.add(b), new Set());
+        return Array.from(cids).map(x => {
+            return {
+                _id: x
+            };
+        });
     }
 
     async writeMany<T extends BasicAttributesModel, V>(
@@ -310,14 +418,16 @@ export class DatabaseFactory implements DatabaseAdapter {
         return await this.getDataFromCid(cid);
     }
 
-    async query<T extends BasicAttributesModel>(domain: string, queryModel: QueryModel<T>,
-                                                context: ContextBlock, options?: DatabaseWriteOptions): Promise<any> {
+    async query<T extends BasicAttributesModel>(
+        domain: string, queryModel: QueryModel<T>,
+        context: ContextBlock, options?: DatabaseWriteOptions
+    ): Promise<any> {
         let queryTree;
         try {
             queryTree = await treeController.query(domain, queryModel.filter);
         } catch (e) {
             console.log(e);
-            queryTree = {};
+            return [];
         }
         if (Array.isArray(queryTree)) {
             const result = [];
@@ -385,19 +495,31 @@ export class DatabaseFactory implements DatabaseAdapter {
         }
     }
 
-    async deleteOne<T extends BasicAttributesModel, V>(
+    async delete<T extends BasicAttributesModel>(
         domain: string,
         deleteModel: DeleteModel<T>,
         context: ContextBlock, options?: DatabaseBasicOptions
-    ): Promise<V> {
-        const conn = await this.connection();
-        const response = await conn.db()
-            .collection(domain)
-            .findOneAndDelete(deleteModel.filter, {
-                session: options && options.transaction ? options.transaction : undefined,
-            });
-        await conn.close();
-        return response.value as any;
+    ): Promise<{ _id: string }[]> {
+        let deleteTree;
+        try {
+            deleteTree = await treeController.query(
+                domain,
+                deleteModel.id ? {_id: deleteModel.id} : deleteModel.filter
+            );
+        } catch (e) {
+            console.log(e);
+            return null;
+        }
+        if (Array.isArray(deleteTree)) {
+            const result = [];
+            for (const _tree of deleteTree) {
+                const r = await this.handleDeleteObjectTree(_tree, domain);
+                Array.isArray(r) ? result.push(...r) : result.push(r);
+            }
+            return result;
+        } else {
+            return this.handleDeleteObjectTree(deleteTree, domain);
+        }
     }
 
     async transaction<V>(operations: (session: any) => Promise<any>): Promise<any> {
