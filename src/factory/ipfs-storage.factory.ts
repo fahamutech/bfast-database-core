@@ -43,7 +43,7 @@ export class IpfsStorageFactory implements FilesAdapter {
         await this.validateFilename(filename);
         // await this.initIpfs();
         // const newFilename = security.generateUUID() + '-' + filename;
-        console.log(filename,'------> filename to save');
+        // console.log(filename,'------> filename to save');
         return this._saveFile(filename, data, contentType, options);
     }
 
@@ -154,7 +154,23 @@ export class IpfsStorageFactory implements FilesAdapter {
         //     skip: query.skip,
         //     limit: query.size,
         // }).toArray();
-        return [];
+        // return [];
+        const r = await this.databaseFactory.query(
+            '_Storage',
+            {
+               filter: {
+                   filename: (f) => {
+                       return f.toString().includes(query.prefix)
+                   }
+               },
+                return: [],
+                size: query.size,
+                skip: query.skip
+            },
+            {}
+        );
+        console.log(r,'-----> list files');
+        return r;
     }
 
     validateFilename(filename: string): Promise<void> {
@@ -189,7 +205,7 @@ export class IpfsStorageFactory implements FilesAdapter {
                 bypassDomainVerification: true
             }
         );
-        console.log(r,'----> file saved');
+        // console.log(r,'----> file saved');
         return filename;
     }
 }
