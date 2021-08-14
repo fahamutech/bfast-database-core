@@ -9,18 +9,10 @@ import {bfast} from 'bfastnode';
 import sharp from 'sharp';
 import {SecurityController} from './security.controller';
 
-
-let filesAdapter: FilesAdapter;
-let config: BFastDatabaseOptions;
-let security: SecurityController;
-
 export class StorageController {
-    constructor(files: FilesAdapter,
-                securityController: SecurityController,
-                configAdapter: BFastDatabaseOptions) {
-        filesAdapter = files;
-        security = securityController;
-        config = configAdapter;
+    constructor(private readonly filesAdapter: FilesAdapter,
+                private securityController: SecurityController,
+                private config: BFastDatabaseOptions) {
     }
 
     private static getSource(base64: string, type: string): any {
@@ -83,7 +75,7 @@ export class StorageController {
             dataToSave.type = source.type;
         }
         const isBase64 = Buffer.from(dataToSave.data, 'base64').toString('base64') === dataToSave.data;
-        const file = await filesAdapter.createFile(
+        const file = await this.filesAdapter.createFile(
             dataToSave.filename,
             isBase64 === true ?
                 Buffer.from(dataToSave.data, 'base64')
@@ -91,20 +83,7 @@ export class StorageController {
             dataToSave?.type,
             {}
         );
-        // if (type && type.toString().startsWith('image/') === true) {
-        //     try {
-        //         await this._filesAdapter.createThumbnail(
-        //             file,
-        //             isBase64 === true ?
-        //                 Buffer.from(dataToSave.data, 'base64')
-        //                 : dataToSave.data, type,
-        //             {}
-        //         );
-        //     } catch (e) {
-        //         console.warn('Fails to save thumbnail', e);
-        //     }
-        // }
-        return filesAdapter.getFileLocation(file, config);
+        return this.filesAdapter.getFileLocation(file, this.config);
     }
 
     isFileStreamable(req, filesController: FilesAdapter): boolean {
@@ -119,8 +98,7 @@ export class StorageController {
         const filename = request.params.filename;
         const contentType = mime.getType(filename);
         if (thumbnail === true && contentType && contentType.toString().startsWith('image')) {
-            filesAdapter.getFileData<Stream>(filename, true).then(stream => {
-                // response.send('image thumbnail');
+            this.filesAdapter.getFileData<Stream>(filename, true).then(stream => {
                 const width = parseInt(request.query.width ? request.query.width : 100);
                 const height = parseInt(request.query.height ? request.query.height : 0);
                 stream.pipe(sharp().resize(width, height !== 0 ? height : null)).pipe(response);
@@ -133,8 +111,8 @@ export class StorageController {
     }
 
     _getFileData(filename, contentType, request, response) {
-        if (this.isFileStreamable(request, filesAdapter)) {
-            filesAdapter
+        if (this.isFileStreamable(request, this.filesAdapter)) {
+            this.filesAdapter
                 .handleFileStream(filename, request, response, contentType)
                 .catch(() => {
                     response.status(404);
@@ -142,7 +120,7 @@ export class StorageController {
                     response.end('File not found.');
                 });
         } else {
-            filesAdapter
+            this.filesAdapter
                 .getFileData<any>(filename, false)
                 .then(data => {
                     response.status(200);
@@ -159,7 +137,7 @@ export class StorageController {
     }
 
     async listFiles(data: { prefix: string, size: number, skip: number, after: string }): Promise<any[]> {
-        return filesAdapter.listFiles(data);
+        return this.filesAdapter.listFiles(data);
     }
 
     async saveFromBuffer(fileModel: { filename: string, data: PassThrough, type: string }, context: ContextBlock): Promise<string> {
@@ -176,9 +154,9 @@ export class StorageController {
         }
         const newFilename = (context && context.storage && context.storage.preserveName === true )
             ? filename
-            : security.generateUUID() + '-' + filename;
-        const file = await filesAdapter.createFile(newFilename, data, type, {});
-        return filesAdapter.getFileLocation(file, config);
+            : this.securityController.generateUUID() + '-' + filename;
+        const file = await this.filesAdapter.createFile(newFilename, data, type, {});
+        return this.filesAdapter.getFileLocation(file, this.config);
     }
 
     async delete(data: { filename: string }, context: ContextBlock): Promise<string> {
@@ -186,18 +164,18 @@ export class StorageController {
         if (!filename) {
             throw new Error('Filename required');
         }
-        await filesAdapter.deleteFile(filename);
+        await this.filesAdapter.deleteFile(filename);
         return filename;
     }
 
     isS3(): boolean {
-        return filesAdapter.isS3;
+        return this.filesAdapter.isS3;
     }
 
     handleGetFileBySignedUrl(request: any, response: any, thumbnail = false): void {
         const filename = request.params.filename;
         const contentType = mime.getType(filename);
-        filesAdapter.signedUrl(filename).then(value => {
+        this.filesAdapter.signedUrl(filename).then(value => {
             if (thumbnail === true && contentType && contentType.toString().startsWith('image')) {
                 // response.send('image thumbnail');
                 const width = parseInt(request.query.width ? request.query.width : 100);

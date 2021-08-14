@@ -1,6 +1,6 @@
 const {getRulesController, mongoRepSet} = require('../mock.config');
 const {before, after} = require('mocha');
-const assert = require('assert');
+const {assert, should, expect} = require('chai');
 
 describe('RulesController::Storage Unit Test', function () {
     this.timeout(10000000000000000);
@@ -26,10 +26,11 @@ describe('RulesController::Storage Unit Test', function () {
                     }
                 }
             }, results);
-            assert(results.files !== undefined);
-            assert(results.files.save !== undefined);
-            assert(typeof results.files.save === "string");
-            assert(results.files.save.toString().startsWith('/storage/daas/file'))
+            console.log(results);
+            should().exist(results.files);
+            should().exist(results.files.save);
+            expect(typeof results.files.save).equal("string");
+            expect(results.files.save.toString().startsWith('/storage/daas/file')).equal(true);
         });
     });
 

@@ -5,12 +5,10 @@ import {Client} from 'minio';
 import {PassThrough} from 'stream';
 
 const url = require('url');
-let config: BFastDatabaseOptions;
 
 export class S3StorageFactory implements FilesAdapter {
 
-    constructor(configAdapter: BFastDatabaseOptions) {
-        config = configAdapter;
+    constructor(private readonly config: BFastDatabaseOptions) {
         this.init(config);
     }
 
@@ -20,21 +18,21 @@ export class S3StorageFactory implements FilesAdapter {
     isS3 = true;
 
     async createFile(filename: string, data: PassThrough, contentType: string, options: any): Promise<string> {
-        const bucket = config.adapters.s3Storage.bucket;
+        const bucket = this.config.adapters.s3Storage.bucket;
         await this.createBucket(bucket);
         await this.validateFilename(filename);
         // const newFilename = security.generateUUID() + '-' + filename;
-        return this.saveFile(filename, data, bucket, config.adapters.s3Storage.endPoint, config.adapters.s3Storage.region);
+        return this.saveFile(filename, data, bucket, this.config.adapters.s3Storage.endPoint, this.config.adapters.s3Storage.region);
     }
 
     async deleteFile(filename: string): Promise<any> {
-        const bucket = config.adapters.s3Storage.bucket;
+        const bucket = this.config.adapters.s3Storage.bucket;
         await this.createBucket(bucket);
         return this.s3.removeObject(bucket, filename);
     }
 
     async getFileData(filename: string, asStream = false): Promise<any> {
-        const bucket = config.adapters.s3Storage.bucket;
+        const bucket = this.config.adapters.s3Storage.bucket;
         await this.createBucket(bucket);
         return this.s3.getObject(bucket, filename);
     }
@@ -60,7 +58,7 @@ export class S3StorageFactory implements FilesAdapter {
     }
 
     async signedUrl(filename: string): Promise<string> {
-        const bucket = config.adapters.s3Storage.bucket;
+        const bucket = this.config.adapters.s3Storage.bucket;
         await this.createBucket(bucket);
         return this.s3.presignedGetObject(bucket, filename, 2 * 60 * 60);
     }
@@ -70,7 +68,7 @@ export class S3StorageFactory implements FilesAdapter {
         after: undefined,
         size: 20
     }): Promise<any> {
-        const bucket = config.adapters.s3Storage.bucket;
+        const bucket = this.config.adapters.s3Storage.bucket;
         await this.createBucket(bucket);
         const listStream = this.s3.listObjectsV2(bucket, query.prefix, true, query.after);
         const files = [];
@@ -113,10 +111,10 @@ export class S3StorageFactory implements FilesAdapter {
         const bucket = configAdapter.adapters.s3Storage.bucket;
         // Needs the required() check for `endPoint` to have run
         const ep = new url.URL(endPoint);
-        const {useSSL = ep.protocol === 'https:'} = config.adapters.s3Storage;
+        const {useSSL = ep.protocol === 'https:'} = this.config.adapters.s3Storage;
 
         // Needs `useSSL`, whether it's provided or defaulted
-        const {port = ep.port ? +ep.port : (useSSL ? 443 : 80)} = config.adapters.s3Storage;
+        const {port = ep.port ? +ep.port : (useSSL ? 443 : 80)} = this.config.adapters.s3Storage;
         const region = S3StorageFactory.getRegion(endPoint, configAdapter.adapters.s3Storage.region).trim();
         Object.assign(this, {endPoint, region: `${region}`});
         Object.assign(this, {
@@ -171,8 +169,8 @@ export class S3StorageFactory implements FilesAdapter {
     }
 
     private async createBucket(bucket) {
-        const endpoint = config.adapters.s3Storage.endPoint;
-        const region = config.adapters.s3Storage.region;
+        const endpoint = this.config.adapters.s3Storage.endPoint;
+        const region = this.config.adapters.s3Storage.region;
         const bucketExist = await this.s3.bucketExists(bucket);
         if (bucketExist === true) {
         } else {

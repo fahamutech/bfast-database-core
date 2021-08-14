@@ -5,31 +5,31 @@ import httpStatus from 'http-status-codes';
 
 export class RestWebservice {
 
-  constructor(private readonly restController: RestController,
-              private readonly options: BFastDatabaseOptions) {
-  }
+    constructor(private readonly restController: RestController,
+                private readonly options: BFastDatabaseOptions) {
+    }
 
-  rulesV2(prefix = '/'): { path: string, onRequest: any, method: string } {
-    return BFast.functions().onPostHttpRequest(`${prefix}v2`, [
-      (request, response, next)=>this.restController.verifyMethod(request, response, next),
-      (request, response, next)=>this.restController.verifyBodyData(request, response, next),
-      (request, response, next)=>this.restController.verifyApplicationId(request, response, next),
-      (request, response, next)=>this.restController.verifyToken(request, response, next),
-      (request, response, next)=>this.restController.handleRuleBlocks(request, response, next)
-    ]);
-  }
+    rulesV2(prefix = '/'): { path: string, onRequest: any, method: string } {
+        return BFast.functions().onPostHttpRequest(`${prefix}v2`, [
+            (rq, rs, n) => this.restController.verifyMethod(rq, rs, n),
+            (rq, rs, n) => this.restController.verifyBodyData(rq, rs, n),
+            (rq, rs, n) => this.restController.verifyApplicationId(rq, rs, n),
+            (rq, rs, n) => this.restController.verifyToken(rq, rs, n),
+            (rq, rs, n) => this.restController.handleRuleBlocks(rq, rs, n)
+        ]);
+    }
 
-  authJwk(){
-    return BFast.functions().onHttpRequest(
-        '/jwk',
-        (request, response) => {
-          if (this.options.rsaPublicKeyInJson){
-            response.status(200).json(this.options.rsaPublicKeyInJson);
-          }else {
-            response.status(httpStatus.EXPECTATION_FAILED).json({message: 'fail to retrieve public key'});
-          }
-        }
-    )
-  }
+    authJwk() {
+        return BFast.functions().onHttpRequest(
+            '/jwk',
+            (request, response) => {
+                if (this.options.rsaPublicKeyInJson) {
+                    response.status(200).json(this.options.rsaPublicKeyInJson);
+                } else {
+                    response.status(httpStatus.EXPECTATION_FAILED).json({message: 'fail to retrieve public key'});
+                }
+            }
+        )
+    }
 
 }

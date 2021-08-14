@@ -2,57 +2,20 @@ import {RuleResponse, RulesModel} from '../model/rules.model';
 import {UpdateRuleRequestModel} from '../model/update-rule-request.model';
 import {DeleteModel} from '../model/delete-model';
 import {DatabaseController} from './database.controller';
-import {DatabaseFactory} from '../factory/database.factory';
-import {AuthFactory} from '../factory/auth.factory';
 import {AuthController} from './auth.controller';
-import {SecurityController} from './security.controller';
-import {EmailFactory} from '../factory/email.factory';
-import {AuthAdapter} from '../adapters/auth.adapter';
 import {StorageController} from './storage.controller';
-import {FilesAdapter} from '../adapters/files.adapter';
-import {S3StorageFactory} from '../factory/s3-storage.factory';
-import {GridFsStorageFactory} from '../factory/grid-fs-storage.factory';
 import {UpdateRuleController} from './update.rule.controller';
 import {BFastDatabaseOptions} from '../bfast-database.option';
 import {LogController} from './log.controller';
 
-let databaseController: DatabaseController;
-let auth: AuthAdapter;
-let authController: AuthController;
-let email: EmailFactory;
-let fileAdapter: FilesAdapter;
-let storageController: StorageController;
-let messageController: LogController;
-
 export class RulesController {
 
     constructor(private readonly updateRuleController: UpdateRuleController,
-                private readonly _messageController: LogController,
+                private readonly messageController: LogController,
+                private readonly databaseController: DatabaseController,
+                private readonly authController: AuthController,
+                private storageController: StorageController,
                 private readonly config: BFastDatabaseOptions) {
-        databaseController = new DatabaseController(
-            (config.adapters && config.adapters.database) ?
-                this.config.adapters.database(config) : new DatabaseFactory(config),
-            new SecurityController(config)
-        );
-
-        email = (config && config.adapters && config.adapters.email)
-            ? config.adapters.email(config)
-            : new EmailFactory();
-
-        auth = (config && config.adapters && config.adapters.auth)
-            ? config.adapters.auth(config)
-            : new AuthFactory(databaseController, new SecurityController(config));
-
-        authController = new AuthController(auth, databaseController);
-
-        fileAdapter = (config && config.adapters && config.adapters.s3Storage)
-            ? new S3StorageFactory(config)
-            : new GridFsStorageFactory(config, config.mongoDbUri);
-
-        storageController = new StorageController(fileAdapter, new SecurityController(config), config);
-
-        messageController = this._messageController;
-
     }
 
     getRulesKey(rules: RulesModel): string[] {
@@ -75,16 +38,16 @@ export class RulesController {
                 try {
                     if (action === 'signUp') {
                         ruleResponse.auth = {};
-                        ruleResponse.auth.signUp = await authController.signUp(data, rules.context);
+                        ruleResponse.auth.signUp = await this.authController.signUp(data, rules.context);
                     } else if (action === 'signIn') {
                         ruleResponse.auth = {};
-                        ruleResponse.auth.signIn = await authController.signIn(data, rules.context);
+                        ruleResponse.auth.signIn = await this.authController.signIn(data, rules.context);
                     } else if (action === 'reset') {
                         ruleResponse.auth = {};
-                        ruleResponse.auth.resetPassword = await authController.resetPassword(data.email ? data.email : data);
+                        ruleResponse.auth.resetPassword = await this.authController.resetPassword(data.email ? data.email : data);
                     }
                 } catch (e) {
-                    messageController.print(e);
+                    this.messageController.print(e);
                     ruleResponse.errors[`auth.${action}`] = {
                         message: e.message ? e.message : e.toString(),
                         path: `auth.${action}`,
@@ -94,7 +57,7 @@ export class RulesController {
             }
             return ruleResponse;
         } catch (e) {
-            messageController.print(e);
+            this.messageController.print(e);
             ruleResponse.errors.auth = {
                 message: e.message ? e.message : e.toString(),
                 path: 'auth',
@@ -126,19 +89,19 @@ export class RulesController {
                     if (action === 'add' && typeof data === 'object') {
                         const authorizationResults = {};
                         for (const rule of Object.keys(data)) {
-                            authorizationResults[rule] = await authController.addPolicyRule(rule, data[rule], rules.context);
+                            authorizationResults[rule] = await this.authController.addPolicyRule(rule, data[rule], rules.context);
                         }
                         ruleResponse.policy = {};
                         ruleResponse.policy[action] = authorizationResults;
                     } else if (action === 'list' && typeof data === 'object') {
                         ruleResponse.policy = {};
-                        ruleResponse.policy[action] = await authController.listPolicyRule(rules.context);
+                        ruleResponse.policy[action] = await this.authController.listPolicyRule(rules.context);
                     } else if (action === 'remove' && typeof data === 'object') {
                         ruleResponse.policy = {};
-                        ruleResponse.policy[action] = await authController.removePolicyRule(data.ruleId, rules.context);
+                        ruleResponse.policy[action] = await this.authController.removePolicyRule(data.ruleId, rules.context);
                     }
                 } catch (e) {
-                    messageController.print(e);
+                    this.messageController.print(e);
                     ruleResponse.errors[`policy.${action}`] = {
                         message: e.message ? e.message : e.toString(),
                         path: `policy.${action}`,
@@ -148,7 +111,7 @@ export class RulesController {
             }
             return ruleResponse;
         } catch (e) {
-            messageController.print(e);
+            this.messageController.print(e);
             ruleResponse.errors.policy = {
                 message: e.message ? e.message : e.toString(),
                 path: 'policy',
@@ -180,14 +143,14 @@ export class RulesController {
                     try {
                         ruleResponse[indexRuleElement] = {};
                         if (action === 'add' && Array.isArray(data)) {
-                            ruleResponse[indexRuleElement][action] = await databaseController.addIndexes(domain, data);
+                            ruleResponse[indexRuleElement][action] = await this.databaseController.addIndexes(domain, data);
                         } else if (action === 'list' && typeof data === 'object') {
-                            ruleResponse[indexRuleElement][action] = await databaseController.listIndexes(domain);
+                            ruleResponse[indexRuleElement][action] = await this.databaseController.listIndexes(domain);
                         } else if (action === 'remove' && typeof data === 'object') {
-                            ruleResponse[indexRuleElement][action] = await databaseController.removeIndexes(domain);
+                            ruleResponse[indexRuleElement][action] = await this.databaseController.removeIndexes(domain);
                         }
                     } catch (e) {
-                        messageController.print(e);
+                        this.messageController.print(e);
                         ruleResponse.errors[`index.${domain}.${action}`] = {
                             message: e.message ? e.message : e.toString(),
                             path: `index.${domain}.${action}`,
@@ -198,7 +161,7 @@ export class RulesController {
             }
             return ruleResponse;
         } catch (e) {
-            messageController.print(e);
+            this.messageController.print(e);
             ruleResponse.errors.index = {
                 message: e.message ? e.message : e.toString(),
                 path: 'index',
@@ -218,7 +181,7 @@ export class RulesController {
                 const domain = this.extractDomain(createRule, 'create');
                 const createRuleRequest = rules[createRule];
                 // checkPermission
-                const allowed = await authController.hasPermission(`create.${domain}`, rules?.context);
+                const allowed = await this.authController.hasPermission(`create.${domain}`, rules?.context);
                 if (allowed !== true) {
                     ruleResponse.errors[`${transactionSession ? 'transaction.' : ''}create.${domain}`] = {
                         message: 'You have insufficient permission to this resource',
@@ -230,19 +193,19 @@ export class RulesController {
                 try {
                     let result;
                     if (createRuleRequest && Array.isArray(createRuleRequest)) {
-                        result = await databaseController.writeMany(domain, createRuleRequest, rules?.context, {
+                        result = await this.databaseController.writeMany(domain, createRuleRequest, rules?.context, {
                             bypassDomainVerification: rules?.context?.useMasterKey === true,
                             transaction: transactionSession
                         });
                     } else {
-                        result = await databaseController.writeOne(domain, createRuleRequest, rules?.context, {
+                        result = await this.databaseController.writeOne(domain, createRuleRequest, rules?.context, {
                             bypassDomainVerification: rules?.context?.useMasterKey === true,
                             transaction: transactionSession
                         });
                     }
                     ruleResponse[createRule] = result;
                 } catch (e) {
-                    messageController.print(e);
+                    this.messageController.print(e);
                     ruleResponse.errors[`${transactionSession ? 'transaction.' : ''}create.${domain}`] = {
                         message: e.message ? e.message : e.toString(),
                         path: `${transactionSession ? 'transaction.' : ''}create.${domain}`,
@@ -255,7 +218,7 @@ export class RulesController {
             }
             return ruleResponse;
         } catch (e) {
-            messageController.print(e);
+            this.messageController.print(e);
             ruleResponse.errors[`${transactionSession ? 'transaction.' : ''}create`] = {
                 message: e.message ? e.message : e.toString(),
                 path: `${transactionSession ? 'transaction.' : ''}create`,
@@ -282,7 +245,7 @@ export class RulesController {
                 const domain = this.extractDomain(deleteRule, 'delete');
                 const rulesBlockModelElement: DeleteModel<any> = rulesBlockModel[deleteRule];
                 // checkPermission
-                const allowed = await authController.hasPermission(`delete.${domain}`, rulesBlockModel?.context);
+                const allowed = await this.authController.hasPermission(`delete.${domain}`, rulesBlockModel?.context);
                 if (allowed !== true) {
                     ruleResultModel.errors[`${transactionSession ? 'transaction.' : ''}delete.${domain}`] = {
                         message: 'You have insufficient permission to this resource',
@@ -297,7 +260,7 @@ export class RulesController {
                         delete rulesBlockModelElement.filter;
                         filter._id = rulesBlockModelElement.id;
                         rulesBlockModelElement.filter = filter;
-                        ruleResultModel[deleteRule] = await databaseController.delete(
+                        ruleResultModel[deleteRule] = await this.databaseController.delete(
                             domain,
                             rulesBlockModelElement,
                             rulesBlockModel?.context,
@@ -330,7 +293,7 @@ export class RulesController {
                         //         deleteResults.push(result);
                         //     }
                         // }
-                        ruleResultModel[deleteRule] = await databaseController.delete(
+                        ruleResultModel[deleteRule] = await this.databaseController.delete(
                             domain,
                             rulesBlockModelElement,
                             rulesBlockModel?.context,
@@ -341,7 +304,7 @@ export class RulesController {
                         );
                     }
                 } catch (e) {
-                    messageController.print(e);
+                    this.messageController.print(e);
                     ruleResultModel.errors[`${transactionSession ? 'transaction.' : ''}delete.${domain}`] = {
                         message: e.message ? e.message : e.toString(),
                         path: `${transactionSession ? 'transaction.' : ''}delete.${domain}`,
@@ -354,7 +317,7 @@ export class RulesController {
             }
             return ruleResultModel;
         } catch (e) {
-            messageController.print(e);
+            this.messageController.print(e);
             ruleResultModel.errors[`${transactionSession ? 'transaction.' : ''}delete`] = {
                 message: e.message ? e.message : e.toString(),
                 path: `${transactionSession ? 'transaction.' : ''}delete`,
@@ -376,7 +339,7 @@ export class RulesController {
             for (const queryRule of queryRules) {
                 const domain = this.extractDomain(queryRule, 'query');
                 const rulesBlockModelElement = rulesBlockModel[queryRule];
-                const allowed = await authController.hasPermission(`query.${domain}`, rulesBlockModel?.context);
+                const allowed = await this.authController.hasPermission(`query.${domain}`, rulesBlockModel?.context);
                 if (allowed !== true) {
                     ruleResultModel.errors[`${transactionSession ? 'transactionSession.' : ''}query.${domain}`] = {
                         message: 'You have insufficient permission to this resource',
@@ -394,13 +357,13 @@ export class RulesController {
                         };
                     } else {
                         ruleResultModel[queryRule]
-                            = await databaseController.query(domain, rulesBlockModelElement, rulesBlockModel?.context, {
+                            = await this.databaseController.query(domain, rulesBlockModelElement, rulesBlockModel?.context, {
                             bypassDomainVerification: rulesBlockModel?.context?.useMasterKey === true,
                             transaction: transactionSession
                         });
                     }
                 } catch (e) {
-                    messageController.print(e);
+                    this.messageController.print(e);
                     ruleResultModel.errors[`${transactionSession ? 'transactionSession.' : ''}query.${domain}`] = {
                         message: e.message ? e.message : e.toString(),
                         path: `${transactionSession ? 'transactionSession.' : ''}query.${domain}`,
@@ -413,7 +376,7 @@ export class RulesController {
             }
             return ruleResultModel;
         } catch (e) {
-            messageController.print(e);
+            this.messageController.print(e);
             ruleResultModel.errors[`${transactionSession ? 'transactionSession.' : ''}query`] = {
                 message: e.message ? e.message : e.toString(),
                 path: `${transactionSession ? 'transactionSession.' : ''}query`,
@@ -436,7 +399,7 @@ export class RulesController {
             const transaction = rulesBlockModel[transactionRule];
             const transactionOperationRules = transaction.commit;
             const resultObject: RuleResponse = {errors: {}};
-            await databaseController.transaction(async session => {
+            await this.databaseController.transaction(async session => {
                 await this.handleCreateRules(transactionOperationRules, resultObject, session);
                 await this.handleUpdateRules(transactionOperationRules, resultObject, session);
                 await this.handleQueryRules(transactionOperationRules, resultObject, session);
@@ -445,7 +408,7 @@ export class RulesController {
             ruleResultModel.transaction = {commit: resultObject};
             return ruleResultModel;
         } catch (e) {
-            messageController.print(e);
+            this.messageController.print(e);
             ruleResultModel.errors.transaction = {
                 message: e.message ? e.message : e.toString(),
                 path: 'transaction',
@@ -468,7 +431,7 @@ export class RulesController {
             for (const updateRule of updateRules) {
                 const domain = this.extractDomain(updateRule, 'update');
                 const updateRuleRequests: UpdateRuleRequestModel = rules[updateRule];
-                const allowed = await authController.hasPermission(`update.${domain}`, rules.context);
+                const allowed = await this.authController.hasPermission(`update.${domain}`, rules.context);
                 if (allowed !== true) {
                     ruleResponse.errors[`${transactionSession ? 'transaction.' : ''}update.${domain}`] = {
                         message: 'You have insufficient permission to this resource',
@@ -484,7 +447,7 @@ export class RulesController {
                             const response = await this.updateRuleController.update({
                                 updateRuleRequest: value,
                                 rules,
-                                databaseController,
+                                databaseController: this.databaseController,
                                 domain,
                                 transactionSession
                             });
@@ -495,13 +458,13 @@ export class RulesController {
                         ruleResponse[updateRule] = await this.updateRuleController.update({
                             updateRuleRequest: updateRuleRequests,
                             rules,
-                            databaseController,
+                            databaseController: this.databaseController,
                             domain,
                             transactionSession
                         });
                     }
                 } catch (e) {
-                    messageController.print(e);
+                    this.messageController.print(e);
                     ruleResponse.errors[`${transactionSession ? 'transaction.' : ''}update.${domain}`] = {
                         message: e.message ? e.message : e.toString(),
                         path: `${transactionSession ? 'transaction.' : ''}update.${domain}`,
@@ -514,7 +477,7 @@ export class RulesController {
             }
             return ruleResponse;
         } catch (e) {
-            messageController.print(e);
+            this.messageController.print(e);
             ruleResponse.errors[`${transactionSession ? 'transaction.' : ''}update`] = {
                 message: e.message ? e.message : e.toString(),
                 path: `${transactionSession ? 'transaction.' : ''}update`,
@@ -536,7 +499,7 @@ export class RulesController {
             }
             for (const aggregateRule of aggregateRules) {
                 const domain = this.extractDomain(aggregateRule, 'aggregate');
-                const allowed = await authController.hasPermission(`aggregate.${domain}`, rulesBlockModel?.context);
+                const allowed = await this.authController.hasPermission(`aggregate.${domain}`, rulesBlockModel?.context);
                 if (allowed !== true) {
                     ruleResultModel.errors[`${transactionSession ? 'transactionSession.' : ''}query.${domain}`] = {
                         message: 'You have insufficient permission to this resource',
@@ -553,7 +516,7 @@ export class RulesController {
                         && Array.isArray(data.pipelines)
                         && Array.isArray(data.hashes)
                     ) {
-                        ruleResultModel[aggregateRule] = await databaseController.aggregate(
+                        ruleResultModel[aggregateRule] = await this.databaseController.aggregate(
                             domain,
                             data.pipelines,
                             data.hashes,
@@ -561,7 +524,7 @@ export class RulesController {
                             {bypassDomainVerification: true, transaction: transactionSession}
                         );
                     } else if (data && Array.isArray(data)) {
-                        ruleResultModel[aggregateRule] = await databaseController.aggregate(
+                        ruleResultModel[aggregateRule] = await this.databaseController.aggregate(
                             domain,
                             data,
                             [],
@@ -572,7 +535,7 @@ export class RulesController {
                         throw {message: 'A pipeline must be of any[] or {hashes:string[],pipelines: any[]}'};
                     }
                 } catch (e) {
-                    messageController.print(e);
+                    this.messageController.print(e);
                     ruleResultModel.errors[`${transactionSession ? 'transaction.' : ''}aggregate.${domain}`] = {
                         message: e.message ? e.message : e.toString(),
                         path: `${transactionSession ? 'transaction.' : ''}aggregate.${domain}`,
@@ -585,7 +548,7 @@ export class RulesController {
             }
             return ruleResultModel;
         } catch (e) {
-            messageController.print(e);
+            this.messageController.print(e);
             ruleResultModel.errors[`${transactionSession ? 'transaction.' : ''}aggregate`] = {
                 message: e.message ? e.message : e.toString(),
                 path: `${transactionSession ? 'transaction.' : ''}aggregate`,
@@ -610,7 +573,7 @@ export class RulesController {
                 const data = file[action];
                 try {
                     if (action === 'save') {
-                        const allowed = await authController.hasPermission(`files.save`, rulesBlockModel.context);
+                        const allowed = await this.authController.hasPermission(`files.save`, rulesBlockModel.context);
                         if (allowed !== true) {
                             ruleResultModel.errors[`files.save`] = {
                                 message: 'You have insufficient permission to save file',
@@ -619,10 +582,10 @@ export class RulesController {
                             };
                         } else {
                             ruleResultModel.files = {};
-                            ruleResultModel.files.save = await storageController.save(data, rulesBlockModel.context);
+                            ruleResultModel.files.save = await this.storageController.save(data, rulesBlockModel.context);
                         }
                     } else if (action === 'delete') {
-                        const allowed = await authController.hasPermission(`files.delete`, rulesBlockModel.context);
+                        const allowed = await this.authController.hasPermission(`files.delete`, rulesBlockModel.context);
                         if (allowed !== true) {
                             ruleResultModel.errors[`files.delete`] = {
                                 message: 'You have insufficient permission delete file',
@@ -631,10 +594,10 @@ export class RulesController {
                             };
                         } else {
                             ruleResultModel.files = {};
-                            ruleResultModel.files.delete = await storageController.delete(data, rulesBlockModel.context);
+                            ruleResultModel.files.delete = await this.storageController.delete(data, rulesBlockModel.context);
                         }
                     } else if (action === 'list') {
-                        const allowed = await authController.hasPermission(`files.list`, rulesBlockModel.context);
+                        const allowed = await this.authController.hasPermission(`files.list`, rulesBlockModel.context);
                         if (allowed !== true) {
                             ruleResultModel.errors[`files.list`] = {
                                 message: 'You have insufficient permission list files',
@@ -643,7 +606,7 @@ export class RulesController {
                             };
                         } else {
                             ruleResultModel.files = {};
-                            ruleResultModel.files.list = await storageController.listFiles({
+                            ruleResultModel.files.list = await this.storageController.listFiles({
                                 prefix: data && data.prefix ? data.prefix : '',
                                 size: data && data.size ? data.size : 20,
                                 after: data.after,
@@ -652,7 +615,7 @@ export class RulesController {
                         }
                     }
                 } catch (e) {
-                    messageController.print(e);
+                    this.messageController.print(e);
                     ruleResultModel.errors[`files.${action}`] = {
                         message: e.message ? e.message : e.toString(),
                         path: `files.${action}`,
@@ -662,7 +625,7 @@ export class RulesController {
             }
             return ruleResultModel;
         } catch (e) {
-            messageController.print(e);
+            this.messageController.print(e);
             ruleResultModel.errors.files = {
                 message: e.message ? e.message : e.toString(),
                 path: 'files',

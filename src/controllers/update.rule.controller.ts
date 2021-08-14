@@ -18,10 +18,15 @@ export class UpdateRuleController {
             delete data.updateRuleRequest.filter;
             filter._id = data.updateRuleRequest.id;
             data.updateRuleRequest.filter = filter;
-            return await data.databaseController.update(data.domain, data.updateRuleRequest, data.rules?.context, {
-                bypassDomainVerification: data.rules?.context?.useMasterKey === true,
-                transaction: data.transactionSession
-            });
+            return data.databaseController.updateOne(
+                data.domain,
+                data.updateRuleRequest,
+                data.rules?.context,
+                {
+                    bypassDomainVerification: data.rules?.context?.useMasterKey === true,
+                    transaction: data.transactionSession
+                }
+            );
         } else if (data.updateRuleRequest?.filter) {
             if (data.updateRuleRequest?.filter && Object.keys(data.updateRuleRequest?.filter).length === 0) {
                 throw new Error('Empty map is not supported in update rule');

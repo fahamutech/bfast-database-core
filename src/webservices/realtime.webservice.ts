@@ -1,12 +1,9 @@
 import {BFast} from 'bfastnode';
 import {DatabaseController} from '../controllers/database.controller';
 
-let databaseController: DatabaseController;
-
 export class RealtimeWebservice {
 
-    constructor(database: DatabaseController) {
-        databaseController = database;
+    constructor(private readonly databaseController: DatabaseController) {
     }
 
     changesV2(config: { applicationId: string, masterKey: string }, prefix = '/'): { name: string, onEvent: any } {
@@ -14,7 +11,7 @@ export class RealtimeWebservice {
                 if (request.auth.applicationId === config.applicationId) {
                     const bypassDomainVerification: boolean = config.masterKey === request.auth.masterKey;
                     if (request.body.pipeline && Array.isArray(request.body.pipeline) && request.body.domain) {
-                        databaseController.changes(request.body.domain, request.body.pipeline, doc => {
+                        this.databaseController.changes(request.body.domain, request.body.pipeline, doc => {
                             response.emit({change: doc});
                         }, {
                             bypassDomainVerification,

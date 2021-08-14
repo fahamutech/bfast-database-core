@@ -92,8 +92,27 @@ export class DatabaseController {
         const returnFields = this.getReturnFields<T>(data);
         const sanitizedData = this.sanitize4Db(data);
         const sanitizedDataWithCreateMetadata = this.addCreateMetadata(sanitizedData, context);
-        sanitizedDataWithCreateMetadata._id = await this.database.writeOne<T>(domain, sanitizedDataWithCreateMetadata, context, options);
-        return this.sanitize4User<T>(sanitizedDataWithCreateMetadata, returnFields, []) as T;
+        const doc = await this.database.writeOne<T>(domain, sanitizedDataWithCreateMetadata, context, options);
+        return this.sanitize4User<T>(doc, returnFields, []) as T;
+    }
+
+    async writeMany<T extends BasicAttributesModel>(
+        domain: string,
+        data: T[],
+        context: ContextBlock,
+        options: DatabaseWriteOptions = {bypassDomainVerification: false}
+    ): Promise<any[]> {
+        if (options && options.bypassDomainVerification === false) {
+            await this.handleDomainValidation(domain);
+        }
+        const freshData = data.map(value => this.addCreateMetadata(value, context));
+        const returnFieldsMap = freshData.reduce((a, b) => {
+            a[b._id] = b.return;
+            return a;
+        }, {});
+        const sanitizedData = freshData.map(value => this.sanitize4Db(value));
+        const docs = await this.database.writeMany<any>(domain, sanitizedData, context, options);
+        return docs.map(x1 => this.sanitize4User(x1, returnFieldsMap[x1._id], []));
     }
 
     /**
@@ -103,7 +122,7 @@ export class DatabaseController {
      * @param context - current operation context
      * @param options - bfast::database update options
      */
-    async update(
+    async updateOne(
         domain: string,
         updateModel: UpdateRuleRequestModel,
         context: ContextBlock,
@@ -122,7 +141,7 @@ export class DatabaseController {
         updateModel.filter = this.sanitizeWithOperator4Db(updateModel?.filter as any);
         updateModel.update = this.addUpdateMetadata(updateModel?.update as any, context);
         options.dbOptions = updateModel && updateModel.options ? updateModel.options : {};
-        const updatedDoc = await this.database.update<any, any>(domain, updateModel, context, options);
+        const updatedDoc = await this.database.updateOne<any, any>(domain, updateModel, context, options);
         return this.sanitize4User(updatedDoc, returnFields, []);
     }
 
@@ -131,7 +150,7 @@ export class DatabaseController {
         updateModel: UpdateRuleRequestModel,
         context: ContextBlock,
         options: DatabaseUpdateOptions = {bypassDomainVerification: false}
-    ) {
+    ): Promise<any[]> {
         if (
             updateModel.filter &&
             typeof updateModel.filter === 'object' &&
@@ -152,13 +171,13 @@ export class DatabaseController {
             updateModel.filter = this.sanitizeWithOperator4Db(updateModel?.filter as any);
             updateModel.update = this.addUpdateMetadata(updateModel?.update as any, context);
             options.dbOptions = updateModel && updateModel.options ? updateModel.options : {};
-            await this.database.updateMany(
+            const docs = await this.database.updateMany(
                 domain,
                 updateModel,
                 context,
                 options
             );
-            return 'ok';
+            return docs.map(_t1 => this.sanitize4User(_t1, updateModel.return, []));
         }
         throw {message: 'you must supply filter object in update model'};
     }
@@ -181,7 +200,7 @@ export class DatabaseController {
         }
         deleteModel.filter = this.sanitizeWithOperator4Db(deleteModel?.filter as any);
         const result = await this.database.delete<any>(domain, deleteModel, context, options);
-        return result.map(t=>this.sanitize4User(t, deleteModel.return, []));
+        return result.map(t => this.sanitize4User(t, deleteModel.return, []));
     }
 
     /**
@@ -288,40 +307,23 @@ export class DatabaseController {
         }
     }
 
-    async writeMany<T extends BasicAttributesModel>(
-        domain: string,
-        data: T[],
-        context: ContextBlock,
-        options: DatabaseWriteOptions = {bypassDomainVerification: false}
-    ): Promise<any[]> {
-        if (options && options.bypassDomainVerification === false) {
-            await this.handleDomainValidation(domain);
-        }
-        const returnFieldsMap = {};
-        data.forEach((value, index) => {
-            returnFieldsMap[index] = value?.return;
-        });
-        const sanitizedData = data.map(value => this.sanitize4Db(value));
-        const freshData = sanitizedData.map(value => this.addCreateMetadata(value, context));
-        const insertedIds = await this.database.writeMany<any, object>(domain, freshData, context, options);
-        Object.keys(insertedIds).forEach(index => {
-            freshData[index]._id = insertedIds[index];
-            freshData[index] = this.sanitize4User(freshData[index], returnFieldsMap[index], []);
-        });
-        return freshData as any;
-    }
-
     /**
      * add update metadata to a model before update operation in bfast::database
-     * @param data -
-     * @param context -
+     * @param data
+     * @param context
      */
-    addUpdateMetadata<T extends BasicAttributesModel>(
-        data: T,
+    addUpdateMetadata(
+        data: any,
         context?: ContextBlock
-    ): T {
+    ): any {
         if (data && typeof data !== 'boolean') {
-            data.$currentDate = {_updated_at: true};
+            // data.$currentDate = {_updated_at: true};
+            if (data.$set) {
+                data.$set._updated_at = data.$set._updated_at ? data.$set._updated_at : new Date();
+            } else if (data.$inc) {
+                data.$set = {};
+                data.$set._updated_at = new Date();
+            }
             return data;
         }
         return data;
@@ -349,7 +351,7 @@ export class DatabaseController {
         data._created_by = context?.uid;
         data._created_at = data && data._created_at ? data._created_at : new Date();
         data._updated_at = data && data._updated_at ? data._updated_at : new Date();
-        if (data && (data._id === undefined || data._id === null) && typeof data !== 'boolean') {
+        if (data && !data.hasOwnProperty('_id')) {
             data._id = this.security.generateUUID();
         }
         return data;

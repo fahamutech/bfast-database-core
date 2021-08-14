@@ -1,12 +1,19 @@
-
-const { LogController } = require("../dist/controllers/log.controller");
-const { BfastDatabaseCore } = require("../dist/bfast-database-core");
-const { MongoMemoryServer } = require('mongodb-memory-server');
-const { MongoMemoryReplSet } = require('mongodb-memory-server');
-const { RulesController } = require('../dist/controllers/rules.controller');
-const { UpdateRuleController } = require('../dist/controllers/update.rule.controller');
+const {LogController} = require("../dist/controllers/log.controller");
+const {BfastDatabaseCore} = require("../dist/bfast-database-core");
+const {MongoMemoryServer} = require('mongodb-memory-server');
+const {MongoMemoryReplSet} = require('mongodb-memory-server');
+const {RulesController} = require('../dist/controllers/rules.controller');
+const {UpdateRuleController} = require('../dist/controllers/update.rule.controller');
 const {EnvUtil} = require('../dist/index')
 const mongodb = require('mongodb');
+const {DatabaseController} = require("../dist/controllers/database.controller");
+const {DatabaseFactory} = require("../dist/factory/database.factory");
+const {SecurityController} = require("../dist/controllers/security.controller");
+const {AuthController} = require("../dist/controllers/auth.controller");
+const {AuthFactory} = require("../dist/factory/auth.factory");
+const {StorageController} = require("../dist/controllers/storage.controller");
+const exp = require("constants");
+const {IpfsStorageFactory} = require("../dist/factory/ipfs-storage.factory");
 
 /**
  *
@@ -31,7 +38,7 @@ const mongoMemoryReplSet = () => {
             },
             waitUntilRunning: async function () {
             },
-            stop: async function(){
+            stop: async function () {
                 // console.log('***STOP MONGODB*****');
             }
         }
@@ -108,7 +115,22 @@ exports.getRulesController = async function (memoryReplSet) {
         await memoryReplSet.start();
         await memoryReplSet.waitUntilRunning();
         exports.config.mongoDbUri = await memoryReplSet.getUri();
-        return new RulesController(new UpdateRuleController(), new LogController(exports.config), exports.config);
+        const updateRuleController = new UpdateRuleController();
+        const databaseFactory = new DatabaseFactory(exports.config);
+        const securityController = new SecurityController(exports.config);
+        const databaseController = new DatabaseController(databaseFactory, securityController);
+        const authFactory = new AuthFactory(databaseController, securityController);
+        const authController = new AuthController(authFactory, databaseController);
+        const ipfsStorageFactory = new IpfsStorageFactory(exports.config, databaseFactory, exports.config.mongoDbUri);
+        const storageController = new StorageController(ipfsStorageFactory, securityController, exports.config)
+        return new RulesController(
+            updateRuleController,
+            new LogController(exports.config),
+            databaseController,
+            authController,
+            storageController,
+            exports.config
+        );
     } catch (e) {
         console.log(e);
     }

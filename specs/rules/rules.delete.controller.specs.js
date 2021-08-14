@@ -1,7 +1,6 @@
 const {getRulesController, mongoRepSet} = require('../mock.config');
 const {before, after} = require('mocha');
 const {assert, should, expect} = require('chai');
-const exp = require("constants");
 
 describe('RulesController::Delete Unit Test', function () {
     this.timeout(10000000000000000);

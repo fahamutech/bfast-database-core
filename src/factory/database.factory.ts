@@ -4,7 +4,7 @@ import {
     DatabaseUpdateOptions,
     DatabaseWriteOptions
 } from '../adapters/database.adapter';
-import {ChangeStream, ChangeStreamDocument, FindOneAndUpdateOptions, ModifyResult, MongoClient} from 'mongodb';
+import {ChangeStream, ChangeStreamDocument, MongoClient} from 'mongodb';
 import {BasicAttributesModel} from '../model/basic-attributes.model';
 import {ContextBlock} from '../model/rules.model';
 import {QueryModel} from '../model/query-model';
@@ -13,18 +13,17 @@ import {DeleteModel} from '../model/delete-model';
 import {BFastDatabaseOptions} from '../bfast-database.option';
 import {TreeController} from 'bfast-database-tree';
 import {Web3Storage} from 'web3.storage';
-import {bfast} from "bfastnode";
-import {create, IPFS} from "ipfs";
-// import {createHash} from "crypto";
+import {create, IPFS} from "ipfs-core";
+import {PassThrough} from "stream";
 
 let web3Storage: Web3Storage;
 const treeController = new TreeController();
-bfast.init({applicationId: '', projectId: ''}, '_ignore');
 let ipfs: IPFS;
 
 export class DatabaseFactory implements DatabaseAdapter {
 
-    constructor(private readonly config: BFastDatabaseOptions, _ipfs = null) {
+    constructor(private readonly config: BFastDatabaseOptions,
+                _ipfs: IPFS = null) {
         if (_ipfs) {
             ipfs = _ipfs;
         }
@@ -33,12 +32,13 @@ export class DatabaseFactory implements DatabaseAdapter {
         });
     }
 
-    private async dataCid(data: any, buffer: Buffer, domain: string): Promise<string> {
+    async dataCid(data: object, buffer: Buffer | PassThrough, domain: string): Promise<string> {
         try {
             if (!ipfs) {
                 ipfs = await create();
             }
-            const results = await ipfs.add(JSON.stringify(data));
+            // const dataString = JSON.stringify(data);
+            const results = await ipfs.add(buffer);
             return results.cid.toString();
         } catch (e) {
             console.log(e);
@@ -60,12 +60,12 @@ export class DatabaseFactory implements DatabaseAdapter {
         // }
     }
 
-    private async getDataFromCid(cid: string): Promise<any> {
+    async getDataFromCid(cid: string): Promise<any> {
         try {
             if (!ipfs) {
                 ipfs = await create();
             }
-            const results = await ipfs.cat(cid);
+            const results = await ipfs.cat(cid, {});
             let data = ''
             for await (const chunk of results) {
                 data += chunk.toString();
@@ -106,18 +106,14 @@ export class DatabaseFactory implements DatabaseAdapter {
                         }
                     }
                     const conn = await this.connection();
-                    await conn
-                        .db()
-                        .collection(path.toString().replace('/', '_'))
-                        .updateOne({
-                                _id: isNaN(Number(key)) ? key.trim() : Number(key),
-                            }, {
-                                $set: $setMap
-                            }, {
-                                upsert: true,
-                                session: options && options.transaction ? options.transaction : undefined
-                            }
-                        );
+                    await conn.db().collection(path.toString().replace('/', '_')).updateOne({
+                        _id: isNaN(Number(key)) ? key.trim() : Number(key),
+                    }, {
+                        $set: $setMap
+                    }, {
+                        upsert: true,
+                        session: options && options.transaction ? options.transaction : undefined
+                    });
                 }
             },
             nodeIdHandler: async function () {
@@ -245,7 +241,7 @@ export class DatabaseFactory implements DatabaseAdapter {
                     id(next._id) === true ? docs.push(next) : null
                 }
                 result = docs.reduce((a, b) => {
-                    a.value = Object.assign(a.value, typeof b.value === "string" ? {[b._id]:b.value} : b.value);
+                    a.value = Object.assign(a.value, typeof b.value === "string" ? {[b._id]: b.value} : b.value);
                     a._id.push(b._id);
                     return a;
                 }, {value: {}, _id: []});
@@ -301,18 +297,18 @@ export class DatabaseFactory implements DatabaseAdapter {
         });
     }
 
-    async writeMany<T extends BasicAttributesModel, V>(
+    async writeMany<T extends BasicAttributesModel>(
         domain: string,
         data: T[],
         context: ContextBlock,
         options?: DatabaseWriteOptions
-    ): Promise<V> {
+    ): Promise<any[]> {
         for (const _data of data) {
-            const buffer = Buffer.from(JSON.stringify(_data));
-            const cid = await this.dataCid(_data, buffer, domain);
-            await treeController.objectToTree(_data, domain, this.nodeProcess(cid, options));
+            const buffer = Buffer.from(JSON.stringify({..._data}));
+            const cid = await this.dataCid({..._data}, buffer, domain);
+            await treeController.objectToTree({..._data}, domain, this.nodeProcess(cid, options));
         }
-        return data.map(d => d._id) as any;
+        return data;
     }
 
     async writeOne<T extends BasicAttributesModel>(
@@ -323,8 +319,8 @@ export class DatabaseFactory implements DatabaseAdapter {
     ): Promise<any> {
         const buffer = Buffer.from(JSON.stringify(data));
         const cid = await this.dataCid(data, buffer, domain);
-        await treeController.objectToTree(data, domain, this.nodeProcess(cid, options));
-        return data._id;
+        await treeController.objectToTree({...data}, domain, this.nodeProcess(cid, options));
+        return data;
     }
 
     private async connection(): Promise<MongoClient> {
@@ -411,6 +407,7 @@ export class DatabaseFactory implements DatabaseAdapter {
             }
         );
         await conn.close();
+        // console.log(result,'----> db find one')
         if (!result) {
             return null;
         }
@@ -441,31 +438,32 @@ export class DatabaseFactory implements DatabaseAdapter {
         }
     }
 
-    async update<T extends BasicAttributesModel, V>(
+    async updateOne<T extends BasicAttributesModel, V>(
         domain: string,
         updateModel: UpdateRuleRequestModel,
         context: ContextBlock, options?: DatabaseUpdateOptions
-    ): Promise<V> {
-        const conn = await this.connection();
-        let updateOptions: FindOneAndUpdateOptions = {
-            upsert: typeof updateModel.upsert === 'boolean' ? updateModel.upsert : false,
-            returnDocument: 'after',
-            session: options && options.transaction ? options.transaction : undefined
-        };
-        updateOptions = Object.assign(updateOptions, options && options.dbOptions ? options.dbOptions : {});
-        const response: ModifyResult<any> = await conn.db()
-            .collection(domain)
-            .findOneAndUpdate(
-                updateModel.filter,
-                updateModel.update,
-                updateOptions
-            );
-        await conn.close();
-        if (response.ok === 1) {
-            return response.value as any;
-        } else {
-            throw "Fail to update";
+    ): Promise<any> {
+        let oldDoc = await this.findOne(
+            domain,
+            {
+                _id: updateModel.id,
+                return: []
+            },
+            context,
+            options
+        );
+        if (!oldDoc && updateModel.upsert === true) {
+            oldDoc = {_id: updateModel.id};
         }
+        if (!oldDoc) {
+            return null;
+        }
+        const updateParts = updateModel.update.$set;
+        const incrementParts = updateModel.update.$inc;
+        let newDoc = Object.assign(oldDoc, updateParts);
+        newDoc = this.incrementFields(newDoc, incrementParts);
+        // console.log(newDoc);
+        return this.writeOne(domain, newDoc, context, options);
     }
 
     async updateMany<T extends BasicAttributesModel>(
@@ -473,26 +471,24 @@ export class DatabaseFactory implements DatabaseAdapter {
         updateModel: UpdateRuleRequestModel,
         context: ContextBlock,
         options?: DatabaseUpdateOptions
-    ): Promise<string> {
-        const conn = await this.connection();
-        let updateOptions: FindOneAndUpdateOptions = {
-            upsert: typeof updateModel.upsert === 'boolean' ? updateModel.upsert : false,
-            session: options && options.transaction ? options.transaction : undefined
-        };
-        updateOptions = Object.assign(updateOptions, options && options.dbOptions ? options.dbOptions : {});
-        const response = await conn.db()
-            .collection(domain)
-            .updateMany(
-                updateModel.filter,
-                updateModel.update,
-                updateOptions
-            );
-        await conn.close();
-        if ((response.matchedCount + response.modifiedCount + response.upsertedCount) !== 0) {
-            return 'done update';
-        } else {
-            throw 'Fail to update, no match or modification found';
+    ): Promise<any[]> {
+        const oldDocs: any[] = await this.query(domain, updateModel, context, options);
+        if (Array.isArray(oldDocs) && oldDocs.length === 0 && updateModel.upsert === true) {
+            oldDocs.push(Object.assign(updateModel.update.$set, updateModel.filter));
+            return this.writeMany(domain, oldDocs, context, options);
         }
+        // console.log(oldDocs,'-----> old docs');
+        return Promise.all(oldDocs.map(async x => await this.updateOne(
+            domain,
+            {
+                update: updateModel.update,
+                upsert: updateModel.upsert,
+                id: x._id,
+                return: []
+            },
+            context,
+            options
+        )));
     }
 
     async delete<T extends BasicAttributesModel>(
@@ -562,5 +558,27 @@ export class DatabaseFactory implements DatabaseAdapter {
         return conn.db().collection(domain).watch(pipeline, options).on('change', doc => {
             listener(doc);
         });
+    }
+
+    private incrementFields(newDoc: any, ip: { [p: string]: any }) {
+        if (!newDoc) {
+            newDoc = {};
+        }
+        if (!ip) {
+            return newDoc;
+        } else {
+            for (const key of Object.keys(ip)) {
+                if (typeof ip[key] === "number") {
+                    if (newDoc.hasOwnProperty(key) && !isNaN(newDoc[key])) {
+                        newDoc[key] += ip[key];
+                    } else if (!newDoc.hasOwnProperty(key)) {
+                        newDoc[key] = ip[key];
+                    }
+                } else if (typeof ip[key] === "object" && JSON.stringify(ip[key]).startsWith('{')) {
+                    newDoc[key] = this.incrementFields(newDoc[key], ip[key]);
+                }
+            }
+            return newDoc;
+        }
     }
 }

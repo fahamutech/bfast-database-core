@@ -33,14 +33,14 @@ export abstract class DatabaseAdapter {
      * @param context - {ContextBlock}
      * @param options - {Data}
      */
-    abstract writeMany<T extends BasicAttributesModel, V>(
+    abstract writeMany<T extends BasicAttributesModel>(
         domain: string,
         data: T[],
         context: ContextBlock,
         options?: DatabaseWriteOptions
-    ): Promise<V>;
+    ): Promise<any[]>;
 
-    abstract update<T extends BasicAttributesModel, V>(
+    abstract updateOne<T extends BasicAttributesModel, V>(
         domain: string,
         updateModel: UpdateRuleRequestModel,
         context: ContextBlock,
@@ -52,7 +52,7 @@ export abstract class DatabaseAdapter {
         updateModel: UpdateRuleRequestModel,
         context: ContextBlock,
         options?: DatabaseUpdateOptions
-    ): Promise<string>;
+    ): Promise<any[]>;
 
     abstract delete<T extends BasicAttributesModel>(
         domain: string,

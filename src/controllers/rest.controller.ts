@@ -4,51 +4,41 @@ import {RulesController} from './rules.controller';
 import {RuleResponse} from '../model/rules.model';
 import {StorageController} from './storage.controller';
 import {AuthController} from './auth.controller';
-import {UpdateRuleController} from './update.rule.controller';
 import {PassThrough} from 'stream';
 import {BFastDatabaseOptions} from '../bfast-database.option';
 
 import formidable from 'formidable';
-import {LogController} from './log.controller';
-
-let restSecurity: SecurityController;
-let restAuthController: AuthController;
-let restStorageController: StorageController;
-let restConfig: BFastDatabaseOptions;
 
 export class RestController {
-    constructor(_restSecurity: SecurityController,
-                _restAuthController: AuthController,
-                _restStorageController: StorageController,
-                _restConfig: BFastDatabaseOptions) {
-        restSecurity = _restSecurity;
-        restAuthController = _restAuthController;
-        restStorageController = _restStorageController;
-        restConfig = _restConfig;
+    constructor(private readonly securityController: SecurityController,
+                private readonly authController: AuthController,
+                private readonly storageController: StorageController,
+                private readonly rulesController: RulesController,
+                private readonly config: BFastDatabaseOptions,) {
     }
 
     getFile(request: any, response: any, _: any): void {
-        if (restStorageController.isS3() === true) {
-            restStorageController.handleGetFileBySignedUrl(request, response, !!request.query.thumbnail);
+        if (this.storageController.isS3() === true) {
+            this.storageController.handleGetFileBySignedUrl(request, response, !!request.query.thumbnail);
             return;
         } else {
-            restStorageController.getFileData(request, response, false);
+            this.storageController.getFileData(request, response, false);
             return;
         }
     }
 
     getThumbnail(request: any, response: any, _: any): void {
-        if (restStorageController.isS3() === true) {
-            restStorageController.handleGetFileBySignedUrl(request, response, true);
+        if (this.storageController.isS3() === true) {
+            this.storageController.handleGetFileBySignedUrl(request, response, true);
             return;
         } else {
-            restStorageController.getFileData(request, response, true);
+            this.storageController.getFileData(request, response, true);
             return;
         }
     }
 
     getAllFiles(request: any, response: any, _: any): void {
-        restStorageController.listFiles({
+        this.storageController.listFiles({
             skip: request.query.skip ? request.query.skip as number : 0,
             after: request.query.after,
             size: request.query.size ? request.query.size as number : 20,
@@ -97,7 +87,7 @@ export class RestController {
                 } else {
                     request.body.context.storage = {preserveName: false};
                 }
-                const result = await restStorageController.saveFromBuffer({
+                const result = await this.storageController.saveFromBuffer({
                     data: passThrough as any,
                     type: fileMeta.type,
                     filename: fileMeta.name
@@ -114,7 +104,7 @@ export class RestController {
 
     verifyApplicationId(request: any, response: any, next: any): void {
         const applicationId = request.body.applicationId;
-        if (applicationId === restConfig.applicationId) {
+        if (applicationId === this.config.applicationId) {
             request.body.context = {
                 applicationId
             };
@@ -125,7 +115,7 @@ export class RestController {
     }
 
     filePolicy(request: any, response: any, next: any): void {
-        restAuthController.hasPermission(request.body.ruleId, request.body.context).then(value => {
+        this.authController.hasPermission(request.body.ruleId, request.body.context).then(value => {
             if (value === true) {
                 next();
             } else {
@@ -141,7 +131,7 @@ export class RestController {
         const headerToken = request.headers['x-bfast-token'];
         const masterKey = request.body.masterKey;
 
-        if (masterKey === restConfig.masterKey) {
+        if (masterKey === this.config.masterKey) {
             request.body.context.auth = true;
             request.body.context.uid = "masterKey";
             request.body.context.masterKey = masterKey;
@@ -151,8 +141,8 @@ export class RestController {
         }
 
         request.body.context.useMasterKey = false;
-        if(token && token !== ''){
-            restSecurity.verifyToken(token).then(value => {
+        const vToken = () => {
+            this.securityController.verifyToken(token).then(value => {
                 request.body.context.auth = true;
                 request.body.context.uid = value.uid;
                 next();
@@ -162,18 +152,12 @@ export class RestController {
                 next();
                 // response.status(httpStatus.UNAUTHORIZED).json({message: 'bad token', code: -1});
             });
-        }else if(headerToken && headerToken!==''){
-            restSecurity.verifyToken(headerToken).then(value => {
-                request.body.context.auth = true;
-                request.body.context.uid = value.uid;
-                next();
-            }).catch(_ => {
-                request.body.context.auth = false;
-                request.body.context.uid = null;
-                next();
-                // response.status(httpStatus.UNAUTHORIZED).json({message: 'bad token', code: -1});
-            });
-        }else {
+        }
+        if (token && token !== '') {
+            vToken();
+        } else if (headerToken && headerToken !== '') {
+            vToken();
+        } else {
             request.body.context.auth = false;
             request.body.context.uid = null;
             next();
@@ -203,25 +187,24 @@ export class RestController {
     handleRuleBlocks(request: any, response: any, _: any): void {
         const body = request.body;
         const results: RuleResponse = {errors: {}};
-        const rulesController = new RulesController(new UpdateRuleController(), new LogController(restConfig), restConfig);
-        rulesController.handleIndexesRule(body, results).then(__ => {
-            return rulesController.handleAuthenticationRule(body, results);
+        this.rulesController.handleIndexesRule(body, results).then(__ => {
+            return this.rulesController.handleAuthenticationRule(body, results);
         }).then(_1 => {
-            return rulesController.handleAuthorizationRule(body, results);
+            return this.rulesController.handleAuthorizationRule(body, results);
         }).then(_2 => {
-            return rulesController.handleCreateRules(body, results);
+            return this.rulesController.handleCreateRules(body, results);
         }).then(_3 => {
-            return rulesController.handleUpdateRules(body, results);
+            return this.rulesController.handleUpdateRules(body, results);
         }).then(_4 => {
-            return rulesController.handleDeleteRules(body, results);
+            return this.rulesController.handleDeleteRules(body, results);
         }).then(_5 => {
-            return rulesController.handleQueryRules(body, results);
+            return this.rulesController.handleQueryRules(body, results);
         }).then(_6 => {
-            return rulesController.handleTransactionRule(body, results);
+            return this.rulesController.handleTransactionRule(body, results);
         }).then(_7 => {
-            return rulesController.handleAggregationRules(body, results);
+            return this.rulesController.handleAggregationRules(body, results);
         }).then(_8 => {
-            return rulesController.handleStorageRule(body, results);
+            return this.rulesController.handleStorageRule(body, results);
         }).then(_9 => {
             if (!(results.errors && Object.keys(results.errors).length > 0)) {
                 delete results.errors;

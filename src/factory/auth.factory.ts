@@ -77,7 +77,7 @@ export class AuthFactory implements AuthAdapter {
     }
 
     async update<T extends BasicUserAttributesModel>(userModel: T, context?: ContextBlock): Promise<T> {
-        return this.databaseController.update(this.domainName, {
+        return this.databaseController.updateOne(this.domainName, {
             id: context.uid,
             update: {
                 $set: userModel
@@ -87,7 +87,7 @@ export class AuthFactory implements AuthAdapter {
 
     async updatePassword(password: string, context?: ContextBlock): Promise<any> {
         const hashedPassword = await this.securityController.hashPlainText(password);
-        return this.databaseController.update(this.domainName, {
+        return this.databaseController.updateOne(this.domainName, {
             id: context.uid,
             update: {
                 $set: {

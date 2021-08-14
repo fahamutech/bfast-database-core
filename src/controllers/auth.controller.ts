@@ -3,15 +3,10 @@ import {ContextBlock} from '../model/rules.model';
 import {BasicUserAttributesModel} from '../model/basic-user-attributes.model';
 import {DatabaseController} from './database.controller';
 
-let authAdapter: AuthAdapter;
-let databaseController: DatabaseController;
-
 export class AuthController {
 
-    constructor(auth: AuthAdapter,
-                database: DatabaseController) {
-        authAdapter = auth;
-        databaseController = database;
+    constructor(private readonly authAdapter: AuthAdapter,
+                private readonly databaseController: DatabaseController) {
     }
 
     private policyDomainName = '_Policy';
@@ -46,7 +41,7 @@ export class AuthController {
     }
 
     async addPolicyRule(ruleId: string, rule: string, context: ContextBlock): Promise<any> {
-        const _p1 = await databaseController.writeOne(this.policyDomainName, {
+        const _p1 = await this.databaseController.writeOne(this.policyDomainName, {
                 id: ruleId.replace('.', '%').concat('%id'),
                 ruleId: ruleId.replace('.', '%'),
                 ruleBody: rule.replace('.', '%'),
@@ -59,7 +54,7 @@ export class AuthController {
     }
 
     async listPolicyRule(context: ContextBlock) {
-        const _j1 = await databaseController.query('_Policy', {
+        const _j1 = await this.databaseController.query('_Policy', {
             filter: {},
             return: []
         }, context, {
@@ -69,7 +64,7 @@ export class AuthController {
     }
 
     async removePolicyRule(ruleId: string, context: ContextBlock) {
-        const _y89 = await databaseController.delete('_Policy', {
+        const _y89 = await this.databaseController.delete('_Policy', {
             filter: {
                 ruleId: ruleId.replace('.', '%'),
             },
@@ -101,7 +96,7 @@ export class AuthController {
             filter.push({ruleId: globalRule.replace('.', '%')});
         }
         filter.push({ruleId: originalRule.replace('.', '%')});
-        let query: any[] = await databaseController.query(this.policyDomainName, {
+        let query: any[] = await this.databaseController.query(this.policyDomainName, {
             return: [],
             filter,
         }, context, {
@@ -132,27 +127,27 @@ export class AuthController {
         if (!email) {
             throw {message: 'email required'};
         }
-        return authAdapter.resetPassword(email, context);
+        return this.authAdapter.resetPassword(email, context);
     }
 
     async sendVerificationEmail(email: string, context?: ContextBlock): Promise<any> {
         if (!email) {
             throw {message: 'email required'};
         }
-        return authAdapter.sendVerificationEmail(email, context);
+        return this.authAdapter.sendVerificationEmail(email, context);
     }
 
     async signIn<T extends BasicUserAttributesModel>(userModel: T, context?: ContextBlock): Promise<T> {
         AuthController.validateData(userModel, true);
         userModel.return = [];
-        return authAdapter.signIn(userModel, context);
+        return this.authAdapter.signIn(userModel, context);
     }
 
     async signUp<T extends BasicUserAttributesModel>(userModel: T, context?: ContextBlock): Promise<T> {
         AuthController.validateData(userModel);
         userModel.return = [];
         userModel.emailVerified = false;
-        return authAdapter.signUp(userModel, context);
+        return this.authAdapter.signUp(userModel, context);
     }
 
     async update<T extends BasicUserAttributesModel>(userModel: T, context?: ContextBlock): Promise<T> {
@@ -161,7 +156,7 @@ export class AuthController {
             delete userModel.password;
             delete userModel._hashed_password;
             delete userModel.emailVerified;
-            return authAdapter.update(userModel, context);
+            return this.authAdapter.update(userModel, context);
         } else {
             return Promise.reject({message: 'please authenticate yourself'});
         }
@@ -169,7 +164,7 @@ export class AuthController {
 
     async updatePassword(password: string, context?: ContextBlock): Promise<any> {
         if (context.uid && typeof context.uid === 'string') {
-            return authAdapter.updatePassword(password, context);
+            return this.authAdapter.updatePassword(password, context);
         } else {
             return Promise.reject({message: 'Fails to updated password of unknown user id'});
         }
