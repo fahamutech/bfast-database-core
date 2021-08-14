@@ -212,6 +212,10 @@ export class DatabaseFactory implements DatabaseAdapter {
             .filter(x => cidMap[x] === keys.length)
             .reduce((a, b) => a.add(b), new Set());
         cids = Array.from(cids);
+        if (queryModel?.size && queryModel?.size > 0) {
+            const skip = (queryModel.skip && queryModel.skip >= 0) ? queryModel.skip : 0;
+            cids = cids.slice(skip, queryModel.size);
+        }
         if (queryModel?.count === true) {
             return cids.length;
         }
@@ -416,8 +420,10 @@ export class DatabaseFactory implements DatabaseAdapter {
     }
 
     async query<T extends BasicAttributesModel>(
-        domain: string, queryModel: QueryModel<T>,
-        context: ContextBlock, options?: DatabaseWriteOptions
+        domain: string,
+        queryModel: QueryModel<T>,
+        context: ContextBlock,
+        options?: DatabaseWriteOptions
     ): Promise<any> {
         let queryTree;
         try {
@@ -520,17 +526,17 @@ export class DatabaseFactory implements DatabaseAdapter {
 
     async transaction<V>(operations: (session: any) => Promise<any>): Promise<any> {
         const conn = await this.connection();
-        const session = conn.startSession();
+        // const session = conn.startSession();
         try {
-            await session.withTransaction(async _ => {
-                return await operations(session);
-            }, {
-                writeConcern: {
-                    w: 'majority'
-                }
-            });
+            // await session.withTransaction(async _ => {
+            return await operations(null);
+            // }, {
+            //     // writeConcern: {
+            //     //     w: 'majority'
+            //     // }
+            // });
         } finally {
-            await session.endSession();
+            // await session.endSession();
         }
         await conn.close();
     }

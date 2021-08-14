@@ -490,76 +490,76 @@ export class RulesController {
         }
     }
 
-    async handleAggregationRules(rulesBlockModel: RulesModel, ruleResultModel: RuleResponse, transactionSession?: any)
-        : Promise<RuleResponse> {
-        try {
-            const aggregateRules = this.getRulesKey(rulesBlockModel).filter(rule => rule.startsWith('aggregate'));
-            if (aggregateRules.length === 0) {
-                return ruleResultModel;
-            }
-            for (const aggregateRule of aggregateRules) {
-                const domain = this.extractDomain(aggregateRule, 'aggregate');
-                const allowed = await this.authController.hasPermission(`aggregate.${domain}`, rulesBlockModel?.context);
-                if (allowed !== true) {
-                    ruleResultModel.errors[`${transactionSession ? 'transactionSession.' : ''}query.${domain}`] = {
-                        message: 'You have insufficient permission to this resource',
-                        path: `${transactionSession ? 'transactionSession.' : ''}query.${domain}`,
-                        data: rulesBlockModel[aggregateRule]
-                    };
-                    return ruleResultModel;
-                }
-                const data = rulesBlockModel[aggregateRule];
-                try {
-                    if (data
-                        && data.hashes
-                        && data.pipelines
-                        && Array.isArray(data.pipelines)
-                        && Array.isArray(data.hashes)
-                    ) {
-                        ruleResultModel[aggregateRule] = await this.databaseController.aggregate(
-                            domain,
-                            data.pipelines,
-                            data.hashes,
-                            rulesBlockModel?.context,
-                            {bypassDomainVerification: true, transaction: transactionSession}
-                        );
-                    } else if (data && Array.isArray(data)) {
-                        ruleResultModel[aggregateRule] = await this.databaseController.aggregate(
-                            domain,
-                            data,
-                            [],
-                            rulesBlockModel?.context,
-                            {bypassDomainVerification: true, transaction: transactionSession}
-                        );
-                    } else {
-                        throw {message: 'A pipeline must be of any[] or {hashes:string[],pipelines: any[]}'};
-                    }
-                } catch (e) {
-                    this.messageController.print(e);
-                    ruleResultModel.errors[`${transactionSession ? 'transaction.' : ''}aggregate.${domain}`] = {
-                        message: e.message ? e.message : e.toString(),
-                        path: `${transactionSession ? 'transaction.' : ''}aggregate.${domain}`,
-                        data
-                    };
-                    if (transactionSession) {
-                        throw e;
-                    }
-                }
-            }
-            return ruleResultModel;
-        } catch (e) {
-            this.messageController.print(e);
-            ruleResultModel.errors[`${transactionSession ? 'transaction.' : ''}aggregate`] = {
-                message: e.message ? e.message : e.toString(),
-                path: `${transactionSession ? 'transaction.' : ''}aggregate`,
-                data: null
-            };
-            if (transactionSession) {
-                throw e;
-            }
-            return ruleResultModel;
-        }
-    }
+    // async handleAggregationRules(rulesBlockModel: RulesModel, ruleResultModel: RuleResponse, transactionSession?: any)
+    //     : Promise<RuleResponse> {
+    //     try {
+    //         const aggregateRules = this.getRulesKey(rulesBlockModel).filter(rule => rule.startsWith('aggregate'));
+    //         if (aggregateRules.length === 0) {
+    //             return ruleResultModel;
+    //         }
+    //         for (const aggregateRule of aggregateRules) {
+    //             const domain = this.extractDomain(aggregateRule, 'aggregate');
+    //             const allowed = await this.authController.hasPermission(`aggregate.${domain}`, rulesBlockModel?.context);
+    //             if (allowed !== true) {
+    //                 ruleResultModel.errors[`${transactionSession ? 'transactionSession.' : ''}query.${domain}`] = {
+    //                     message: 'You have insufficient permission to this resource',
+    //                     path: `${transactionSession ? 'transactionSession.' : ''}query.${domain}`,
+    //                     data: rulesBlockModel[aggregateRule]
+    //                 };
+    //                 return ruleResultModel;
+    //             }
+    //             const data = rulesBlockModel[aggregateRule];
+    //             try {
+    //                 if (data
+    //                     && data.hashes
+    //                     && data.pipelines
+    //                     && Array.isArray(data.pipelines)
+    //                     && Array.isArray(data.hashes)
+    //                 ) {
+    //                     ruleResultModel[aggregateRule] = await this.databaseController.aggregate(
+    //                         domain,
+    //                         data.pipelines,
+    //                         data.hashes,
+    //                         rulesBlockModel?.context,
+    //                         {bypassDomainVerification: true, transaction: transactionSession}
+    //                     );
+    //                 } else if (data && Array.isArray(data)) {
+    //                     ruleResultModel[aggregateRule] = await this.databaseController.aggregate(
+    //                         domain,
+    //                         data,
+    //                         [],
+    //                         rulesBlockModel?.context,
+    //                         {bypassDomainVerification: true, transaction: transactionSession}
+    //                     );
+    //                 } else {
+    //                     throw {message: 'A pipeline must be of any[] or {hashes:string[],pipelines: any[]}'};
+    //                 }
+    //             } catch (e) {
+    //                 this.messageController.print(e);
+    //                 ruleResultModel.errors[`${transactionSession ? 'transaction.' : ''}aggregate.${domain}`] = {
+    //                     message: e.message ? e.message : e.toString(),
+    //                     path: `${transactionSession ? 'transaction.' : ''}aggregate.${domain}`,
+    //                     data
+    //                 };
+    //                 if (transactionSession) {
+    //                     throw e;
+    //                 }
+    //             }
+    //         }
+    //         return ruleResultModel;
+    //     } catch (e) {
+    //         this.messageController.print(e);
+    //         ruleResultModel.errors[`${transactionSession ? 'transaction.' : ''}aggregate`] = {
+    //             message: e.message ? e.message : e.toString(),
+    //             path: `${transactionSession ? 'transaction.' : ''}aggregate`,
+    //             data: null
+    //         };
+    //         if (transactionSession) {
+    //             throw e;
+    //         }
+    //         return ruleResultModel;
+    //     }
+    // }
 
     async handleStorageRule(rulesBlockModel: RulesModel, ruleResultModel: RuleResponse): Promise<RuleResponse> {
         try {

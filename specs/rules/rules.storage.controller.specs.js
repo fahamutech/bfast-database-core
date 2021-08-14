@@ -2,7 +2,7 @@ const {getRulesController, mongoRepSet} = require('../mock.config');
 const {before, after} = require('mocha');
 const {assert, should, expect} = require('chai');
 
-describe('RulesController::Storage Unit Test', function () {
+describe('Storage', function () {
     this.timeout(10000000000000000);
     let _rulesController;
     let mongoMemoryReplSet
@@ -14,7 +14,7 @@ describe('RulesController::Storage Unit Test', function () {
         await mongoMemoryReplSet.stop();
     });
 
-    describe('RulesController::Storage::Save', function () {
+    describe('add', function () {
         it('should return url of saved file', async function () {
             const results = {errors: {}};
             await _rulesController.handleStorageRule({
@@ -26,7 +26,6 @@ describe('RulesController::Storage Unit Test', function () {
                     }
                 }
             }, results);
-            console.log(results);
             should().exist(results.files);
             should().exist(results.files.save);
             expect(typeof results.files.save).equal("string");
@@ -34,7 +33,7 @@ describe('RulesController::Storage Unit Test', function () {
         });
     });
 
-    describe('RulesController::Storage::Query', function () {
+    describe('list', function () {
         before(async function () {
             const results = {errors: {}};
             await _rulesController.handleStorageRule({
@@ -64,11 +63,11 @@ describe('RulesController::Storage Unit Test', function () {
                     list: {}
                 }
             }, results);
-            assert(results.files !== undefined);
-            assert(results.files.list !== undefined);
-            assert(Array.isArray(results.files.list));
-            assert(results.files.list.length === 3);
-            assert(typeof results.files.list[0].filename === "string");
+            should().exist(results.files);
+            should().exist(results.files.list);
+            expect(Array.isArray(results.files.list)).equal(true);
+            expect(results.files.list.length).equal(3);
+            expect(typeof results.files.list[0].filename).equal("string");
         });
         it('should list only 2 files', async function () {
             const results = {errors: {}};
@@ -80,11 +79,11 @@ describe('RulesController::Storage Unit Test', function () {
                     }
                 }
             }, results);
-            assert(results.files !== undefined);
-            assert(results.files.list !== undefined);
-            assert(Array.isArray(results.files.list));
-            assert(results.files.list.length === 2);
-            assert(typeof results.files.list[0].filename === "string");
+            should().exist(results.files);
+            should().exist(results.files.list);
+            expect(Array.isArray(results.files.list)).equal(true);
+            expect(results.files.list).length(2);
+            expect(typeof results.files.list[0].filename).equal("string");
         });
         it('should list files contain doe keyword', async function () {
             const results = {errors: {}};
@@ -104,7 +103,7 @@ describe('RulesController::Storage Unit Test', function () {
         });
     });
 
-    describe('RulesController::Storage::Delete', function () {
+    describe('delete', function () {
         let filename = '';
         before(async function () {
             const results = {errors: {}};
@@ -129,10 +128,14 @@ describe('RulesController::Storage Unit Test', function () {
                     }
                 }
             }, results);
-            assert(results.files !== undefined);
-            assert(results.files.delete !== undefined);
-            assert(typeof results.files.delete === "string");
-            assert(results.files.delete === filename);
+            // console.log(results.files.delete)
+            should().exist(results.files);
+            should().exist(results.files.delete);
+            expect(results.files.delete).length(1);
+            expect(results.files.delete[0]._id).equal('doe1.txt');
+            // expect(typeof results.files.delete).eql( [{
+            //     _id: 'doe1.txt'
+            // }]);
         });
     });
 });

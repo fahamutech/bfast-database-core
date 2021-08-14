@@ -48,15 +48,19 @@ export class IpfsStorageFactory implements FilesAdapter {
     }
 
     async deleteFile(filename: string): Promise<any> {
-        // const documents = await bucket.find({filename}).toArray();
-        // if (documents.length === 0) {
-        //     throw new Error('FileNotFound');
-        // }
-        // return Promise.all(
-        //     documents.map((doc) => {
-        //         return bucket.delete(doc._id);
-        //     })
-        // );
+        const r = await this.databaseFactory.delete(
+            '_Storage',
+            {
+                id: filename.replace('.', '%').concat('-id'),
+            },
+            {}
+        );
+        return r.map(x => {
+            x._id = x._id
+                .replace(new RegExp('%', 'ig'), '.')
+                .replace(new RegExp('-id', 'ig'), '');
+            return x;
+        });
     }
 
     async getFileData<T>(filename: string, asStream = false): Promise<T> {
@@ -97,16 +101,6 @@ export class IpfsStorageFactory implements FilesAdapter {
         return '/storage/' + configAdapter.applicationId + '/file/' + encodeURIComponent(filename);
     }
 
-    async getMetadata(filename): Promise<any> {
-        // const bucket = await this.getBucket();
-        // const files = await bucket.find({filename}).toArray();
-        // if (files.length === 0) {
-        //     return {};
-        // }
-        // const {metadata} = files[0];
-        // return {metadata};
-    }
-
     async handleFileStream(filename: string, req, res, contentType): Promise<any> {
         // const bucket = await this.getBucket('fs');
         // const files = await bucket.find({filename}).toArray();
@@ -145,32 +139,30 @@ export class IpfsStorageFactory implements FilesAdapter {
         size: 20,
         skip: 0
     }): Promise<any[]> {
-        // const bucket = await this.getBucket();
-        // return bucket.find({
-        //     filename: {
-        //         $regex: query.prefix, $options: 'i'
-        //     }
-        // }, {
-        //     skip: query.skip,
-        //     limit: query.size,
-        // }).toArray();
-        // return [];
-        const r = await this.databaseFactory.query(
+        let r = await this.databaseFactory.query(
             '_Storage',
             {
-               filter: {
-                   filename: (f) => {
-                       return f.toString().includes(query.prefix)
-                   }
-               },
+                filter: {
+                    filename: function (f) {
+                        return !!f.includes(query.prefix);
+                    }
+                },
                 return: [],
                 size: query.size,
                 skip: query.skip
             },
             {}
         );
-        console.log(r,'-----> list files');
-        return r;
+        if (Array.isArray(r)) {
+            r = r.map(x => {
+                x._id = x?._id?.replace(new RegExp('%', 'ig'), '.').replace(new RegExp('-id', 'ig'), '');
+                x.filename = x?.filename?.replace(new RegExp('%', 'ig'), '.');
+                return x;
+            });
+            return r;
+        } else {
+            return [];
+        }
     }
 
     validateFilename(filename: string): Promise<void> {
@@ -195,8 +187,13 @@ export class IpfsStorageFactory implements FilesAdapter {
         contentType: string,
         options: any = {}
     ): Promise<string> {
-        const _obj = {_id: filename, filename: filename, type: contentType};
-        await this.databaseFactory.dataCid(_obj, data, '_Storage');
+        const _obj = {
+            _id: filename.replace('.', '%').concat('-id'),
+            filename: filename.replace('.', '%'),
+            type: contentType,
+            cid: null
+        };
+        _obj.cid = await this.databaseFactory.dataCid(_obj, data, '_Storage');
         const r = await this.databaseFactory.writeOne(
             '_Storage'
             , _obj,
@@ -205,7 +202,6 @@ export class IpfsStorageFactory implements FilesAdapter {
                 bypassDomainVerification: true
             }
         );
-        // console.log(r,'----> file saved');
         return filename;
     }
 }

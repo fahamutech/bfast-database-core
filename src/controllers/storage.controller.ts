@@ -164,8 +164,7 @@ export class StorageController {
         if (!filename) {
             throw new Error('Filename required');
         }
-        await this.filesAdapter.deleteFile(filename);
-        return filename;
+        return this.filesAdapter.deleteFile(filename);
     }
 
     isS3(): boolean {
