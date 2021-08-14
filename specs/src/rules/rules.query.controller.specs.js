@@ -1,4 +1,4 @@
-const {getRulesController, mongoRepSet, daas} = require('../mock.config');
+const {getRulesController, mongoRepSet} = require('../../mock.config');
 const {createHash} = require('crypto');
 const {expect, should, assert} = require('chai');
 

@@ -3,18 +3,16 @@ import {AuthAdapter} from './adapters/auth.adapter';
 import {EmailAdapter} from './adapters/email.adapter';
 
 export interface BFastDatabaseOptions {
-    port?: string;
-    masterKey?: string;
-    applicationId?: string;
-    projectId?: string;
+    port: string;
+    masterKey: string;
+    applicationId: string;
+    projectId: string;
     logs?: boolean;
-    mongoDbUri?: string;
+    mongoDbUri: string;
     taarifaToken?: string;
     rsaKeyPairInJson: any;
     rsaPublicKeyInJson: any;
     web3Token?: string;
-    // ipfsNode?: boolean;
-    // ipfs?: IPFS,
     adapters?: {
         database?: (config: BFastDatabaseOptions) => DatabaseAdapter;
         auth?: (config: BFastDatabaseOptions) => AuthAdapter;
@@ -22,7 +20,7 @@ export interface BFastDatabaseOptions {
         s3Storage?: {
             accessKey: string;
             bucket: string;
-            direct: boolean;
+            direct?: boolean;
             endPoint: string;
             prefix?: string;
             region?: string;

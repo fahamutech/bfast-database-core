@@ -1,5 +1,5 @@
 export class FileModel {
-  filename: string;
+  name: string;
   base64: string;
   type?: string;
 }

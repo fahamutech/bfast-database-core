@@ -1,6 +1,6 @@
 const assert = require("assert");
-const {SecurityController} = require('../../dist/controllers/security.controller');
-const {config} = require('../mock.config');
+const {SecurityController} = require('../../../dist/controllers/security.controller');
+const {config} = require('../../mock.config');
 
 describe('SecurityController Integration Test', function () {
     const securityController = new SecurityController(config);

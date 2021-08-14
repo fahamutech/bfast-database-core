@@ -35,23 +35,23 @@ export class IpfsStorageFactory implements FilesAdapter {
     }
 
     async createFile(
-        filename: string,
+        name: string,
         data: PassThrough,
         contentType: any,
         options: any = {}
     ): Promise<string> {
-        await this.validateFilename(filename);
+        await this.validateFilename(name);
         // await this.initIpfs();
-        // const newFilename = security.generateUUID() + '-' + filename;
-        // console.log(filename,'------> filename to save');
-        return this._saveFile(filename, data, contentType, options);
+        // const newname = security.generateUUID() + '-' + name;
+        // console.log(name,'------> name to save');
+        return this._saveFile(name, data, contentType, options);
     }
 
-    async deleteFile(filename: string): Promise<any> {
+    async deleteFile(name: string): Promise<any> {
         const r = await this.databaseFactory.delete(
             '_Storage',
             {
-                id: filename.replace('.', '%').concat('-id'),
+                id: name.replace('.', '%').concat('-id'),
             },
             {}
         );
@@ -63,13 +63,13 @@ export class IpfsStorageFactory implements FilesAdapter {
         });
     }
 
-    async getFileData<T>(filename: string, asStream = false): Promise<T> {
+    async getFileData<T>(name: string, asStream = false): Promise<T> {
         // const bucket = await this.getBucket('fs');
-        // const files = await bucket.find({filename}).toArray();
+        // const files = await bucket.find({name}).toArray();
         // if (files.length === 0) {
         //     throw new Error('FileNotFound');
         // }
-        // const stream = bucket.openDownloadStreamByName(filename);
+        // const stream = bucket.openDownloadStreamByName(name);
         // if (asStream === true) {
         //     return stream as any;
         // } else {
@@ -91,19 +91,19 @@ export class IpfsStorageFactory implements FilesAdapter {
         return;
     }
 
-    async getFileStream(filename): Promise<Stream> {
+    async getFileStream(name): Promise<Stream> {
         // const bucket = await this.getBucket('fs');
-        // return bucket.openDownloadStreamByName(filename);
+        // return bucket.openDownloadStreamByName(name);
         return;
     }
 
-    async getFileLocation(filename: string, configAdapter: BFastDatabaseOptions): Promise<string> {
-        return '/storage/' + configAdapter.applicationId + '/file/' + encodeURIComponent(filename);
+    async getFileLocation(name: string, configAdapter: BFastDatabaseOptions): Promise<string> {
+        return '/storage/' + configAdapter.applicationId + '/file/' + encodeURIComponent(name);
     }
 
-    async handleFileStream(filename: string, req, res, contentType): Promise<any> {
+    async handleFileStream(name: string, req, res, contentType): Promise<any> {
         // const bucket = await this.getBucket('fs');
-        // const files = await bucket.find({filename}).toArray();
+        // const files = await bucket.find({name}).toArray();
         // if (files.length === 0) {
         //     throw new Error('FileNotFound');
         // }
@@ -120,7 +120,7 @@ export class IpfsStorageFactory implements FilesAdapter {
         //     'Content-Range': 'bytes ' + start + '-' + end + '/' + files[0].length,
         //     'Content-Type': contentType,
         // });
-        // const stream = bucket.openDownloadStreamByName(filename);
+        // const stream = bucket.openDownloadStreamByName(name);
         // // @ts-ignore
         // stream.start(start);
         // stream.on('data', (chunk) => {
@@ -139,11 +139,11 @@ export class IpfsStorageFactory implements FilesAdapter {
         size: 20,
         skip: 0
     }): Promise<any[]> {
-        let r = await this.databaseFactory.query(
+        let r = await this.databaseFactory.findMany(
             '_Storage',
             {
                 filter: {
-                    filename: function (f) {
+                    name: function (f) {
                         return !!f.includes(query.prefix);
                     }
                 },
@@ -156,7 +156,7 @@ export class IpfsStorageFactory implements FilesAdapter {
         if (Array.isArray(r)) {
             r = r.map(x => {
                 x._id = x?._id?.replace(new RegExp('%', 'ig'), '.').replace(new RegExp('-id', 'ig'), '');
-                x.filename = x?.filename?.replace(new RegExp('%', 'ig'), '.');
+                x.name = x?.name?.replace(new RegExp('%', 'ig'), '.');
                 return x;
             });
             return r;
@@ -165,31 +165,31 @@ export class IpfsStorageFactory implements FilesAdapter {
         }
     }
 
-    validateFilename(filename: string): Promise<void> {
-        if (filename.length > 128) {
-            throw new Error('Filename too long.');
+    validateFilename(name: string): Promise<void> {
+        if (name.length > 128) {
+            throw new Error('name too long.');
         }
 
         const regx = /^[_a-zA-Z0-9][a-zA-Z0-9@. ~_-]*$/;
-        if (!filename.match(regx)) {
+        if (!name.match(regx)) {
             throw new Error('Filename contains invalid characters.');
         }
         return null;
     }
 
-    async signedUrl(filename: string): Promise<string> {
-        return this.getFileLocation(filename, this.config);
+    async signedUrl(name: string): Promise<string> {
+        return this.getFileLocation(name, this.config);
     }
 
     private async _saveFile(
-        filename: string,
+        name: string,
         data: PassThrough | any,
         contentType: string,
         options: any = {}
     ): Promise<string> {
         const _obj = {
-            _id: filename.replace('.', '%').concat('-id'),
-            filename: filename.replace('.', '%'),
+            _id: name.replace('.', '%').concat('-id'),
+            name: name.replace('.', '%'),
             type: contentType,
             cid: null
         };
@@ -202,6 +202,6 @@ export class IpfsStorageFactory implements FilesAdapter {
                 bypassDomainVerification: true
             }
         );
-        return filename;
+        return name;
     }
 }

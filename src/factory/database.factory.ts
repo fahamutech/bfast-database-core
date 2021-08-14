@@ -89,7 +89,7 @@ export class DatabaseFactory implements DatabaseAdapter {
         // }
     }
 
-    private nodeProcess(cid: string, options) {
+    private nodeProcess(cid: string, options: DatabaseWriteOptions) {
         return {
             nodeHandler: async ({path, node}) => {
                 const keys = Object.keys(node);
@@ -106,14 +106,17 @@ export class DatabaseFactory implements DatabaseAdapter {
                         }
                     }
                     const conn = await this.connection();
-                    await conn.db().collection(path.toString().replace('/', '_')).updateOne({
-                        _id: isNaN(Number(key)) ? key.trim() : Number(key),
-                    }, {
-                        $set: $setMap
-                    }, {
-                        upsert: true,
-                        session: options && options.transaction ? options.transaction : undefined
-                    });
+                    await conn.db()
+                        .collection(path.toString().replace('/', '_'))
+                        .updateOne({
+                                _id: isNaN(Number(key)) ? key.trim() : Number(key),
+                            }, {
+                                $set: $setMap
+                            }, {
+                                upsert: true,
+                                session: options && options.transaction ? options.transaction : undefined
+                            }
+                        );
                 }
             },
             nodeIdHandler: async function () {
@@ -125,14 +128,17 @@ export class DatabaseFactory implements DatabaseAdapter {
     private async handleQueryObjectTree(
         queryTree: { [key: string]: any },
         domain: string,
-        queryModel: QueryModel<any>
+        queryModel: QueryModel<any>,
+        options: DatabaseWriteOptions
     ): Promise<any[] | number> {
         const keys = Object.keys(queryTree);
         const conn = await this.connection();
         let cids = [];
         const cidMap = {};
         if (keys.length === 0) {
-            const result = await conn.db().collection(`${domain}__id`).find({}).toArray();
+            const result = await conn.db().collection(`${domain}__id`).find({}, {
+                session: options && options.transaction ? options.transaction : undefined
+            }).toArray();
             await conn.close();
             if (result && Array.isArray(result)) {
                 return Promise.all(result.map(x => this.getDataFromCid(x?.value)));
@@ -156,7 +162,9 @@ export class DatabaseFactory implements DatabaseAdapter {
                     return a;
                 }, {value: {}});
             } else {
-                result = await conn.db().collection(nodeTable).findOne({_id: id});
+                result = await conn.db().collection(nodeTable).findOne({_id: id}, {
+                    session: options && options.transaction ? options.transaction : undefined
+                });
             }
             if (result && result.value) {
                 if (typeof result.value === "object") {
@@ -225,6 +233,7 @@ export class DatabaseFactory implements DatabaseAdapter {
     private async handleDeleteObjectTree(
         deleteTree: { [key: string]: any },
         domain: string,
+        options: DatabaseWriteOptions
     ): Promise<{ _id: string }[]> {
         const keys = Object.keys(deleteTree);
         const conn = await this.connection();
@@ -238,7 +247,9 @@ export class DatabaseFactory implements DatabaseAdapter {
             const id = deleteTree[key];
             let result;
             if (typeof id === "function") {
-                const cursor = conn.db().collection(nodeTable).find({});
+                const cursor = conn.db().collection(nodeTable).find({}, {
+                    session: options && options.transaction ? options.transaction : undefined
+                });
                 const docs = [];
                 while (await cursor.hasNext()) {
                     const next = await cursor.next();
@@ -250,7 +261,9 @@ export class DatabaseFactory implements DatabaseAdapter {
                     return a;
                 }, {value: {}, _id: []});
             } else {
-                result = await conn.db().collection(nodeTable).findOne({_id: id});
+                result = await conn.db().collection(nodeTable).findOne({_id: id}, {
+                    session: options && options.transaction ? options.transaction : undefined
+                });
             }
             if (result && result.value) {
                 // console.log(result, '------> result');
@@ -259,11 +272,15 @@ export class DatabaseFactory implements DatabaseAdapter {
                         _id: {
                             $in: Object.keys(result.value)
                         }
+                    }, {
+                        session: options && options.transaction ? options.transaction : undefined
                     });
                     await conn.db().collection(nodeTable).deleteMany({
                         _id: {
                             $in: Array.isArray(result._id) ? result._id : [result._id]
                         }
+                    }, {
+                        session: options && options.transaction ? options.transaction : undefined
                     });
                     Object.keys(result.value).forEach((v: string) => {
                         cids.push(v);
@@ -276,6 +293,8 @@ export class DatabaseFactory implements DatabaseAdapter {
                 } else if (typeof result.value === 'string') {
                     await conn.db().collection(`${domain}__id`).deleteOne({
                         _id: result._id
+                    }, {
+                        session: options && options.transaction ? options.transaction : undefined
                     });
                     await conn.db().collection(nodeTable).deleteMany({
                         _id: id
@@ -338,59 +357,59 @@ export class DatabaseFactory implements DatabaseAdapter {
     }
 
     async init(): Promise<any> {
-        try {
-            await this.dropIndexes('_User');
-        } catch (_) {
-        }
-        return await this.createIndexes('_User', [
-            {
-                field: 'email',
-                unique: true,
-                collation: {
-                    locale: 'en',
-                    strength: 2
-                }
-            },
-            {
-                field: 'username',
-                unique: true,
-                collation: {
-                    locale: 'en',
-                    strength: 2
-                }
-            }
-        ]);
+        // try {
+        //     await this.dropIndexes('_User');
+        // } catch (_) {
+        // }
+        // return await this.createIndexes('_User', [
+        //     {
+        //         field: 'email',
+        //         unique: true,
+        //         collation: {
+        //             locale: 'en',
+        //             strength: 2
+        //         }
+        //     },
+        //     {
+        //         field: 'username',
+        //         unique: true,
+        //         collation: {
+        //             locale: 'en',
+        //             strength: 2
+        //         }
+        //     }
+        // ]);
     }
 
-    async createIndexes(domain: string, indexes: any[]): Promise<any> {
-        if (indexes && Array.isArray(indexes)) {
-            const conn = await this.connection();
-            for (const value of indexes) {
-                const indexOptions: any = {};
-                Object.assign(indexOptions, value);
-                delete indexOptions.field;
-                await conn.db().collection(domain).createIndex({[value.field]: 1}, indexOptions);
-            }
-            await conn.close(); // .catch(console.warn);
-            return 'Indexes added';
-        } else {
-            throw new Error('Must supply array of indexes to be added');
-        }
-    }
-
-    async dropIndexes(domain: string): Promise<boolean> {
-        const conn = await this.connection();
-        await conn.db().collection(domain).dropIndexes();
-        await conn.close();
-        return true;
-    }
-
-    async listIndexes(domain: string): Promise<any[]> {
-        const conn = await this.connection();
-        const indexes = await conn.db().collection(domain).listIndexes().toArray();
-        await conn.close();
-        return indexes;
-    }
+    // async createIndexes(domain: string, indexes: any[]): Promise<any> {
+    //     if (indexes && Array.isArray(indexes)) {
+    //         const conn = await this.connection();
+    //         for (const value of indexes) {
+    //             const indexOptions: any = {};
+    //             Object.assign(indexOptions, value);
+    //             delete indexOptions.field;
+    //             await conn.db().collection(domain).createIndex({[value.field]: 1}, indexOptions);
+    //         }
+    //         await conn.close(); // .catch(console.warn);
+    //         return 'Indexes added';
+    //     } else {
+    //         throw new Error('Must supply array of indexes to be added');
+    //     }
+    // }
+    //
+    // async dropIndexes(domain: string): Promise<boolean> {
+    //     const conn = await this.connection();
+    //     await conn.db().collection(domain).dropIndexes();
+    //     await conn.close();
+    //     return true;
+    // }
+    //
+    // async listIndexes(domain: string): Promise<any[]> {
+    //     const conn = await this.connection();
+    //     const indexes = await conn.db().collection(domain).listIndexes().toArray();
+    //     await conn.close();
+    //     return indexes;
+    // }
 
     async findOne<T extends BasicAttributesModel>(
         domain: string,
@@ -419,7 +438,7 @@ export class DatabaseFactory implements DatabaseAdapter {
         return await this.getDataFromCid(cid);
     }
 
-    async query<T extends BasicAttributesModel>(
+    async findMany<T extends BasicAttributesModel>(
         domain: string,
         queryModel: QueryModel<T>,
         context: ContextBlock,
@@ -435,12 +454,12 @@ export class DatabaseFactory implements DatabaseAdapter {
         if (Array.isArray(queryTree)) {
             const result = [];
             for (const _tree of queryTree) {
-                const r = await this.handleQueryObjectTree(_tree, domain, queryModel);
+                const r = await this.handleQueryObjectTree(_tree, domain, queryModel, options);
                 Array.isArray(r) ? result.push(...r) : result.push(r);
             }
             return queryModel?.count ? result.reduce((a, b) => a + b, 0) : result;
         } else {
-            return this.handleQueryObjectTree(queryTree, domain, queryModel);
+            return this.handleQueryObjectTree(queryTree, domain, queryModel, options);
         }
     }
 
@@ -478,7 +497,7 @@ export class DatabaseFactory implements DatabaseAdapter {
         context: ContextBlock,
         options?: DatabaseUpdateOptions
     ): Promise<any[]> {
-        const oldDocs: any[] = await this.query(domain, updateModel, context, options);
+        const oldDocs: any[] = await this.findMany(domain, updateModel, context, options);
         if (Array.isArray(oldDocs) && oldDocs.length === 0 && updateModel.upsert === true) {
             oldDocs.push(Object.assign(updateModel.update.$set, updateModel.filter));
             return this.writeMany(domain, oldDocs, context, options);
@@ -515,42 +534,46 @@ export class DatabaseFactory implements DatabaseAdapter {
         if (Array.isArray(deleteTree)) {
             const result = [];
             for (const _tree of deleteTree) {
-                const r = await this.handleDeleteObjectTree(_tree, domain);
+                const r = await this.handleDeleteObjectTree(_tree, domain, options);
                 Array.isArray(r) ? result.push(...r) : result.push(r);
             }
             return result;
         } else {
-            return this.handleDeleteObjectTree(deleteTree, domain);
+            return this.handleDeleteObjectTree(deleteTree, domain, options);
         }
     }
 
-    async transaction<V>(operations: (session: any) => Promise<any>): Promise<any> {
-        const conn = await this.connection();
+    /**
+     * need an improvement to have a behaviour like transaction but not transaction
+     * @param operations
+     */
+    async bulk<V>(operations: (session: any) => Promise<any>): Promise<any> {
+        // const conn = await this.connection();
         // const session = conn.startSession();
-        try {
-            // await session.withTransaction(async _ => {
-            return await operations(null);
-            // }, {
-            //     // writeConcern: {
-            //     //     w: 'majority'
-            //     // }
-            // });
-        } finally {
-            // await session.endSession();
-        }
-        await conn.close();
+        // try {
+        //     await session.withTransaction(async _ => {
+        return await operations(null);
+        //     }, {
+        //         // writeConcern: {
+        //         //     w: 'majority'
+        //         // }
+        //     });
+        // } finally {
+        //     await session.endSession();
+        // }
+        // await conn.close();
     }
 
-    async aggregate(domain: string, pipelines: any[], context: ContextBlock, options?: DatabaseWriteOptions): Promise<any> {
-        const conn = await this.connection();
-        const aggOps = {
-            allowDiskUse: true,
-            session: options && options.transaction ? options.transaction : undefined
-        };
-        const result = await conn.db().collection(domain).aggregate(pipelines, aggOps).toArray();
-        await conn.close();
-        return result;
-    }
+    // async aggregate(domain: string, pipelines: any[], context: ContextBlock, options?: DatabaseWriteOptions): Promise<any> {
+    //     const conn = await this.connection();
+    //     const aggOps = {
+    //         allowDiskUse: true,
+    //         session: options && options.transaction ? options.transaction : undefined
+    //     };
+    //     const result = await conn.db().collection(domain).aggregate(pipelines, aggOps).toArray();
+    //     await conn.close();
+    //     return result;
+    // }
 
     async changes(
         domain: string, pipeline: any[],

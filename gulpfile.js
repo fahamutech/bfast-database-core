@@ -68,35 +68,7 @@ function pushToDockerBeta(cb) {
 }
 
 function devStart(cb) {
-    const {mongoServer, mongoRepSet, daas} = require('./specs/mock.config');
-    const {EnvUtil} = require('./dist/utils/env.util');
-    let mongoMemoryServer;
-    let daaSServer;
 
-    async function run() {
-        mongoMemoryServer = mongoRepSet();
-        await mongoMemoryServer.start();
-        await mongoMemoryServer.waitUntilRunning();
-        daaSServer = await daas();
-        const file = await new EnvUtil().getEnv(__dirname + '/db.env.txt');
-        const options = {
-            mongoDbUri: 'mongodb://localhost/bfast',
-            applicationId: 'daas',
-            port: 3003,
-            adapters: {},
-            mountPath: await new EnvUtil().getEnv('/'),
-            masterKey: 'daas'
-        };
-        // await daaSServer.initiateServices(options)
-        await daaSServer.init(options).then(console.log).catch(console.log)
-    }
-
-    run().then(_ => {
-        cb();
-    }).catch(reason => {
-        console.log(reason);
-        process.exit(-1);
-    });
 }
 
 function copyBFastJson(cb) {

@@ -121,55 +121,55 @@ export class RulesController {
         }
     }
 
-    async handleIndexesRule(rules: RulesModel, ruleResponse: RuleResponse): Promise<RuleResponse> {
-        try {
-            const indexRules = this.getRulesKey(rules).filter(rule => rule.startsWith('index'));
-            if (indexRules.length === 0) {
-                return ruleResponse;
-            }
-            if (!(rules?.context && rules?.context?.useMasterKey === true)) {
-                ruleResponse.errors.index = {
-                    message: 'index rule require masterKey',
-                    path: 'index',
-                    data: null
-                };
-                return ruleResponse;
-            }
-            for (const indexRuleElement of indexRules) {
-                const domain = this.extractDomain(indexRuleElement, 'index');
-                const indexRuleBlock = rules[indexRuleElement];
-                for (const action of Object.keys(indexRuleBlock)) {
-                    const data = indexRuleBlock[action];
-                    try {
-                        ruleResponse[indexRuleElement] = {};
-                        if (action === 'add' && Array.isArray(data)) {
-                            ruleResponse[indexRuleElement][action] = await this.databaseController.addIndexes(domain, data);
-                        } else if (action === 'list' && typeof data === 'object') {
-                            ruleResponse[indexRuleElement][action] = await this.databaseController.listIndexes(domain);
-                        } else if (action === 'remove' && typeof data === 'object') {
-                            ruleResponse[indexRuleElement][action] = await this.databaseController.removeIndexes(domain);
-                        }
-                    } catch (e) {
-                        this.messageController.print(e);
-                        ruleResponse.errors[`index.${domain}.${action}`] = {
-                            message: e.message ? e.message : e.toString(),
-                            path: `index.${domain}.${action}`,
-                            data
-                        };
-                    }
-                }
-            }
-            return ruleResponse;
-        } catch (e) {
-            this.messageController.print(e);
-            ruleResponse.errors.index = {
-                message: e.message ? e.message : e.toString(),
-                path: 'index',
-                data: null
-            };
-            return ruleResponse;
-        }
-    }
+    // async handleIndexesRule(rules: RulesModel, ruleResponse: RuleResponse): Promise<RuleResponse> {
+    //     try {
+    //         const indexRules = this.getRulesKey(rules).filter(rule => rule.startsWith('index'));
+    //         if (indexRules.length === 0) {
+    //             return ruleResponse;
+    //         }
+    //         if (!(rules?.context && rules?.context?.useMasterKey === true)) {
+    //             ruleResponse.errors.index = {
+    //                 message: 'index rule require masterKey',
+    //                 path: 'index',
+    //                 data: null
+    //             };
+    //             return ruleResponse;
+    //         }
+    //         for (const indexRuleElement of indexRules) {
+    //             const domain = this.extractDomain(indexRuleElement, 'index');
+    //             const indexRuleBlock = rules[indexRuleElement];
+    //             for (const action of Object.keys(indexRuleBlock)) {
+    //                 const data = indexRuleBlock[action];
+    //                 try {
+    //                     ruleResponse[indexRuleElement] = {};
+    //                     if (action === 'add' && Array.isArray(data)) {
+    //                         ruleResponse[indexRuleElement][action] = await this.databaseController.addIndexes(domain, data);
+    //                     } else if (action === 'list' && typeof data === 'object') {
+    //                         ruleResponse[indexRuleElement][action] = await this.databaseController.listIndexes(domain);
+    //                     } else if (action === 'remove' && typeof data === 'object') {
+    //                         ruleResponse[indexRuleElement][action] = await this.databaseController.removeIndexes(domain);
+    //                     }
+    //                 } catch (e) {
+    //                     this.messageController.print(e);
+    //                     ruleResponse.errors[`index.${domain}.${action}`] = {
+    //                         message: e.message ? e.message : e.toString(),
+    //                         path: `index.${domain}.${action}`,
+    //                         data
+    //                     };
+    //                 }
+    //             }
+    //         }
+    //         return ruleResponse;
+    //     } catch (e) {
+    //         this.messageController.print(e);
+    //         ruleResponse.errors.index = {
+    //             message: e.message ? e.message : e.toString(),
+    //             path: 'index',
+    //             data: null
+    //         };
+    //         return ruleResponse;
+    //     }
+    // }
 
     async handleCreateRules(rules: RulesModel, ruleResponse: RuleResponse, transactionSession?: any): Promise<RuleResponse> {
         try {
@@ -389,7 +389,7 @@ export class RulesController {
         }
     }
 
-    async handleTransactionRule(rulesBlockModel: RulesModel, ruleResultModel: RuleResponse): Promise<RuleResponse> {
+    async handleBulkRule(rulesBlockModel: RulesModel, ruleResultModel: RuleResponse): Promise<RuleResponse> {
         try {
             const transactionRules = this.getRulesKey(rulesBlockModel).filter(rule => rule.startsWith('transaction'));
             if (transactionRules.length === 0) {
@@ -399,7 +399,7 @@ export class RulesController {
             const transaction = rulesBlockModel[transactionRule];
             const transactionOperationRules = transaction.commit;
             const resultObject: RuleResponse = {errors: {}};
-            await this.databaseController.transaction(async session => {
+            await this.databaseController.bulk(async session => {
                 await this.handleCreateRules(transactionOperationRules, resultObject, session);
                 await this.handleUpdateRules(transactionOperationRules, resultObject, session);
                 await this.handleQueryRules(transactionOperationRules, resultObject, session);

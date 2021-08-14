@@ -44,34 +44,35 @@ export class DatabaseController {
         return this.database.init();
     }
 
-    /**
-     * create a user defined indexes for specified domain
-     * @param domain -
-     * @param indexes -
-     */
-    async addIndexes(domain: string, indexes: any[]): Promise<any> {
-        if (indexes && Array.isArray(indexes)) {
-            return this.database.createIndexes(domain, indexes);
-        } else {
-            throw new Error('Must supply array of indexes to be added');
-        }
-    }
-
-    /**
-     * remove all user defined indexes of the domain
-     * @param domain - resource name
-     */
-    async removeIndexes(domain: string): Promise<boolean> {
-        return this.database.dropIndexes(domain);
-    }
-
-    /**
-     * list all indexes of a domain
-     * @param domain - resource name
-     */
-    async listIndexes(domain: string): Promise<any[]> {
-        return this.database.listIndexes(domain);
-    }
+    //
+    // /**
+    //  * create a user defined indexes for specified domain
+    //  * @param domain -
+    //  * @param indexes -
+    //  */
+    // async addIndexes(domain: string, indexes: any[]): Promise<any> {
+    //     if (indexes && Array.isArray(indexes)) {
+    //         return this.database.createIndexes(domain, indexes);
+    //     } else {
+    //         throw new Error('Must supply array of indexes to be added');
+    //     }
+    // }
+    //
+    // /**
+    //  * remove all user defined indexes of the domain
+    //  * @param domain - resource name
+    //  */
+    // async removeIndexes(domain: string): Promise<boolean> {
+    //     return this.database.dropIndexes(domain);
+    // }
+    //
+    // /**
+    //  * list all indexes of a domain
+    //  * @param domain - resource name
+    //  */
+    // async listIndexes(domain: string): Promise<any[]> {
+    //     return this.database.listIndexes(domain);
+    // }
 
     /**
      * perform a single write operation in a database
@@ -137,12 +138,17 @@ export class DatabaseController {
             }
         }
         const returnFields = this.getReturnFields(updateModel as any);
-        updateModel.update = this.sanitizeWithOperator4Db(updateModel?.update as any);
-        updateModel.filter = this.sanitizeWithOperator4Db(updateModel?.filter as any);
-        updateModel.update = this.addUpdateMetadata(updateModel?.update as any, context);
+        updateModel = this.altUpdateModel(updateModel, context);
         options.dbOptions = updateModel && updateModel.options ? updateModel.options : {};
         const updatedDoc = await this.database.updateOne<any, any>(domain, updateModel, context, options);
         return this.sanitize4User(updatedDoc, returnFields, []);
+    }
+
+    private altUpdateModel(updateModel: UpdateRuleRequestModel, context: ContextBlock) {
+        updateModel.update = this.sanitizeWithOperator4Db(updateModel?.update as any);
+        updateModel.filter = this.sanitizeWithOperator4Db(updateModel?.filter as any);
+        updateModel.update = this.addUpdateMetadata(updateModel?.update as any, context);
+        return updateModel;
     }
 
     async updateMany(
@@ -167,9 +173,7 @@ export class DatabaseController {
                     updateModel.update.$set._id = this.security.generateUUID();
                 }
             }
-            updateModel.update = this.sanitizeWithOperator4Db(updateModel?.update as any);
-            updateModel.filter = this.sanitizeWithOperator4Db(updateModel?.filter as any);
-            updateModel.update = this.addUpdateMetadata(updateModel?.update as any, context);
+            updateModel = this.altUpdateModel(updateModel, context);
             options.dbOptions = updateModel && updateModel.options ? updateModel.options : {};
             const docs = await this.database.updateMany(
                 domain,
@@ -207,31 +211,31 @@ export class DatabaseController {
      * perform a transaction to bfast::database
      * @param operations - callback to return operations to perform
      */
-    async transaction<S>(operations: (session: S) => Promise<any>): Promise<any> {
-        return this.database.transaction(operations);
+    async bulk<S>(operations: (session: S) => Promise<any>): Promise<any> {
+        return this.database.bulk(operations);
     }
 
-    /**
-     * perform aggregation operation to bfast::database
-     * @param domain - resource name
-     * @param pipelines - for now work with mongodb database only
-     * @param hashes
-     * @param context - current operation context
-     * @param options - database write operation
-     */
-    async aggregate(
-        domain: string,
-        pipelines: any[],
-        hashes: string[],
-        context: ContextBlock,
-        options: DatabaseWriteOptions = {bypassDomainVerification: false},
-    ): Promise<any> {
-        if (options && options.bypassDomainVerification === false) {
-            await this.handleDomainValidation(domain);
-        }
-        const results = await this.database.aggregate(domain, pipelines, context, options);
-        return results.map(result => this.sanitize4User(result, [], hashes));
-    }
+    // /**
+    //  * perform aggregation operation to bfast::database
+    //  * @param domain - resource name
+    //  * @param pipelines - for now work with mongodb database only
+    //  * @param hashes
+    //  * @param context - current operation context
+    //  * @param options - database write operation
+    //  */
+    // async aggregate(
+    //     domain: string,
+    //     pipelines: any[],
+    //     hashes: string[],
+    //     context: ContextBlock,
+    //     options: DatabaseWriteOptions = {bypassDomainVerification: false},
+    // ): Promise<any> {
+    //     if (options && options.bypassDomainVerification === false) {
+    //         await this.handleDomainValidation(domain);
+    //     }
+    //     const results = await this.database.aggregate(domain, pipelines, context, options);
+    //     return results.map(result => this.sanitize4User(result, [], hashes));
+    // }
 
     /**
      * realtime event changes for the bfast::database
@@ -299,7 +303,7 @@ export class DatabaseController {
             queryModel = this.sanitizeWithOperator4Db(queryModel as any);
             queryModel.filter = this.sanitizeWithOperator4Db(queryModel?.filter as any);
             queryModel.return = returnFields4Db;
-            const result = await this.database.query(domain, queryModel, context, options);
+            const result = await this.database.findMany(domain, queryModel, context, options);
             if (result && Array.isArray(result)) {
                 return result.map(value => this.sanitize4User(value, returnFields, queryModel?.hashes));
             }

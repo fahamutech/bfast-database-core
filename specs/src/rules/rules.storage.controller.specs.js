@@ -1,4 +1,4 @@
-const {getRulesController, mongoRepSet} = require('../mock.config');
+const {getRulesController, mongoRepSet} = require('../../mock.config');
 const {before, after} = require('mocha');
 const {assert, should, expect} = require('chai');
 
@@ -21,7 +21,7 @@ describe('Storage', function () {
                 applicationId: 'daas',
                 files: {
                     save: {
-                        filename: 'hello.txt',
+                        name: 'hello.txt',
                         base64: 'Hello, World',
                     }
                 }
@@ -29,7 +29,7 @@ describe('Storage', function () {
             should().exist(results.files);
             should().exist(results.files.save);
             expect(typeof results.files.save).equal("string");
-            expect(results.files.save.toString().startsWith('/storage/daas/file')).equal(true);
+            expect(results.files.save.toString().startsWith('/storage/bfast_test/file')).equal(true);
         });
     });
 
@@ -40,7 +40,7 @@ describe('Storage', function () {
                 applicationId: 'daas',
                 files: {
                     save: {
-                        filename: 'doe.txt',
+                        name: 'doe.txt',
                         base64: 'Hello, Doe',
                     }
                 }
@@ -49,7 +49,7 @@ describe('Storage', function () {
                 applicationId: 'daas',
                 files: {
                     save: {
-                        filename: 'jobe.txt',
+                        name: 'jobe.txt',
                         base64: 'Hello, Jobe',
                     }
                 }
@@ -67,7 +67,7 @@ describe('Storage', function () {
             should().exist(results.files.list);
             expect(Array.isArray(results.files.list)).equal(true);
             expect(results.files.list.length).equal(3);
-            expect(typeof results.files.list[0].filename).equal("string");
+            expect(typeof results.files.list[0].name).equal("string");
         });
         it('should list only 2 files', async function () {
             const results = {errors: {}};
@@ -83,7 +83,7 @@ describe('Storage', function () {
             should().exist(results.files.list);
             expect(Array.isArray(results.files.list)).equal(true);
             expect(results.files.list).length(2);
-            expect(typeof results.files.list[0].filename).equal("string");
+            expect(typeof results.files.list[0].name).equal("string");
         });
         it('should list files contain doe keyword', async function () {
             const results = {errors: {}};
@@ -99,24 +99,24 @@ describe('Storage', function () {
             assert(results.files.list !== undefined);
             assert(Array.isArray(results.files.list));
             assert(results.files.list.length === 1);
-            assert(results.files.list[0].filename.toString().includes('doe.txt') === true);
+            assert(results.files.list[0].name.toString().includes('doe.txt') === true);
         });
     });
 
     describe('delete', function () {
-        let filename = '';
+        let name = '';
         before(async function () {
             const results = {errors: {}};
             await _rulesController.handleStorageRule({
                 applicationId: 'daas',
                 files: {
                     save: {
-                        filename: 'doe1.txt',
+                        name: 'doe1.txt',
                         base64: 'Hello, Doe1',
                     }
                 }
             }, results);
-            filename = results.files.save.toString().replace('/storage/daas/file/', '');
+            name = results.files.save.toString().replace('/storage/bfast_test/file/', '');
         });
         it('should delete a  file', async function () {
             const results = {errors: {}};
@@ -124,7 +124,7 @@ describe('Storage', function () {
                 applicationId: 'daas',
                 files: {
                     delete: {
-                        filename: filename
+                        name: name
                     }
                 }
             }, results);

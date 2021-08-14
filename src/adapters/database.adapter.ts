@@ -82,7 +82,7 @@ export abstract class DatabaseAdapter {
      * @param context - {ContextBlock} current operation context
      * @param options - {DatabaseWriteOptions} bfast::database write options
      */
-    abstract query<T extends BasicAttributesModel>(
+    abstract findMany<T extends BasicAttributesModel>(
         domain: string,
         queryModel: QueryModel<T>,
         context: ContextBlock,
@@ -91,15 +91,15 @@ export abstract class DatabaseAdapter {
 
     abstract changes(domain: string, pipeline: object[], listener: (doc: any) => void, resumeToken: string): Promise<any>;
 
-    abstract transaction(operations: (session) => Promise<any>): Promise<any>;
+    abstract bulk(operations: (session) => Promise<any>): Promise<any>;
 
-    abstract createIndexes(domain: string, indexes: any[]): Promise<any>;
+    // abstract createIndexes(domain: string, indexes: any[]): Promise<any>;
+    //
+    // abstract dropIndexes(domain: string): Promise<boolean>;
+    //
+    // abstract listIndexes(domain: string): Promise<any>;
 
-    abstract dropIndexes(domain: string): Promise<boolean>;
-
-    abstract listIndexes(domain: string): Promise<any>;
-
-    abstract aggregate(domain: string, pipelines: object[], context: ContextBlock, options?: DatabaseWriteOptions): Promise<any[]>;
+    // abstract aggregate(domain: string, pipelines: object[], context: ContextBlock, options?: DatabaseWriteOptions): Promise<any[]>;
 }
 
 export interface DatabaseWriteOptions extends DatabaseBasicOptions {

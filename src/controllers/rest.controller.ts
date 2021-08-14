@@ -14,16 +14,14 @@ export class RestController {
                 private readonly authController: AuthController,
                 private readonly storageController: StorageController,
                 private readonly rulesController: RulesController,
-                private readonly config: BFastDatabaseOptions,) {
+                private readonly config: BFastDatabaseOptions) {
     }
 
     getFile(request: any, response: any, _: any): void {
         if (this.storageController.isS3() === true) {
-            this.storageController.handleGetFileBySignedUrl(request, response, !!request.query.thumbnail);
-            return;
+            this.storageController.handleGetFileBySignedUrl(request, response, false);
         } else {
-            this.storageController.getFileData(request, response, false);
-            return;
+            this.storageController.handleGetFileRequest(request, response, false);
         }
     }
 
@@ -32,7 +30,7 @@ export class RestController {
             this.storageController.handleGetFileBySignedUrl(request, response, true);
             return;
         } else {
-            this.storageController.getFileData(request, response, true);
+            this.storageController.handleGetFileRequest(request, response, true);
             return;
         }
     }
@@ -90,7 +88,7 @@ export class RestController {
                 const result = await this.storageController.saveFromBuffer({
                     data: passThrough as any,
                     type: fileMeta.type,
-                    filename: fileMeta.name
+                    name: fileMeta.name
                 }, request.body.context);
                 urls.push(result);
                 response.status(StatusCodes.OK).json({urls});
@@ -187,9 +185,7 @@ export class RestController {
     handleRuleBlocks(request: any, response: any, _: any): void {
         const body = request.body;
         const results: RuleResponse = {errors: {}};
-        this.rulesController.handleIndexesRule(body, results).then(__ => {
-            return this.rulesController.handleAuthenticationRule(body, results);
-        }).then(_1 => {
+        this.rulesController.handleAuthenticationRule(body, results).then(_1 => {
             return this.rulesController.handleAuthorizationRule(body, results);
         }).then(_2 => {
             return this.rulesController.handleCreateRules(body, results);
@@ -200,9 +196,7 @@ export class RestController {
         }).then(_5 => {
             return this.rulesController.handleQueryRules(body, results);
         }).then(_6 => {
-            return this.rulesController.handleTransactionRule(body, results);
-        }).then(_7 => {
-            return this.rulesController.handleAggregationRules(body, results);
+            return this.rulesController.handleBulkRule(body, results);
         }).then(_8 => {
             return this.rulesController.handleStorageRule(body, results);
         }).then(_9 => {
@@ -213,6 +207,9 @@ export class RestController {
         }).catch(reason => {
             response.status(httpStatus.EXPECTATION_FAILED).json({message: reason.message ? reason.message : reason.toString()});
         });
+        //     .then(_7 => {
+        //     return this.rulesController.handleAggregationRules(body, results);
+        // })
     }
 
 }

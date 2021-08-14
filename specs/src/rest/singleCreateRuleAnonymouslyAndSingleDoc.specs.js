@@ -5,7 +5,7 @@ const {
     it,
     describe
 } = require('mocha');
-const {serverUrl} = require('../mock.config');
+const {serverUrl} = require('../../mock.config');
 const assert = require('assert');
 
 describe('CreateRule With Single Document & Default Database', function () {

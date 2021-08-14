@@ -1,0 +1,6 @@
+{
+  "projectId": "",
+  "ignore": [
+    "**/node_modules/**"
+  ]
+}

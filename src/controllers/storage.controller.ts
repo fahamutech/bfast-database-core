@@ -45,27 +45,27 @@ export class StorageController {
         return source;
     }
 
-    async save(fileModel: FileModel, context: ContextBlock): Promise<string> {
-        const {filename, base64} = fileModel;
+    async save(fileModel: FileModel, _: ContextBlock): Promise<string> {
+        const {name, base64} = fileModel;
         let {type} = fileModel;
-        if (!filename) {
+        if (!name) {
             throw new Error('Filename required');
         }
         if (!base64) {
             throw new Error('File base64 data to save is required');
         }
         if (!type) {
-            type = mime.getType(filename);
+            type = mime.getType(name);
         }
         const source = StorageController.getSource(base64, type);
         const dataToSave: {
             type?: any,
             data: any,
-            filename: string,
+            name: string,
             fileData: any,
         } = {
             data: source.base64,
-            filename,
+            name,
             fileData: {
                 metadata: {},
                 tags: {},
@@ -76,7 +76,7 @@ export class StorageController {
         }
         const isBase64 = Buffer.from(dataToSave.data, 'base64').toString('base64') === dataToSave.data;
         const file = await this.filesAdapter.createFile(
-            dataToSave.filename,
+            dataToSave.name,
             isBase64 === true ?
                 Buffer.from(dataToSave.data, 'base64')
                 : dataToSave.data,
@@ -86,7 +86,7 @@ export class StorageController {
         return this.filesAdapter.getFileLocation(file, this.config);
     }
 
-    isFileStreamable(req, filesController: FilesAdapter): boolean {
+    checkStreamCapability(req, filesController: FilesAdapter): boolean {
         return (
             req.get('Range')
             && typeof filesController.handleFileStream === 'function'
@@ -94,26 +94,26 @@ export class StorageController {
         );
     }
 
-    getFileData(request, response, thumbnail = false): void {
-        const filename = request.params.filename;
-        const contentType = mime.getType(filename);
+    handleGetFileRequest(request, response, thumbnail = false): void {
+        const name = request.params.filename;
+        const contentType = mime.getType(name);
         if (thumbnail === true && contentType && contentType.toString().startsWith('image')) {
-            this.filesAdapter.getFileData<Stream>(filename, true).then(stream => {
+            this.filesAdapter.getFileData<Stream>(name, true).then(stream => {
                 const width = parseInt(request.query.width ? request.query.width : 100);
                 const height = parseInt(request.query.height ? request.query.height : 0);
                 stream.pipe(sharp().resize(width, height !== 0 ? height : null)).pipe(response);
             }).catch(_ => {
-                this._getFileData(filename, contentType, request, response);
+                this.getFileData(name, contentType, request, response);
             });
         } else {
-            this._getFileData(filename, contentType, request, response);
+            this.getFileData(name, contentType, request, response);
         }
     }
 
-    _getFileData(filename, contentType, request, response) {
-        if (this.isFileStreamable(request, this.filesAdapter)) {
+    getFileData(name, contentType, request, response) {
+        if (this.checkStreamCapability(request, this.filesAdapter)) {
             this.filesAdapter
-                .handleFileStream(filename, request, response, contentType)
+                .handleFileStream(name, request, response, contentType)
                 .catch(() => {
                     response.status(404);
                     response.set('Content-Type', 'text/plain');
@@ -121,7 +121,7 @@ export class StorageController {
                 });
         } else {
             this.filesAdapter
-                .getFileData<any>(filename, false)
+                .getFileData<any>(name, false)
                 .then(data => {
                     response.status(200);
                     response.set('Content-Type', contentType);
@@ -140,31 +140,34 @@ export class StorageController {
         return this.filesAdapter.listFiles(data);
     }
 
-    async saveFromBuffer(fileModel: { filename: string, data: PassThrough, type: string }, context: ContextBlock): Promise<string> {
+    async saveFromBuffer(
+        fileModel: { name: string, data: PassThrough, type: string },
+        context: ContextBlock
+    ): Promise<string> {
         let {type} = fileModel;
-        const {filename, data} = fileModel;
-        if (!filename) {
+        const {name, data} = fileModel;
+        if (!name) {
             throw new Error('Filename required');
         }
         if (!data) {
             throw new Error('File base64 data to save is required');
         }
         if (!type) {
-            type = mime.getType(filename);
+            type = mime.getType(name);
         }
-        const newFilename = (context && context.storage && context.storage.preserveName === true )
-            ? filename
-            : this.securityController.generateUUID() + '-' + filename;
+        const newFilename = (context && context.storage && context.storage.preserveName === true)
+            ? name
+            : this.securityController.generateUUID() + '-' + name;
         const file = await this.filesAdapter.createFile(newFilename, data, type, {});
         return this.filesAdapter.getFileLocation(file, this.config);
     }
 
-    async delete(data: { filename: string }, context: ContextBlock): Promise<string> {
-        const {filename} = data;
-        if (!filename) {
+    async delete(data: { name: string }, _: ContextBlock): Promise<string> {
+        const {name} = data;
+        if (!name) {
             throw new Error('Filename required');
         }
-        return this.filesAdapter.deleteFile(filename);
+        return this.filesAdapter.deleteFile(name);
     }
 
     isS3(): boolean {
@@ -172,22 +175,22 @@ export class StorageController {
     }
 
     handleGetFileBySignedUrl(request: any, response: any, thumbnail = false): void {
-        const filename = request.params.filename;
-        const contentType = mime.getType(filename);
-        this.filesAdapter.signedUrl(filename).then(value => {
+        const name = request.params.filename;
+        const contentType = mime.getType(name);
+        this.filesAdapter.signedUrl(name).then(value => {
             if (thumbnail === true && contentType && contentType.toString().startsWith('image')) {
                 // response.send('image thumbnail');
                 const width = parseInt(request.query.width ? request.query.width : 100);
                 const height = parseInt(request.query.height ? request.query.height : 0);
                 // find a way remove this
-                bfast.init({projectId: '_bfast_core_', applicationId: '_bfast_core_'},'_bfast_core_');
+                bfast.init({projectId: '_bfast_core_', applicationId: '_bfast_core_'}, '_bfast_core_');
                 bfast.functions('_bfast_core_').request(value).get<Stream>({
                     // @ts-ignore
                     responseType: 'stream'
                 }).then(value1 => {
                     value1
-                    .pipe(sharp().resize(width, height !== 0 ? height : null))
-                    .pipe(response);
+                        .pipe(sharp().resize(width, height !== 0 ? height : null))
+                        .pipe(response);
                 }).catch(_ => {
                     console.log(_);
                     response.redirect(value);

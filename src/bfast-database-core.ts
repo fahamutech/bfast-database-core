@@ -150,7 +150,6 @@ export class BfastDatabaseCore {
         Provider.service(Provider.names.STORAGE_WEB_SERVICE, _ => storageWebService);
         Provider.service(Provider.names.DATABASE_FACTORY, _ => defaultDatabaseFactory(options));
         Provider.service(Provider.names.IPFS_STORAGE_FACTORY, _ => ipfsFactory);
-        // console.log(Provider.services)
     }
 
     /**
@@ -159,9 +158,8 @@ export class BfastDatabaseCore {
      * @param serveMode {boolean}
      * @return Promise<WebServices>
      */
-    async init(options: BFastDatabaseOptions, serveMode = false): Promise<WebServices> {
+    init(options: BFastDatabaseOptions, serveMode = false): WebServices {
         if (BfastDatabaseCore.validateOptions(options, serveMode).valid) {
-
             if (options && options.rsaKeyPairInJson && typeof options.rsaKeyPairInJson === "object") {
                 options.rsaKeyPairInJson.alg = 'RS256';
                 options.rsaKeyPairInJson.use = 'sig';

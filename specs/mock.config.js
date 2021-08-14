@@ -12,7 +12,6 @@ const {SecurityController} = require("../dist/controllers/security.controller");
 const {AuthController} = require("../dist/controllers/auth.controller");
 const {AuthFactory} = require("../dist/factory/auth.factory");
 const {StorageController} = require("../dist/controllers/storage.controller");
-const exp = require("constants");
 const {IpfsStorageFactory} = require("../dist/factory/ipfs-storage.factory");
 
 /**
@@ -68,15 +67,17 @@ exports.serverUrl = 'http://localhost:3111/';
 exports.mongoRepSet = mongoMemoryReplSet;
 exports.daas = daas;
 exports.config = {
-    applicationId: 'daas',
-    port: 3111,
+    applicationId: 'bfast_test',
+    projectId: 'bfast_test',
+    port: '3111',
     logs: false,
     web3Token: new EnvUtil().getEnv(process.env['WEB_3_TOKEN']),
-    adapters: {},
-    mountPath: '/',
-    masterKey: 'daas',
+    adapters: {
+        s3Storage: undefined
+    },
+    masterKey: 'bfast_test',
+    taarifaToken: undefined,
     mongoDbUri: 'mongodb://localhost/test',
-    ipfsNode: true,
     rsaKeyPairInJson: {
         "p": "_09LOKJdsMbbJBD-NckTpyer4Hh2D5tz7RJwDsbHAt2zjmQWeAfIA2DVZY-ftwWMA3C77yf0huM5xVfU6DsJL72WtdCCCPggyfKkMuMYfch-MFV6imt6-Fwm9gAH_-BuuToabwjBHGehV_I-Jy0D_wWdIc5hTIGZtDj5rg0cQ8k",
         "kty": "RSA",
@@ -110,28 +111,24 @@ exports.config = {
  * @return {Promise<RulesController>}
  */
 exports.getRulesController = async function (memoryReplSet) {
-    try {
-        process.setMaxListeners(0);
-        await memoryReplSet.start();
-        await memoryReplSet.waitUntilRunning();
-        exports.config.mongoDbUri = await memoryReplSet.getUri();
-        const updateRuleController = new UpdateRuleController();
-        const databaseFactory = new DatabaseFactory(exports.config);
-        const securityController = new SecurityController(exports.config);
-        const databaseController = new DatabaseController(databaseFactory, securityController);
-        const authFactory = new AuthFactory(databaseController, securityController);
-        const authController = new AuthController(authFactory, databaseController);
-        const ipfsStorageFactory = new IpfsStorageFactory(exports.config, databaseFactory, exports.config.mongoDbUri);
-        const storageController = new StorageController(ipfsStorageFactory, securityController, exports.config)
-        return new RulesController(
-            updateRuleController,
-            new LogController(exports.config),
-            databaseController,
-            authController,
-            storageController,
-            exports.config
-        );
-    } catch (e) {
-        console.log(e);
-    }
+    process.setMaxListeners(0);
+    await memoryReplSet.start();
+    await memoryReplSet.waitUntilRunning();
+    exports.config.mongoDbUri = await memoryReplSet.getUri();
+    const updateRuleController = new UpdateRuleController();
+    const databaseFactory = new DatabaseFactory(exports.config);
+    const securityController = new SecurityController(exports.config);
+    const databaseController = new DatabaseController(databaseFactory, securityController);
+    const authFactory = new AuthFactory(databaseController, securityController);
+    const authController = new AuthController(authFactory, databaseController);
+    const ipfsStorageFactory = new IpfsStorageFactory(exports.config, databaseFactory, exports.config.mongoDbUri);
+    const storageController = new StorageController(ipfsStorageFactory, securityController, exports.config)
+    return new RulesController(
+        updateRuleController,
+        new LogController(exports.config),
+        databaseController,
+        authController,
+        storageController,
+        exports.config
+    );
 }
