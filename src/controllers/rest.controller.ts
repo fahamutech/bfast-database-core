@@ -49,6 +49,11 @@ export class RestController {
     }
 
     multipartForm(request: any, response: any, _: any): void {
+        const contentType = request.get('content-type').split(';')[0].toString().trim();
+        if (contentType !== 'multipart/form-data'.trim()) {
+            response.status(StatusCodes.BAD_REQUEST).json({message: 'Accept only multipart request'});
+            return;
+        }
         const form = formidable({
             multiples: true,
             maxFileSize: 10 * 1024 * 1024 * 1024,
@@ -57,12 +62,12 @@ export class RestController {
         const passThrough = new PassThrough();
         const fileMeta: { name: string, type: string } = {name: undefined, type: undefined};
         form.onPart = part => {
-            if (!part.filename) {
-                form.handlePart(part);
-                return;
-            }
+            // if (!part.filename) {
+            //     form.handlePart(part);
+            //     return;
+            // }
             const regx = /[^0-9a-z.]/gi;
-            fileMeta.name = part.filename
+            fileMeta.name = part.filename ? part.filename : part.name ? part.name : 'noname'
                 .toString()
                 .replace(regx, '');
             fileMeta.type = part.mime;
@@ -80,7 +85,7 @@ export class RestController {
                     return;
                 }
                 const urls = [];
-                if (request && request.query && request.query.pn && request.query.pn.toString() === 'true') {
+                if (request && request.query && request.query.pn && request.query.pn.trim().toLowerCase() === 'true') {
                     request.body.context.storage = {preserveName: true};
                 } else {
                     request.body.context.storage = {preserveName: false};
@@ -97,7 +102,6 @@ export class RestController {
                 response.status(StatusCodes.BAD_REQUEST).end(e.toString());
             }
         });
-        return;
     }
 
     verifyApplicationId(request: any, response: any, next: any): void {

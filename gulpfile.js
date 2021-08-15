@@ -90,7 +90,7 @@ function deleteBuild(cb) {
 }
 
 function test(cb) {
-    const testPath = __dirname + '/specs/rest';
+    const testPath = __dirname + '/specs/web-services';
     glob('**/*.js', {absolute: true, cwd: testPath}, (err, files) => {
         if (err) {
             console.error(err);

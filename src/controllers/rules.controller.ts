@@ -27,35 +27,7 @@ export class RulesController {
 
     async handleAuthenticationRule(rules: RulesModel, ruleResponse: RuleResponse): Promise<RuleResponse> {
         try {
-            const authenticationRules = this.getRulesKey(rules).filter(rule => rule.startsWith('auth'));
-            if (authenticationRules.length === 0) {
-                return ruleResponse;
-            }
-            const authenticationRule = authenticationRules[0];
-            const authRule = rules[authenticationRule];
-            for (const action of Object.keys(authRule)) {
-                const data = authRule[action];
-                try {
-                    if (action === 'signUp') {
-                        ruleResponse.auth = {};
-                        ruleResponse.auth.signUp = await this.authController.signUp(data, rules.context);
-                    } else if (action === 'signIn') {
-                        ruleResponse.auth = {};
-                        ruleResponse.auth.signIn = await this.authController.signIn(data, rules.context);
-                    } else if (action === 'reset') {
-                        ruleResponse.auth = {};
-                        ruleResponse.auth.resetPassword = await this.authController.resetPassword(data.email ? data.email : data);
-                    }
-                } catch (e) {
-                    this.messageController.print(e);
-                    ruleResponse.errors[`auth.${action}`] = {
-                        message: e.message ? e.message : e.toString(),
-                        path: `auth.${action}`,
-                        data
-                    };
-                }
-            }
-            return ruleResponse;
+            return this.processAuthenticationBlock(ruleResponse, rules);
         } catch (e) {
             this.messageController.print(e);
             ruleResponse.errors.auth = {
@@ -65,6 +37,41 @@ export class RulesController {
             };
             return ruleResponse;
         }
+    }
+
+    private async processAuthenticationBlock(ruleResponse: RuleResponse, rules: RulesModel) {
+        const authenticationRules = this.getRulesKey(rules).filter(rule => rule.startsWith('auth'));
+        if (authenticationRules.length === 0) {
+            return ruleResponse;
+        }
+        const authenticationRule = authenticationRules[0];
+        const authRule = rules[authenticationRule];
+        for (const action of Object.keys(authRule)) {
+            const data = authRule[action];
+            try {
+                if (action === 'signUp') {
+                    const signUpResponse = await this.authController.signUp(data, rules.context);
+                    ruleResponse.auth = {};
+                    ruleResponse.auth.signUp = signUpResponse;
+                } else if (action === 'signIn') {
+                    const signInResponse = await this.authController.signIn(data, rules.context);
+                    ruleResponse.auth = {};
+                    ruleResponse.auth.signIn = signInResponse;
+                } else if (action === 'reset') {
+                    throw {message: 'Reset not supported yet'};
+                    // ruleResponse.auth = {};
+                    // ruleResponse.auth.resetPassword = await this.authController.resetPassword(data.email ? data.email : data);
+                }
+            } catch (e) {
+                this.messageController.print(e);
+                ruleResponse.errors[`auth.${action}`] = {
+                    message: e.message ? e.message : e.toString(),
+                    path: `auth.${action}`,
+                    data
+                };
+            }
+        }
+        return ruleResponse;
     }
 
     async handleAuthorizationRule(rules: RulesModel, ruleResponse: RuleResponse): Promise<RuleResponse> {
@@ -94,11 +101,13 @@ export class RulesController {
                         ruleResponse.policy = {};
                         ruleResponse.policy[action] = authorizationResults;
                     } else if (action === 'list' && typeof data === 'object') {
+                        const listResponse = await this.authController.listPolicyRule(rules.context);
                         ruleResponse.policy = {};
-                        ruleResponse.policy[action] = await this.authController.listPolicyRule(rules.context);
+                        ruleResponse.policy[action] = listResponse
                     } else if (action === 'remove' && typeof data === 'object') {
+                        const removeResponse =  await this.authController.removePolicyRule(data.ruleId, rules.context);
                         ruleResponse.policy = {};
-                        ruleResponse.policy[action] = await this.authController.removePolicyRule(data.ruleId, rules.context);
+                        ruleResponse.policy[action] = removeResponse;
                     }
                 } catch (e) {
                     this.messageController.print(e);

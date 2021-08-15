@@ -147,7 +147,22 @@ export class AuthController {
         AuthController.validateData(userModel);
         userModel.return = [];
         userModel.emailVerified = false;
-        return this.authAdapter.signUp(userModel, context);
+        const oldUser = await this.databaseController.query(
+            '_User',
+            {
+                filter: [
+                    {username: userModel.username},
+                    {email: userModel.email},
+                ],
+                return: []
+            },
+            context,
+            {bypassDomainVerification: true}
+        );
+        if (Array.isArray(oldUser) && oldUser.length > 0) {
+            throw {message: 'User already exist'};
+        }
+        return await this.authAdapter.signUp(userModel, context);
     }
 
     async update<T extends BasicUserAttributesModel>(userModel: T, context?: ContextBlock): Promise<T> {

@@ -13,6 +13,8 @@ const {AuthController} = require("../dist/controllers/auth.controller");
 const {AuthFactory} = require("../dist/factory/auth.factory");
 const {StorageController} = require("../dist/controllers/storage.controller");
 const {IpfsStorageFactory} = require("../dist/factory/ipfs-storage.factory");
+const axios = require("axios");
+const {expect} = require('chai');
 
 /**
  *
@@ -27,15 +29,19 @@ const mongoMemoryReplSet = () => {
     if (process.env.CHROME_OS === 'ndio') {
         return {
             getUri: function () {
-                return 'mongodb://localhost/_test?replicaSet=bfast';
+                return 'mongodb://localhost/_test';
             },
             start: async function () {
                 const conn = await mongodb.MongoClient.connect(this.getUri());
                 // const db = await conn.db();
-                await conn.db().dropDatabase();
+                await conn.db('_test').dropDatabase();
                 // console.log('***START MONGODB*****');
             },
             waitUntilRunning: async function () {
+                const conn = await mongodb.MongoClient.connect(this.getUri());
+                // const db = await conn.db();
+                await conn.db('_test').dropDatabase();
+                // console.log('***START MONGODB*****');
             },
             stop: async function () {
                 // console.log('***STOP MONGODB*****');
@@ -62,7 +68,7 @@ const daas = async () => {
     return new BfastDatabaseCore();
 }
 
-exports.serverUrl = 'http://localhost:3111/';
+exports.serverUrl = 'http://localhost:3111/v2';
 // exports.mongoServer = mongoServer;
 exports.mongoRepSet = mongoMemoryReplSet;
 exports.daas = daas;
@@ -77,7 +83,7 @@ exports.config = {
     },
     masterKey: 'bfast_test',
     taarifaToken: undefined,
-    mongoDbUri: 'mongodb://localhost/test',
+    mongoDbUri: 'mongodb://localhost/_test',
     rsaKeyPairInJson: {
         "p": "_09LOKJdsMbbJBD-NckTpyer4Hh2D5tz7RJwDsbHAt2zjmQWeAfIA2DVZY-ftwWMA3C77yf0huM5xVfU6DsJL72WtdCCCPggyfKkMuMYfch-MFV6imt6-Fwm9gAH_-BuuToabwjBHGehV_I-Jy0D_wWdIc5hTIGZtDj5rg0cQ8k",
         "kty": "RSA",
@@ -131,4 +137,11 @@ exports.getRulesController = async function (memoryReplSet) {
         storageController,
         exports.config
     );
+}
+
+
+exports.sendRuleRequest = async function sendRequest(data, code = 200) {
+    const response = await axios.post(exports.serverUrl, data);
+    expect(response.status).equal(code);
+    return response.data;
 }

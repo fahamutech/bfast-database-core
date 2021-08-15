@@ -114,10 +114,10 @@ export class StorageController {
         if (this.checkStreamCapability(request, this.filesAdapter)) {
             this.filesAdapter
                 .handleFileStream(name, request, response, contentType)
-                .catch(() => {
-                    response.status(404);
-                    response.set('Content-Type', 'text/plain');
-                    response.end('File not found.');
+                .catch(_43 => {
+                    response.status(StatusCodes.NOT_FOUND);
+                    // response.set('Content-Type', 'text/plain');
+                    response.json({message: 'File not found'});
                 });
         } else {
             this.filesAdapter
@@ -128,10 +128,10 @@ export class StorageController {
                     response.set('Content-Length', data.length);
                     response.end(data);
                 })
-                .catch(() => {
-                    response.status(404);
-                    response.set('Content-Type', 'text/plain');
-                    response.end('File not found.');
+                .catch(_12 => {
+                    // console.log(e,'-----> try to get file');
+                    response.status(StatusCodes.NOT_FOUND);
+                    response.json({message: 'File not found'});
                 });
         }
     }

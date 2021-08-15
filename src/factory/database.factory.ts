@@ -13,7 +13,7 @@ import {DeleteModel} from '../model/delete-model';
 import {BFastDatabaseOptions} from '../bfast-database.option';
 import {TreeController} from 'bfast-database-tree';
 import {Web3Storage} from 'web3.storage';
-import {create, IPFS} from "ipfs-core";
+import {CID, create, IPFS} from "ipfs-core";
 import {PassThrough} from "stream";
 
 let web3Storage: Web3Storage;
@@ -32,14 +32,13 @@ export class DatabaseFactory implements DatabaseAdapter {
         });
     }
 
-    async dataCid(data: object, buffer: Buffer | PassThrough, domain: string): Promise<string> {
+    async dataCid(data: object, buffer: Buffer | PassThrough, domain: string): Promise<{ cid: CID, size: number }> {
         try {
             if (!ipfs) {
                 ipfs = await create();
             }
             // const dataString = JSON.stringify(data);
-            const results = await ipfs.add(buffer);
-            return results.cid.toString();
+            return ipfs.add(buffer);
         } catch (e) {
             console.log(e);
             return null;
@@ -60,17 +59,33 @@ export class DatabaseFactory implements DatabaseAdapter {
         // }
     }
 
-    async getDataFromCid(cid: string): Promise<any> {
+    async getDataFromCid(cid: string, options: { json?: boolean, start?: number, end?: number } = {
+        json: true,
+        start: undefined,
+        end: undefined
+    }): Promise<object | Buffer> {
         try {
             if (!ipfs) {
                 ipfs = await create();
             }
-            const results = await ipfs.cat(cid, {});
-            let data = ''
-            for await (const chunk of results) {
-                data += chunk.toString();
+            const results = await ipfs.cat(cid, {
+                offset: options && options.json === false && options.start ? options.start : undefined,
+                length: options && options.json === false && options.end ? options.end : undefined
+            });
+            if (options.json === true) {
+                let data = '';
+                for await (const chunk of results) {
+                    data += chunk.toString();
+                }
+                return JSON.parse(data);
             }
-            return JSON.parse(data);
+            if (options.json === false) {
+                let buffer = Buffer.alloc(0);
+                for await (const chunk of results) {
+                    buffer = Buffer.concat([buffer, chunk]);
+                }
+                return buffer;
+            }
         } catch (e) {
             console.log(e);
             return null;
@@ -328,8 +343,8 @@ export class DatabaseFactory implements DatabaseAdapter {
     ): Promise<any[]> {
         for (const _data of data) {
             const buffer = Buffer.from(JSON.stringify({..._data}));
-            const cid = await this.dataCid({..._data}, buffer, domain);
-            await treeController.objectToTree({..._data}, domain, this.nodeProcess(cid, options));
+            const {cid} = await this.dataCid({..._data}, buffer, domain);
+            await treeController.objectToTree({..._data}, domain, this.nodeProcess(cid.toString(), options));
         }
         return data;
     }
@@ -341,8 +356,8 @@ export class DatabaseFactory implements DatabaseAdapter {
         options?: DatabaseWriteOptions
     ): Promise<any> {
         const buffer = Buffer.from(JSON.stringify(data));
-        const cid = await this.dataCid(data, buffer, domain);
-        await treeController.objectToTree({...data}, domain, this.nodeProcess(cid, options));
+        const {cid} = await this.dataCid(data, buffer, domain);
+        await treeController.objectToTree({...data}, domain, this.nodeProcess(cid.toString(), options));
         return data;
     }
 
@@ -452,12 +467,17 @@ export class DatabaseFactory implements DatabaseAdapter {
             return [];
         }
         if (Array.isArray(queryTree)) {
-            const result = [];
+            const resultMap = {}
             for (const _tree of queryTree) {
                 const r = await this.handleQueryObjectTree(_tree, domain, queryModel, options);
-                Array.isArray(r) ? result.push(...r) : result.push(r);
+                Array.isArray(r) ?
+                    (r.forEach(_r1 => {
+                        resultMap[_r1._id] = _r1
+                    }))
+                    : resultMap[r] = r;
             }
-            return queryModel?.count ? result.reduce((a, b) => a + b, 0) : result;
+            const _result1: any[] = Object.values(resultMap);
+            return queryModel?.count ? _result1.reduce((a, b) => a + b, 0) : _result1;
         } else {
             return this.handleQueryObjectTree(queryTree, domain, queryModel, options);
         }
