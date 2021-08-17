@@ -49,7 +49,7 @@ describe('EnvUtil', function () {
     describe('loadEnv', function () {
         it('should auto load default envs to bfast options object', function () {
             const options = envUtil.loadEnv();
-            // console.log(options);
+            options.useLocalIpfs = config.useLocalIpfs;
             should().exist(options);
             expect(options.applicationId).eql('bfast_test');
             expect(typeof options).equal('object');

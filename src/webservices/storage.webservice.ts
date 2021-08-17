@@ -71,7 +71,7 @@ export class StorageWebservice {
                 response.end(`
                     <h2>With Node.js <code>"http"</code> module</h2>
                     <form action="${prefix}storage/${request.params.appId}" enctype="multipart/form-data" method="post">
-                      <div>Text field title: <input type="text" name="file" /></div>
+<!--                      <div>Text field title: <input type="text" name="file" /></div>-->
                       <div>File: <input type="file" name="multipleFiles" multiple="multiple" /></div>
                       <input type="submit" value="Upload" />
                     </form>
@@ -80,15 +80,16 @@ export class StorageWebservice {
     }
 
     getFileStorageV1(prefix = '/'): FunctionsModel {
-        return BFast.functions().onGetHttpRequest(`${prefix}files/:appId/:filename`, this.handleGetFile());
+        return BFast.functions().onHttpRequest(`${prefix}files/:appId/:filename`, this.handleGetFile());
     }
 
+
     getFileFromStorage(prefix = '/'): FunctionsModel {
-        return BFast.functions().onGetHttpRequest(`${prefix}storage/:appId/file/:filename`, this.handleGetFile());
+        return BFast.functions().onHttpRequest(`${prefix}storage/:appId/file/:filename`, this.handleGetFile());
     }
 
     getFileFromStorageV2(prefix = '/'): FunctionsModel {
-        return BFast.functions().onGetHttpRequest(`${prefix}v2/storage/:appId/file/:filename`, this.handleGetFile());
+        return BFast.functions().onHttpRequest(`${prefix}v2/storage/:appId/file/:filename`, this.handleGetFile());
     }
 
     geThumbnailFromStorage(prefix = '/'): FunctionsModel {

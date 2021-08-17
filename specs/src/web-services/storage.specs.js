@@ -1,10 +1,18 @@
 const axios = require("axios");
-const {config} = require("../../mock.config");
+const {config, mongoRepSet} = require("../../mock.config");
 const {should, expect} = require("chai");
 const FormData = require('form-data');
 const fs = require('fs');
 
 describe('StorageWebService', function () {
+    let mongoMemoryReplSet
+    before(async function () {
+        mongoMemoryReplSet = await mongoRepSet();
+        await mongoMemoryReplSet.start();
+    });
+    after(async function () {
+        await mongoMemoryReplSet.stop();
+    });
     describe('handleUploadFile', function () {
         it('should upload a multipart file', async function () {
             const form = new FormData();
@@ -118,28 +126,49 @@ describe('StorageWebService', function () {
             expect(data.urls[0]).equal(`/storage/${config.applicationId}/file/bfast.txt`);
         });
         it('should get a file without stream it', async function () {
-            const response = await axios.get(
-                `http://localhost:${config.port}/storage/${config.applicationId}/file/bfast.txt`,
-                {}
-            );
-            const data = response.data;
-            should().exist(data);
-            expect(data).equal('Hello, BFast!');
+            try {
+                const response = await axios.get(
+                    `http://localhost:${config.port}/storage/${config.applicationId}/file/bfast.txt`,
+                    {}
+                );
+                const data = response.data;
+                expect(response?.status).equal(200);
+                should().exist(data);
+                expect(data).equal('Hello, BFast!');
+            } catch (e) {
+                console.log(e?.response?.data);
+                throw e;
+            }
         });
         it('should not return file that not exist', async function () {
-            try{
+            try {
                 const response = await axios.get(
                     `http://localhost:${config.port}/storage/${config.applicationId}/file/ethan.txt`,
                     {}
                 );
                 should().not.exist(response);
-            }catch (e){
+            } catch (e) {
                 const data = e?.response?.data;
                 should().exist(data);
                 expect(data).eql({
                     message: 'File not found'
                 });
             }
+        });
+        it('should return file info if ask for header', async function () {
+            const response = await axios.head(
+                `http://localhost:${config.port}/storage/${config.applicationId}/file/music.mp3`,
+                {}
+            );
+            const data = response?.data;
+            should().exist(response);
+            expect(response.status).equal(200);
+            expect(response.headers['accept-ranges']).equal('bytes');
+            expect(response.headers['content-length'] > '3000000').equal(true);
+            // console.log(data);
+            // console.log(response.headers);
+            // expect(response.headers)
+
         });
     });
 });

@@ -11,3 +11,4 @@ devStart.sh
 .env
 **.tgz
 db.env.txt
+specs/video.mp4

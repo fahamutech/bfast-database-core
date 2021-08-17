@@ -10,6 +10,7 @@ export abstract class FilesAdapter {
     /** Responsible for storing the file in order to be retrieved later by its filename
      *
      * @param filename - the filename to save
+     * @param size
      * @param data - the buffer of data from the file
      * @param  contentType - the supposed contentType
      * @discussion the contentType can be undefined if the controller was not able to determine it
@@ -21,7 +22,7 @@ export abstract class FilesAdapter {
      *
      * @return a promise that should fail if the storage didn't succeed
      */
-    abstract createFile(filename: string, data: PassThrough, contentType: string, options: any): Promise<string>;
+    abstract createFile(filename: string, size: number, data: Buffer, contentType: string, options: any): Promise<string>;
 
     // createThumbnail(filename: string, data: Buffer, contentType: string, options: Object): Promise<string>;
 
@@ -40,7 +41,11 @@ export abstract class FilesAdapter {
      * @param asStream
      * @return  a promise that should pass with the file data or fail on error
      */
-    abstract getFileData<T>(filename: string, asStream: boolean): Promise<T>;
+    abstract getFileData(filename: string, asStream: boolean): Promise<{
+        size: number,
+        data: Buffer | ReadableStream,
+        type: string
+    }>;
 
     /** Returns an absolute URL where the file can be accessed
      *
@@ -83,4 +88,6 @@ export abstract class FilesAdapter {
     // getMetadata(filename: string): Promise<any> {}
 
     abstract validateFilename(filename: string): Promise<any>;
+
+    abstract fileInfo(filename: string): Promise<{ name: string, size: number }>;
 }

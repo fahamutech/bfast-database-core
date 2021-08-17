@@ -1,5 +1,5 @@
 const {getRulesController, mongoRepSet} = require('../../mock.config');
-const assert = require('assert');
+const {assert, should} = require('chai');
 
 describe('RulesController::Auth Unit Test', function () {
     this.timeout(10000000000000000);
@@ -35,17 +35,16 @@ describe('RulesController::Auth Unit Test', function () {
             assert(typeof results.auth['signUp'].token === "string");
         });
         it('should return error message when email is not present', async function () {
-            const results = {errors: {}};
-            await _rulesController.handleAuthenticationRule({
+            const results = await _rulesController.handleAuthenticationRule({
                 auth: {
                     signUp: {
                         username: 'doe',
                         password: 'doe',
                     }
                 }
-            }, results)
-            assert(results.auth['signUp'] === undefined);
-            assert(results.errors['auth.signUp'] !== undefined);
+            }, {errors: {}});
+            should().not.exist(results.auth);
+            should().exist(results.errors['auth.signUp']);
             assert(results.errors['auth.signUp'].message === 'Email required');
             assert(typeof results.errors['auth.signUp'].data === 'object');
         });
@@ -59,8 +58,8 @@ describe('RulesController::Auth Unit Test', function () {
                     }
                 }
             }, results)
-            assert(results.auth['signUp'] === undefined);
-            assert(results.errors['auth.signUp'] !== undefined);
+            should().not.exist(results.auth);
+            should().exist(results.errors['auth.signUp']);
             assert(results.errors['auth.signUp'].message === 'Username required');
             assert(typeof results.errors['auth.signUp'].data === 'object');
         });
@@ -74,8 +73,8 @@ describe('RulesController::Auth Unit Test', function () {
                     }
                 }
             }, results)
-            assert(results.auth['signUp'] === undefined);
-            assert(results.errors['auth.signUp'] !== undefined);
+            should().not.exist(results.auth);
+            should().exist(results.errors['auth.signUp']);
             assert(results.errors['auth.signUp'].message === 'Password required');
             assert(typeof results.errors['auth.signUp'].data === 'object');
         });
@@ -86,8 +85,8 @@ describe('RulesController::Auth Unit Test', function () {
                     signUp: {}
                 }
             }, results)
-            assert(results.auth['signUp'] === undefined);
-            assert(results.errors['auth.signUp'] !== undefined);
+            should().not.exist(results.auth);
+            should().exist(results.errors['auth.signUp']);
             assert(results.errors['auth.signUp'].message === 'Empty user is not supported');
             assert(typeof results.errors['auth.signUp'].data === 'object');
             assert(Object.keys(results.errors['auth.signUp'].data).length === 0);
@@ -99,8 +98,8 @@ describe('RulesController::Auth Unit Test', function () {
                     signUp: null
                 }
             }, results)
-            assert(results.auth['signUp'] === undefined);
-            assert(results.errors['auth.signUp'] !== undefined);
+            should().not.exist(results.auth);
+            should().exist(results.errors['auth.signUp']);
             assert(results.errors['auth.signUp'].message === 'Invalid user data');
             assert(results.errors['auth.signUp'].data === null);
         });
@@ -111,8 +110,8 @@ describe('RulesController::Auth Unit Test', function () {
                     signUp: undefined
                 }
             }, results)
-            assert(results.auth['signUp'] === undefined);
-            assert(results.errors['auth.signUp'] !== undefined);
+            should().not.exist(results.auth);
+            should().exist(results.errors['auth.signUp']);
             assert(results.errors['auth.signUp'].message === 'Invalid user data');
             assert(results.errors['auth.signUp'].data === undefined);
         });
@@ -151,7 +150,7 @@ describe('RulesController::Auth Unit Test', function () {
                     }
                 }
             }, {errors: {}});
-            assert(results.auth.signIn);
+            should().exist(results.auth.signIn);
             assert(typeof results.auth.signIn === 'object');
             assert(results.auth.signIn.username === 'doe2');
             assert(results.auth.signIn.email === 'doedoe@gmail.com');
@@ -166,8 +165,8 @@ describe('RulesController::Auth Unit Test', function () {
                     }
                 }
             }, {errors: {}});
-            assert(results.auth.signIn === undefined);
-            assert(results.errors['auth.signIn'] !== undefined);
+            should().not.exist(results.auth);
+            should().exist(results.errors['auth.signIn']);
             assert(results.errors['auth.signIn'].message === 'Username required');
             assert(typeof results.errors['auth.signIn'].data === 'object');
         });
@@ -179,8 +178,8 @@ describe('RulesController::Auth Unit Test', function () {
                     }
                 }
             }, {errors: {}});
-            assert(results.auth.signIn === undefined);
-            assert(results.errors['auth.signIn'] !== undefined);
+            should().not.exist(results.auth);
+            should().exist(results.errors['auth.signIn']);
             assert(results.errors['auth.signIn'].message === 'Password required');
             assert(typeof results.errors['auth.signIn'].data === 'object');
         });
@@ -190,8 +189,8 @@ describe('RulesController::Auth Unit Test', function () {
                     signIn: {}
                 }
             }, {errors: {}});
-            assert(results.auth.signIn === undefined);
-            assert(results.errors['auth.signIn'] !== undefined);
+            should().not.exist(results.auth);
+            should().exist(results.errors['auth.signIn']);
             assert(results.errors['auth.signIn'].message === 'Empty user is not supported');
             assert(typeof results.errors['auth.signIn'].data === 'object');
         });

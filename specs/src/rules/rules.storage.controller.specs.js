@@ -118,7 +118,7 @@ describe('Storage', function () {
             }, results);
             name = results.files.save.toString().replace('/storage/bfast_test/file/', '');
         });
-        it('should delete a  file', async function () {
+        it('should delete a file', async function () {
             const results = {errors: {}};
             await _rulesController.handleStorageRule({
                 applicationId: 'daas',

@@ -2,7 +2,7 @@ import {FilesAdapter} from '../adapters/files.adapter';
 import {BFastDatabaseOptions} from '../bfast-database.option';
 import * as Minio from 'minio';
 import {Client} from 'minio';
-import {PassThrough} from 'stream';
+import {Buffer} from "buffer";
 
 const url = require('url');
 
@@ -17,7 +17,7 @@ export class S3StorageFactory implements FilesAdapter {
     canHandleFileStream = false;
     isS3 = true;
 
-    async createFile(filename: string, data: PassThrough, contentType: string, options: any): Promise<string> {
+    async createFile(filename: string, size: number, data: Buffer, contentType: string, options: any): Promise<string> {
         const bucket = this.config.adapters.s3Storage.bucket;
         await this.createBucket(bucket);
         await this.validateFilename(filename);
@@ -29,6 +29,16 @@ export class S3StorageFactory implements FilesAdapter {
         const bucket = this.config.adapters.s3Storage.bucket;
         await this.createBucket(bucket);
         return this.s3.removeObject(bucket, filename);
+    }
+
+    async fileInfo(filename: string): Promise<{ name: string; size: number }> {
+        const bucket = this.config.adapters.s3Storage.bucket;
+        await this.createBucket(bucket);
+        const stats = await this.s3.statObject(bucket, filename);
+        return {
+            size: stats.size,
+            name: filename
+        }
     }
 
     async getFileData(filename: string, asStream = false): Promise<any> {
@@ -140,7 +150,7 @@ export class S3StorageFactory implements FilesAdapter {
     //     return this.saveFile(filename, thumbnailBuffer, bucket, config.adapters.s3Storage.endPoint);
     // }
 
-    private async saveFile(filename: string, data: any, bucket: string, endpoint: string, region = null): Promise<string> {
+    private async saveFile(filename: string, data: Buffer, bucket: string, endpoint: string, region = null): Promise<string> {
         await this.createBucket(bucket);
         // if (bucketExist === true) {
         //     await this.s3.putObject(bucket, filename, data);

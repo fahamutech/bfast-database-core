@@ -3,11 +3,13 @@ import {FileModel} from '../model/file-model';
 import {ContextBlock} from '../model/rules.model';
 import mime from 'mime';
 import {StatusCodes} from 'http-status-codes';
-import {PassThrough, Stream} from 'stream';
+import {PassThrough, pipeline, Stream} from 'stream';
 import {BFastDatabaseOptions} from '../bfast-database.option';
 import {bfast} from 'bfastnode';
 import sharp from 'sharp';
 import {SecurityController} from './security.controller';
+import {ReadStream} from "fs";
+import {Buffer} from "buffer";
 
 export class StorageController {
     constructor(private readonly filesAdapter: FilesAdapter,
@@ -77,6 +79,7 @@ export class StorageController {
         const isBase64 = Buffer.from(dataToSave.data, 'base64').toString('base64') === dataToSave.data;
         const file = await this.filesAdapter.createFile(
             dataToSave.name,
+            dataToSave?.data?.length,
             isBase64 === true ?
                 Buffer.from(dataToSave.data, 'base64')
                 : dataToSave.data,
@@ -98,10 +101,12 @@ export class StorageController {
         const name = request.params.filename;
         const contentType = mime.getType(name);
         if (thumbnail === true && contentType && contentType.toString().startsWith('image')) {
-            this.filesAdapter.getFileData<Stream>(name, true).then(stream => {
+            this.filesAdapter.getFileData(name, true).then(value => {
                 const width = parseInt(request.query.width ? request.query.width : 100);
                 const height = parseInt(request.query.height ? request.query.height : 0);
-                stream.pipe(sharp().resize(width, height !== 0 ? height : null)).pipe(response);
+                // response.set('Content-Length', data.size);
+                // @ts-ignore
+                value.data.pipe(sharp().resize(width, height !== 0 ? height : null)).pipe(response);
             }).catch(_ => {
                 this.getFileData(name, contentType, request, response);
             });
@@ -121,15 +126,16 @@ export class StorageController {
                 });
         } else {
             this.filesAdapter
-                .getFileData<any>(name, false)
+                .getFileData(name, false)
                 .then(data => {
-                    response.status(200);
-                    response.set('Content-Type', contentType);
-                    response.set('Content-Length', data.length);
-                    response.end(data);
+                    response.status(StatusCodes.OK);
+                    response.set({
+                        'Content-Type': data.type,
+                        'Content-Length': data.size
+                    });
+                    return response.send(data.data);
                 })
                 .catch(_12 => {
-                    // console.log(e,'-----> try to get file');
                     response.status(StatusCodes.NOT_FOUND);
                     response.json({message: 'File not found'});
                 });
@@ -141,11 +147,14 @@ export class StorageController {
     }
 
     async saveFromBuffer(
-        fileModel: { name: string, data: PassThrough, type: string },
+        fileModel: { data: Buffer; name: string; type: string, size: number },
         context: ContextBlock
     ): Promise<string> {
         let {type} = fileModel;
-        const {name, data} = fileModel;
+        const {name, data, size} = fileModel;
+        if (!size){
+            throw new Error('File size required');
+        }
         if (!name) {
             throw new Error('Filename required');
         }
@@ -158,7 +167,7 @@ export class StorageController {
         const newFilename = (context && context.storage && context.storage.preserveName === true)
             ? name
             : this.securityController.generateUUID() + '-' + name;
-        const file = await this.filesAdapter.createFile(newFilename, data, type, {});
+        const file = await this.filesAdapter.createFile(newFilename, size, data, type, {});
         return this.filesAdapter.getFileLocation(file, this.config);
     }
 
@@ -202,5 +211,19 @@ export class StorageController {
         }).catch(reason => {
             response.status(StatusCodes.EXPECTATION_FAILED).send({message: reason && reason.message ? reason.message : reason.toString()});
         });
+    }
+
+    fileInfo(request: any, response: any) {
+        this.filesAdapter.fileInfo(request?.params?.filename)
+            .then(info => {
+                response.status(200);
+                response.set('Accept-Ranges', 'bytes');
+                response.set('Content-Length', info.size);
+                response.end();
+            })
+            .catch(_23 => {
+                response.status(StatusCodes.NOT_FOUND);
+                response.json({message: 'File not found'});
+            });
     }
 }

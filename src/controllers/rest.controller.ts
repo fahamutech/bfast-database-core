@@ -4,10 +4,11 @@ import {RulesController} from './rules.controller';
 import {RuleResponse} from '../model/rules.model';
 import {StorageController} from './storage.controller';
 import {AuthController} from './auth.controller';
-import {PassThrough} from 'stream';
 import {BFastDatabaseOptions} from '../bfast-database.option';
-
 import formidable from 'formidable';
+import {createReadStream, readFile, ReadStream} from 'fs';
+import {promisify} from "util";
+import mime from 'mime'
 
 export class RestController {
     constructor(private readonly securityController: SecurityController,
@@ -18,7 +19,9 @@ export class RestController {
     }
 
     getFile(request: any, response: any, _: any): void {
-        if (this.storageController.isS3() === true) {
+        if (request?.method?.toString()?.toLowerCase() === 'head') {
+            this.storageController.fileInfo(request, response);
+        } else if (this.storageController.isS3() === true) {
             this.storageController.handleGetFileBySignedUrl(request, response, false);
         } else {
             this.storageController.handleGetFileRequest(request, response, false);
@@ -28,10 +31,8 @@ export class RestController {
     getThumbnail(request: any, response: any, _: any): void {
         if (this.storageController.isS3() === true) {
             this.storageController.handleGetFileBySignedUrl(request, response, true);
-            return;
         } else {
             this.storageController.handleGetFileRequest(request, response, true);
-            return;
         }
     }
 
@@ -59,43 +60,51 @@ export class RestController {
             maxFileSize: 10 * 1024 * 1024 * 1024,
             keepExtensions: true
         });
-        const passThrough = new PassThrough();
-        const fileMeta: { name: string, type: string } = {name: undefined, type: undefined};
-        form.onPart = part => {
-            // if (!part.filename) {
-            //     form.handlePart(part);
-            //     return;
-            // }
-            const regx = /[^0-9a-z.]/gi;
-            fileMeta.name = part.filename ? part.filename : part.name ? part.name : 'noname'
-                .toString()
-                .replace(regx, '');
-            fileMeta.type = part.mime;
-            part.on('data', (buffer) => {
-                passThrough.write(buffer);
-            });
-            part.on('end', () => {
-                passThrough.end();
-            });
-        };
-        form.parse(request, async (err, _0, _1) => {
+        form.parse(request, async (err, fields, files) => {
             try {
                 if (err) {
                     response.status(StatusCodes.BAD_REQUEST).send(err.toString());
                     return;
                 }
+                // console.log(fields, '--------> parsed fields');
+                // console.log(files, '--------> parsed files');
                 const urls = [];
                 if (request && request.query && request.query.pn && request.query.pn.trim().toLowerCase() === 'true') {
                     request.body.context.storage = {preserveName: true};
                 } else {
                     request.body.context.storage = {preserveName: false};
                 }
-                const result = await this.storageController.saveFromBuffer({
-                    data: passThrough as any,
-                    type: fileMeta.type,
-                    name: fileMeta.name
-                }, request.body.context);
-                urls.push(result);
+                for (const file of Object.values<any>(files)) {
+                    const fileMeta: { name: string, type: string } = {name: undefined, type: undefined};
+                    const regx = /[^0-9a-z.]/gi;
+                    fileMeta.name = file.name ? file.name: 'noname'
+                        .toString()
+                        .replace(regx, '');
+                    fileMeta.type = file.type;
+                    const result = await this.storageController.saveFromBuffer({
+                        data: await promisify(readFile)(file.path),
+                        type: fileMeta.type,
+                        size: file.size,
+                        name: fileMeta.name
+                    }, request.body.context);
+                    urls.push(result);
+                }
+                for (const f_key of Object.keys(fields)) {
+                    const fileMeta: { name: string, type: string } = {name: undefined, type: undefined};
+                    const regx = /[^0-9a-z.]/gi;
+                    fileMeta.name = f_key
+                        .toString()
+                        .replace(regx, '');
+
+                    fileMeta.type = mime.getType(f_key);
+                    const result = await this.storageController.saveFromBuffer({
+                        data: Buffer.from(fields[f_key]),
+                        type: fileMeta.type,
+                        size: fields[f_key]?.length,
+                        name: fileMeta.name
+                    }, request.body.context);
+                    urls.push(result);
+                }
                 response.status(StatusCodes.OK).json({urls});
             } catch (e) {
                 console.log(e);

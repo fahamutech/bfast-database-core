@@ -4339,7 +4339,7 @@ it-to-buffer@^2.0.0:
   dependencies:
     uint8arrays "^2.1.2"
 
-it-to-stream@^1.0.0:
+it-to-stream@^1.0.0, it-to-stream@~1.0.0:
   version "1.0.0"
   resolved "https://registry.yarnpkg.com/it-to-stream/-/it-to-stream-1.0.0.tgz#6c47f91d5b5df28bda9334c52782ef8e97fe3a4a"
   integrity sha512-pLULMZMAB/+vbdvbZtebC0nWBTbG581lk6w8P7DfIIIKUfa8FbY7Oi0FxZcFPbxvISs7A9E+cMpLDBc1XhpAOA==

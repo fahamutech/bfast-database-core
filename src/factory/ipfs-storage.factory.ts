@@ -6,12 +6,10 @@
 
 import {MongoClient} from 'mongodb';
 import {FilesAdapter} from '../adapters/files.adapter';
-import {PassThrough, Stream} from 'stream';
+import {pipeline} from 'stream';
 import {BFastDatabaseOptions} from '../bfast-database.option';
-import {Web3Storage} from "web3.storage";
 import {DatabaseFactory} from "./database.factory";
-
-let web3Storage: Web3Storage;
+import {Buffer} from "buffer";
 
 export class IpfsStorageFactory implements FilesAdapter {
     private domain = '_Storage';
@@ -19,9 +17,6 @@ export class IpfsStorageFactory implements FilesAdapter {
     constructor(private readonly config: BFastDatabaseOptions,
                 private readonly databaseFactory: DatabaseFactory,
                 private readonly mongoDatabaseURI: string) {
-        web3Storage = new Web3Storage({
-            token: config.web3Token
-        });
         if (!this.mongoDatabaseURI) {
             this.mongoDatabaseURI = this.config.mongoDbUri;
         }
@@ -37,25 +32,26 @@ export class IpfsStorageFactory implements FilesAdapter {
 
     async createFile(
         name: string,
-        data: PassThrough,
+        size: number,
+        data: Buffer,
         contentType: any,
         options: any = {}
     ): Promise<string> {
         await this.validateFilename(name);
-        return this._saveFile(name, data, contentType, options);
+        return this._saveFile(name, size, data, contentType, options);
     }
 
     async deleteFile(name: string): Promise<any> {
         const r = await this.databaseFactory.delete(
             this.domain,
-            this.sanitize4Saving({_id: name}),
+            IpfsStorageFactory.sanitize4Saving({_id: name, id: name}),
             {}
         );
-        return r.map(x => this.sanitize4User(x));
+        return r.map(x => IpfsStorageFactory.sanitize4User(x));
     }
 
-    async getFileData<T>(name: string, asStream = false): Promise<any> {
-        const fObj = this.sanitize4Saving({
+    async fileInfo(name: string): Promise<{ name: string; size: number }> {
+        const fObj = IpfsStorageFactory.sanitize4Saving({
             _id: name
         });
         const file = await this.databaseFactory.findOne(
@@ -66,10 +62,39 @@ export class IpfsStorageFactory implements FilesAdapter {
             },
             {}
         );
+        if (file && file.size && file.name) {
+            return file;
+        } else {
+            throw {message: 'File info can not be determined'}
+        }
+    }
+
+    async getFileData(name: string, asStream = false): Promise<{
+        size: number,
+        data: Buffer | ReadableStream,
+        type: string
+    }> {
+        const fObj = IpfsStorageFactory.sanitize4Saving({
+            _id: name
+        });
+        let file = await this.databaseFactory.findOne(
+            this.domain,
+            {
+                _id: fObj._id,
+                return: []
+            },
+            {}
+        );
+        file = IpfsStorageFactory.sanitize4User(file);
         if (file && file.cid) {
-            return this.databaseFactory.getDataFromCid(file.cid, {
-                json: false
+            const data = await this.databaseFactory.getDataFromCid(file.cid, {
+                json: false,
+                stream: asStream
             });
+            return {
+                data: data,
+                ...file
+            }
         } else {
             throw 'file not found, maybe its deleted';
         }
@@ -80,8 +105,7 @@ export class IpfsStorageFactory implements FilesAdapter {
     }
 
     async handleFileStream(name: string, req, res, contentType): Promise<any> {
-        console.log(name,'--------> time to stream the file');
-        const fObj = this.sanitize4Saving({
+        const fObj = IpfsStorageFactory.sanitize4Saving({
             _id: name
         });
         const file = await this.databaseFactory.findOne(
@@ -92,45 +116,48 @@ export class IpfsStorageFactory implements FilesAdapter {
             },
             {}
         );
-        if (file && file.cid) {
-            // const bucket = await this.getBucket('fs');
-            // const files = await bucket.find({name}).toArray();
-            // if (files.length === 0) {
-            //     throw new Error('FileNotFound');
-            // }
-            // const files = [[]];
+        if (file && file.cid && file.type && file.size) {
+            const size = file.size;
+            const range = req.headers.range;
+            let [start, end] = range.replace(/bytes=/, "").split('-');
+            start = parseInt(start, 10);
+            end = end ? parseInt(end, 10) : size - 1;
 
-            const parts = req.get('Range').replace(/bytes=/, '').split('-');
-            const partialStart = parts[0];
-            const partialEnd = parts[1];
-
-            const start = parseInt(partialStart, 10);
-            const end = partialEnd ? parseInt(partialEnd, 10) : file.size - 1;
-
+            if (!isNaN(start) && isNaN(end)) {
+                // start = start;
+                end = size - 1;
+            }
+            if (isNaN(start) && !isNaN(end)) {
+                start = size - end;
+                end = size - 1;
+            }
+            if (start >= size || end >= size) {
+                res.writeHead(416, {
+                    "Content-Range": `bytes */${size}`
+                });
+                return res.end();
+            }
             res.writeHead(206, {
-                'Accept-Ranges': 'bytes',
-                'Content-Length': end - start + 1,
-                'Content-Range': 'bytes ' + start + '-' + end + '/' + file.size,
-                'Content-Type': contentType,
+                "Content-Range": `bytes ${start}-${end}/${size}`,
+                "Accept-Ranges": "bytes",
+                "Content-Length": `${end - start + 1}`,
+                "Content-Type": file.type
             });
             const buffer = await this.databaseFactory.getDataFromCid(file.cid, {
                 json: false,
+                stream: true,
                 start: start,
                 end: end
             });
-            res.write(buffer);
-            // const stream = bucket.openDownloadStreamByName(name);
-            // // @ts-ignore
-            // stream.start(start);
-            // stream.on('data', (chunk) => {
-            //     res.write(chunk);
-            // });
-            // stream.on('error', () => {
-            //     res.sendStatus(404);
-            // });
-            // stream.on('end', () => {
-            //     res.end();
-            // });
+            // @ts-ignore
+            pipeline(buffer, res, err => {
+                if (err) {
+                    try {
+                        res.end()
+                    } catch (_) {
+                    }
+                }
+            });
         } else {
             throw 'file not found, maybe its deleted';
         }
@@ -156,7 +183,7 @@ export class IpfsStorageFactory implements FilesAdapter {
             {}
         );
         if (Array.isArray(r)) {
-            r = r.map(x => this.sanitize4User(x));
+            r = r.map(x => IpfsStorageFactory.sanitize4User(x));
             return r;
         } else {
             return [];
@@ -180,20 +207,22 @@ export class IpfsStorageFactory implements FilesAdapter {
 
     private async _saveFile(
         name: string,
-        data: PassThrough | any,
+        size: number,
+        data: Buffer,
         contentType: string,
         options: any = {}
     ): Promise<string> {
-        const _obj = this.sanitize4Saving({
+        const _obj = IpfsStorageFactory.sanitize4Saving({
             _id: name,
             name: name,
             type: contentType,
             cid: null
         });
         const dataRes = await this.databaseFactory.dataCid(_obj, data, this.domain);
-        _obj.cid = dataRes.cid.toString();
-        _obj.size = dataRes.size;
-        this.sanitize4User(await this.databaseFactory.writeOne(
+        _obj.cid = dataRes.cid;
+        // _obj.cidSize = dataRes.size;
+        _obj.size = size;
+        IpfsStorageFactory.sanitize4User(await this.databaseFactory.writeOne(
             this.domain,
             _obj,
             {},
@@ -201,19 +230,19 @@ export class IpfsStorageFactory implements FilesAdapter {
                 bypassDomainVerification: true
             }
         ));
-        // console.log(r, '----------> file saved');
         return name;
     }
 
-    private sanitize4Saving(data: { [k: string]: any }) {
+    private static sanitize4Saving(data: { [k: string]: any }) {
         if (data && JSON.stringify(data).startsWith('{')) {
             data._id = data?._id?.replace('.', '%')?.concat('-id');
+            data.id = data?.id?.replace('.', '%')?.concat('-id');
             data.name = data?.name?.replace('.', '%');
         }
         return data;
     }
 
-    private sanitize4User(x: { [k: string]: any }) {
+    private static sanitize4User(x: { [k: string]: any }) {
         if (x && JSON.stringify(x).startsWith('{')) {
             x._id = x?._id?.replace(new RegExp('%', 'ig'), '.')?.replace(new RegExp('-id', 'ig'), '');
             x.name = x?.name?.replace(new RegExp('%', 'ig'), '.');

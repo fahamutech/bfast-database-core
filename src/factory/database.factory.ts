@@ -12,9 +12,11 @@ import {UpdateRuleRequestModel} from '../model/update-rule-request.model';
 import {DeleteModel} from '../model/delete-model';
 import {BFastDatabaseOptions} from '../bfast-database.option';
 import {TreeController} from 'bfast-database-tree';
-import {Web3Storage} from 'web3.storage';
-import {CID, create, IPFS} from "ipfs-core";
-import {PassThrough} from "stream";
+import {File as web3File, Web3Storage,} from 'web3.storage';
+import {create, IPFS} from "ipfs-core";
+import itToStream from 'it-to-stream';
+import {Buffer} from "buffer";
+import {v4} from 'uuid';
 
 let web3Storage: Web3Storage;
 const treeController = new TreeController();
@@ -32,63 +34,78 @@ export class DatabaseFactory implements DatabaseAdapter {
         });
     }
 
-    async dataCid(data: object, buffer: Buffer | PassThrough, domain: string): Promise<{ cid: CID, size: number }> {
-        try {
-            if (!ipfs) {
-                ipfs = await create();
+    async dataCid(
+        data: { [k: string]: any },
+        buffer: Buffer,
+        domain: string
+    ): Promise<{ cid: string, size: number }> {
+        if (this.config.useLocalIpfs) {
+            try {
+                if (!ipfs) {
+                    ipfs = await create();
+                }
+                const r = await ipfs.add(buffer, {
+                    wrapWithDirectory: false
+                });
+                return {
+                    cid: r.cid.toString(),
+                    size: r.size
+                }
+            } catch (e) {
+                console.log(e);
+                return null;
             }
-            // const dataString = JSON.stringify(data);
-            return ipfs.add(buffer);
-        } catch (e) {
-            console.log(e);
-            return null;
+        } else {
+            try {
+                const file = new web3File([buffer], `${domain}_${data._id}`);
+                const r = await web3Storage.put(
+                    [file],
+                    {
+                        wrapWithDirectory: false,
+                        name: data?._id ? `${domain}_${data?._id}` : undefined,
+                    }
+                );
+                return {
+                    cid: r,
+                    size: 0
+                }
+            } catch (e) {
+                console.log(e);
+                throw e;
+            }
         }
-        // try {
-        //     return web3Storage.put(
-        //         [
-        //             new File([buffer], `${domain}_${data._id}.json`)
-        //         ],
-        //         {
-        //             wrapWithDirectory: false,
-        //             name: `${domain}_${data._id}.json`
-        //         }
-        //     );
-        // } catch (e) {
-        //     console.log(e);
-        //     throw e;
-        // }
     }
 
-    async getDataFromCid(cid: string, options: { json?: boolean, start?: number, end?: number } = {
+    async getDataFromCid(cid: string, options: { json?: boolean, start?: number, end?: number, stream?: boolean } = {
         json: true,
+        stream: false,
         start: undefined,
         end: undefined
-    }): Promise<object | Buffer> {
-        try {
-            if (!ipfs) {
-                ipfs = await create();
+    }): Promise<object | ReadableStream | Buffer> {
+        if (!ipfs) {
+            ipfs = await create();
+        }
+        const results = await ipfs.cat(cid, {
+            offset: options && options.json === false && options.start ? options.start : undefined,
+            length: options && options.json === false && options.end ? options.end : undefined
+        });
+        if (options?.json === true) {
+            let data = '';
+            for await (const chunk of results) {
+                data += chunk.toString();
             }
-            const results = await ipfs.cat(cid, {
-                offset: options && options.json === false && options.start ? options.start : undefined,
-                length: options && options.json === false && options.end ? options.end : undefined
-            });
-            if (options.json === true) {
-                let data = '';
-                for await (const chunk of results) {
-                    data += chunk.toString();
-                }
-                return JSON.parse(data);
-            }
-            if (options.json === false) {
+            return JSON.parse(data);
+        }
+        if (options?.json === false) {
+            if (options?.stream === true) {
+                return itToStream.readable(results);
+            } else {
                 let buffer = Buffer.alloc(0);
                 for await (const chunk of results) {
                     buffer = Buffer.concat([buffer, chunk]);
                 }
                 return buffer;
             }
-        } catch (e) {
-            console.log(e);
-            return null;
         }
         // try {
         //     const data = await web3Storage.get(cid);
@@ -474,7 +491,7 @@ export class DatabaseFactory implements DatabaseAdapter {
                     (r.forEach(_r1 => {
                         resultMap[_r1._id] = _r1
                     }))
-                    : resultMap[r] = r;
+                    : resultMap[v4()] = r;
             }
             const _result1: any[] = Object.values(resultMap);
             return queryModel?.count ? _result1.reduce((a, b) => a + b, 0) : _result1;

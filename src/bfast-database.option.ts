@@ -3,6 +3,7 @@ import {AuthAdapter} from './adapters/auth.adapter';
 import {EmailAdapter} from './adapters/email.adapter';
 
 export interface BFastDatabaseOptions {
+    useLocalIpfs?: boolean;
     port: string;
     masterKey: string;
     applicationId: string;
