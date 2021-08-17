@@ -26,39 +26,39 @@ const {expect} = require('chai');
  * @return {MongoMemoryReplSet | MongoMemoryServer}
  */
 const mongoMemoryReplSet = () => {
-    if (process.env.CHROME_OS === 'ndio') {
-        return {
-            getUri: function () {
-                return 'mongodb://localhost/_test';
-            },
-            start: async function () {
-                const conn = await mongodb.MongoClient.connect(this.getUri());
-                // const db = await conn.db();
-                await conn.db('_test').dropDatabase();
-                // console.log('***START MONGODB*****');
-            },
-            waitUntilRunning: async function () {
-                const conn = await mongodb.MongoClient.connect(this.getUri());
-                // const db = await conn.db();
-                await conn.db('_test').dropDatabase();
-                // console.log('***START MONGODB*****');
-            },
-            stop: async function () {
-                // console.log('***STOP MONGODB*****');
-            }
+    // if (process.env.CHROME_OS === 'ndio') {
+    return {
+        getUri: function () {
+            return 'mongodb://localhost/_test';
+        },
+        start: async function () {
+            const conn = await mongodb.MongoClient.connect(this.getUri());
+            // const db = await conn.db();
+            await conn.db('_test').dropDatabase();
+            // console.log('***START MONGODB*****');
+        },
+        waitUntilRunning: async function () {
+            const conn = await mongodb.MongoClient.connect(this.getUri());
+            // const db = await conn.db();
+            await conn.db('_test').dropDatabase();
+            // console.log('***START MONGODB*****');
+        },
+        stop: async function () {
+            // console.log('***STOP MONGODB*****');
         }
-    } else {
-        return new MongoMemoryReplSet({
-            autoStart: true,
-            replSet: {
-                count: 3,
-                storageEngine: "wiredTiger",
-            },
-            binary: {
-                version: '5.0.0'
-            }
-        });
     }
+    // } else {
+    //     return new MongoMemoryReplSet({
+    //         autoStart: true,
+    //         replSet: {
+    //             count: 3,
+    //             storageEngine: "wiredTiger",
+    //         },
+    //         binary: {
+    //             version: '5.0.0'
+    //         }
+    //     });
+    // }
 }
 
 /**
