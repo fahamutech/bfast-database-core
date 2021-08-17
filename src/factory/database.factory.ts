@@ -4,7 +4,7 @@ import {
     DatabaseUpdateOptions,
     DatabaseWriteOptions
 } from '../adapters/database.adapter';
-import {ChangeStream, ChangeStreamDocument, MongoClient} from 'mongodb';
+import {ChangeStream, MongoClient} from 'mongodb';
 import {BasicAttributesModel} from '../model/basic-attributes.model';
 import {ContextBlock} from '../model/rules.model';
 import {QueryModel} from '../model/query-model';
@@ -17,6 +17,9 @@ import {create, IPFS} from "ipfs-core";
 import itToStream from 'it-to-stream';
 import {Buffer} from "buffer";
 import {v4} from 'uuid';
+import {ChangesModel} from "../model/changes.model";
+import {ConstUtil} from "../utils/const.util";
+import {AppEventsFactory} from "./app-events.factory";
 
 let web3Storage: Web3Storage;
 const treeController = new TreeController();
@@ -601,29 +604,17 @@ export class DatabaseFactory implements DatabaseAdapter {
         // await conn.close();
     }
 
-    // async aggregate(domain: string, pipelines: any[], context: ContextBlock, options?: DatabaseWriteOptions): Promise<any> {
-    //     const conn = await this.connection();
-    //     const aggOps = {
-    //         allowDiskUse: true,
-    //         session: options && options.transaction ? options.transaction : undefined
-    //     };
-    //     const result = await conn.db().collection(domain).aggregate(pipelines, aggOps).toArray();
-    //     await conn.close();
-    //     return result;
-    // }
-
     async changes(
         domain: string, pipeline: any[],
-        listener: (doc: ChangeStreamDocument) => void, resumeToken = undefined
-    ): Promise<ChangeStream> {
-        const conn = await this.connection();
-        const options: any = {fullDocument: 'updateLookup'};
-        if (resumeToken && resumeToken.toString() !== 'undefined' && resumeToken.toString() !== 'null') {
-            options.startAfter = resumeToken;
+        listener: (doc: ChangesModel) => void, resumeToken = undefined
+    ): Promise<{ close: () => void }> {
+        const appEventInst = AppEventsFactory.getInstance();
+        appEventInst.sub(ConstUtil.DB_CHANGES_EVENT.concat(domain), listener);
+        return {
+            close: () => {
+                // appEventInst.unSub(ConstUtil.DB_CHANGES_EVENT.concat(domain), listener);
+            }
         }
-        return conn.db().collection(domain).watch(pipeline, options).on('change', doc => {
-            listener(doc);
-        });
     }
 
     private incrementFields(newDoc: any, ip: { [p: string]: any }) {

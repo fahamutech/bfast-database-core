@@ -13,6 +13,9 @@ import {QueryModel} from '../model/query-model';
 import {SecurityController} from './security.controller';
 import {ChangesModel} from '../model/changes.model';
 import {ChangeStream} from 'mongodb';
+import {ChangesDocModel} from "../model/changes-doc.model";
+import {AppEventsFactory} from "../factory/app-events.factory";
+import {ConstUtil} from "../utils/const.util";
 
 export class DatabaseController {
 
@@ -94,7 +97,14 @@ export class DatabaseController {
         const sanitizedData = this.sanitize4Db(data);
         const sanitizedDataWithCreateMetadata = this.addCreateMetadata(sanitizedData, context);
         const doc = await this.database.writeOne<T>(domain, sanitizedDataWithCreateMetadata, context, options);
-        return this.sanitize4User<T>(doc, returnFields, []) as T;
+        const cleanDoc = this.sanitize4User<T>(doc, returnFields, []) as T;
+        this.publishChanges(domain,{
+            _id: doc?._id,
+            fullDocument: cleanDoc,
+            documentKey: doc?._id,
+            operationType: "create"
+        });
+        return cleanDoc;
     }
 
     async writeMany<T extends BasicAttributesModel>(
@@ -113,7 +123,16 @@ export class DatabaseController {
         }, {});
         const sanitizedData = freshData.map(value => this.sanitize4Db(value));
         const docs = await this.database.writeMany<any>(domain, sanitizedData, context, options);
-        return docs.map(x1 => this.sanitize4User(x1, returnFieldsMap[x1._id], []));
+        return docs.map(x1 => {
+            const cleanDoc = this.sanitize4User(x1, returnFieldsMap[x1._id], []);
+            this.publishChanges(domain,{
+                _id: x1?._id,
+                fullDocument: cleanDoc,
+                documentKey: x1?._id,
+                operationType: "create"
+            });
+            return cleanDoc;
+        });
     }
 
     /**
@@ -141,7 +160,14 @@ export class DatabaseController {
         updateModel = this.altUpdateModel(updateModel, context);
         options.dbOptions = updateModel && updateModel.options ? updateModel.options : {};
         const updatedDoc = await this.database.updateOne<any, any>(domain, updateModel, context, options);
-        return this.sanitize4User(updatedDoc, returnFields, []);
+        const cleanDoc = this.sanitize4User(updatedDoc, returnFields, []);
+        this.publishChanges(domain,{
+            _id: updatedDoc?._id,
+            fullDocument: cleanDoc,
+            documentKey: updatedDoc?._id,
+            operationType: "update"
+        });
+        return cleanDoc;
     }
 
     private altUpdateModel(updateModel: UpdateRuleRequestModel, context: ContextBlock) {
@@ -181,7 +207,16 @@ export class DatabaseController {
                 context,
                 options
             );
-            return docs.map(_t1 => this.sanitize4User(_t1, updateModel.return, []));
+            return docs.map(_t1 =>{
+                const cleanDoc = this.sanitize4User(_t1, updateModel.return, []);
+                this.publishChanges(domain,{
+                    _id: _t1?._id,
+                    fullDocument: cleanDoc,
+                    documentKey: _t1?._id,
+                    operationType: "update"
+                });
+                return cleanDoc;
+            });
         }
         throw {message: 'you must supply filter object in update model'};
     }
@@ -204,7 +239,18 @@ export class DatabaseController {
         }
         deleteModel.filter = this.sanitizeWithOperator4Db(deleteModel?.filter as any);
         const result = await this.database.delete<any>(domain, deleteModel, context, options);
-        return result.map(t => this.sanitize4User(t, deleteModel.return, []));
+        // console.log(result);
+        return result.map(t =>{
+            const cleanDoc = this.sanitize4User(t, deleteModel.return, []);
+            this.publishChanges(domain,{
+                _id: t?._id,
+                fullDocument: cleanDoc,
+                // @ts-ignore
+                documentKey: t?._id,
+                operationType: "delete"
+            });
+            return cleanDoc;
+        });
     }
 
     /**
@@ -214,28 +260,6 @@ export class DatabaseController {
     async bulk<S>(operations: (session: S) => Promise<any>): Promise<any> {
         return this.database.bulk(operations);
     }
-
-    // /**
-    //  * perform aggregation operation to bfast::database
-    //  * @param domain - resource name
-    //  * @param pipelines - for now work with mongodb database only
-    //  * @param hashes
-    //  * @param context - current operation context
-    //  * @param options - database write operation
-    //  */
-    // async aggregate(
-    //     domain: string,
-    //     pipelines: any[],
-    //     hashes: string[],
-    //     context: ContextBlock,
-    //     options: DatabaseWriteOptions = {bypassDomainVerification: false},
-    // ): Promise<any> {
-    //     if (options && options.bypassDomainVerification === false) {
-    //         await this.handleDomainValidation(domain);
-    //     }
-    //     const results = await this.database.aggregate(domain, pipelines, context, options);
-    //     return results.map(result => this.sanitize4User(result, [], hashes));
-    // }
 
     /**
      * realtime event changes for the bfast::database
@@ -247,39 +271,38 @@ export class DatabaseController {
     async changes(
         domain: string,
         pipeline: any[],
-        listener: (doc: any) => void,
+        listener: (doc: ChangesDocModel) => void,
         options: DatabaseChangesOptions = {bypassDomainVerification: false, resumeToken: undefined}
     ): Promise<ChangeStream> {
         if (options && options.bypassDomainVerification === false) {
             await this.handleDomainValidation(domain);
         }
-        return this.database.changes(domain, pipeline, (doc: ChangesModel) => {
-            if (doc.operationType === 'insert') {
-                listener({
-                    name: 'create',
-                    resumeToken: doc._id,
-                    snapshot: this.sanitize4User(doc.fullDocument, [], [])
-                });
-            } else if (doc.operationType === 'replace') {
-                listener({
-                    name: 'create',
-                    resumeToken: doc._id,
-                    snapshot: this.sanitize4User(doc.fullDocument, [], [])
-                });
-            } else if (doc.operationType === 'update') {
-                listener({
-                    name: 'update',
-                    resumeToken: doc._id,
-                    snapshot: this.sanitize4User(doc.fullDocument, [], [])
-                });
-            } else if (doc.operationType === 'delete') {
-                listener({
-                    name: 'delete',
-                    resumeToken: doc._id,
-                    snapshot: this.sanitize4User(doc.documentKey, [], [])
-                });
-            }
-        }, options.resumeToken);
+        return this.database.changes(
+            domain,
+            pipeline,
+            (doc: ChangesModel) => {
+                if (doc.operationType === 'create') {
+                    listener({
+                        name: 'create',
+                        resumeToken: doc._id,
+                        snapshot: this.sanitize4User(doc.fullDocument, [], [])
+                    });
+                } else if (doc.operationType === 'update') {
+                    listener({
+                        name: 'update',
+                        resumeToken: doc._id,
+                        snapshot: this.sanitize4User(doc.fullDocument, [], [])
+                    });
+                } else if (doc.operationType === 'delete') {
+                    listener({
+                        name: 'delete',
+                        resumeToken: doc._id,
+                        snapshot: this.sanitize4User(doc.documentKey, [], [])
+                    });
+                }
+            },
+            options.resumeToken
+        );
     }
 
     async query(
@@ -536,6 +559,10 @@ export class DatabaseController {
         } else {
             return returnedData;
         }
+    }
+
+    publishChanges(domain: string, change: ChangesModel) {
+        AppEventsFactory.getInstance().pub(ConstUtil.DB_CHANGES_EVENT.concat(domain), change);
     }
 
 }

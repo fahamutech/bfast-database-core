@@ -1,7 +1,5 @@
 const {LogController} = require("../dist/controllers/log.controller");
 const {BfastDatabaseCore} = require("../dist/bfast-database-core");
-const {MongoMemoryServer} = require('mongodb-memory-server');
-const {MongoMemoryReplSet} = require('mongodb-memory-server');
 const {RulesController} = require('../dist/controllers/rules.controller');
 const {UpdateRuleController} = require('../dist/controllers/update.rule.controller');
 const {EnvUtil} = require('../dist/index')
@@ -16,49 +14,22 @@ const {IpfsStorageFactory} = require("../dist/factory/ipfs-storage.factory");
 const axios = require("axios");
 const {expect} = require('chai');
 
-/**
- *
- * @return {MongoMemoryServer}
- */
-
-/**
- *
- * @return {MongoMemoryReplSet | MongoMemoryServer}
- */
 const mongoMemoryReplSet = () => {
-    // if (process.env.CHROME_OS === 'ndio') {
     return {
         getUri: function () {
             return 'mongodb://localhost/_test';
         },
         start: async function () {
             const conn = await mongodb.MongoClient.connect(this.getUri());
-            // const db = await conn.db();
             await conn.db('_test').dropDatabase();
-            // console.log('***START MONGODB*****');
         },
         waitUntilRunning: async function () {
             const conn = await mongodb.MongoClient.connect(this.getUri());
-            // const db = await conn.db();
             await conn.db('_test').dropDatabase();
-            // console.log('***START MONGODB*****');
         },
         stop: async function () {
-            // console.log('***STOP MONGODB*****');
         }
     }
-    // } else {
-    //     return new MongoMemoryReplSet({
-    //         autoStart: true,
-    //         replSet: {
-    //             count: 3,
-    //             storageEngine: "wiredTiger",
-    //         },
-    //         binary: {
-    //             version: '5.0.0'
-    //         }
-    //     });
-    // }
 }
 
 /**
@@ -69,7 +40,6 @@ const daas = async () => {
 }
 
 exports.serverUrl = 'http://localhost:3111/v2';
-// exports.mongoServer = mongoServer;
 exports.mongoRepSet = mongoMemoryReplSet;
 exports.daas = daas;
 exports.config = {

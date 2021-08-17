@@ -11,7 +11,8 @@ bfast.init({
     applicationId: myConfig.applicationId,
     projectId: myConfig.projectId,
     appPassword: myConfig.masterKey,
-    databaseURL: `http://localhost:${myConfig.port}/v2`
+    databaseURL: `http://localhost:${myConfig.port}`,
+    functionsURL: `http://localhost:${myConfig.port}`
 });
 
 module.exports.rests = webService.rest().rules;

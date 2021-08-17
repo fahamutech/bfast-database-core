@@ -92,14 +92,6 @@ export abstract class DatabaseAdapter {
     abstract changes(domain: string, pipeline: object[], listener: (doc: any) => void, resumeToken: string): Promise<any>;
 
     abstract bulk(operations: (session) => Promise<any>): Promise<any>;
-
-    // abstract createIndexes(domain: string, indexes: any[]): Promise<any>;
-    //
-    // abstract dropIndexes(domain: string): Promise<boolean>;
-    //
-    // abstract listIndexes(domain: string): Promise<any>;
-
-    // abstract aggregate(domain: string, pipelines: object[], context: ContextBlock, options?: DatabaseWriteOptions): Promise<any[]>;
 }
 
 export interface DatabaseWriteOptions extends DatabaseBasicOptions {

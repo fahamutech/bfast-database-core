@@ -1,12 +1,12 @@
 import {RestWebservice} from './rest.webservice';
-import {RealtimeWebservice} from './realtime.webservice';
+import {ChangesWebservice} from './changes.webservice';
 import {StorageWebservice} from './storage.webservice';
 import {FunctionsModel} from '../model/functions.model';
 import {StorageApiModel} from '../model/storage-api.model';
 
 export class WebServices {
     constructor(private readonly restWebservice: RestWebservice,
-                private readonly realtimeWebservice: RealtimeWebservice,
+                private readonly realtimeWebservice: ChangesWebservice,
                 private readonly storageWebservice: StorageWebservice) {
     }
 

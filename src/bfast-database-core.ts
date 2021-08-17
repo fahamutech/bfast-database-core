@@ -3,7 +3,7 @@ import {DatabaseController} from './controllers/database.controller';
 import {SecurityController} from './controllers/security.controller';
 import {BFastDatabaseOptions} from './bfast-database.option';
 import {Provider} from './provider';
-import {RealtimeWebservice} from './webservices/realtime.webservice';
+import {ChangesWebservice} from './webservices/changes.webservice';
 import {AuthController} from './controllers/auth.controller';
 import {AuthFactory} from './factory/auth.factory';
 import {StorageController} from './controllers/storage.controller';
@@ -112,7 +112,7 @@ export class BfastDatabaseCore {
         const securityController = new SecurityController(options);
         const logController = new LogController(options);
         const databaseController = new DatabaseController(databaseFactory, securityController);
-        const realtimeController = new RealtimeWebservice(databaseController);
+        const realtimeController = new ChangesWebservice(databaseController);
         const storageController = new StorageController(fileFactory, securityController, options);
         const authFactory: AuthAdapter = options.adapters && options.adapters.auth
             ? options.adapters.auth(options)
@@ -134,7 +134,7 @@ export class BfastDatabaseCore {
             rulesController,
             options
         );
-        const realtimeWebServices = new RealtimeWebservice(databaseController);
+        const realtimeWebServices = new ChangesWebservice(databaseController);
         const restWebServices = new RestWebservice(restController, options);
         const storageWebService = new StorageWebservice(restController);
 
