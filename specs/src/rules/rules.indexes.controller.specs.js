@@ -3,7 +3,7 @@
 // const assert = require('assert');
 //
 // describe('RulesController::Indexes Unit Test', function () {
-//     this.timeout(10000000000000000);
+//
 //     let _rulesController;
 //     let mongoMemoryReplSet;
 //     before(async function () {

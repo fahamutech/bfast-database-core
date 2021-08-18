@@ -303,20 +303,31 @@ export class DatabaseFactory implements DatabaseAdapter {
             if (result && result.value) {
                 // console.log(result, '------> result');
                 if (typeof result.value === "object") {
-                    await conn.db().collection(`${domain}__id`).deleteMany({
+                    for(const k of Object.keys(result.value)){
+                        const existInId = await conn.db().collection(`${domain}__id`).findOne({
+                            _id: k
+                        });
+                        // console.log(existInId,'-----> check if exist in _id node');
+                        if (!existInId){
+                            delete result.value[k];
+                        }
+                    }
+                    const r11 = await conn.db().collection(`${domain}__id`).deleteMany({
                         _id: {
                             $in: Object.keys(result.value)
                         }
                     }, {
                         session: options && options.transaction ? options.transaction : undefined
                     });
-                    await conn.db().collection(nodeTable).deleteMany({
+                    // console.log(r11, '-----> in ids node');
+                    const r21 = await conn.db().collection(nodeTable).deleteMany({
                         _id: {
                             $in: Array.isArray(result._id) ? result._id : [result._id]
                         }
                     }, {
                         session: options && options.transaction ? options.transaction : undefined
                     });
+                    // console.log(r21, '---------> in node mode');
                     Object.keys(result.value).forEach((v: string) => {
                         cids.push(v);
                         if (cidMap[v]) {
@@ -326,14 +337,18 @@ export class DatabaseFactory implements DatabaseAdapter {
                         }
                     });
                 } else if (typeof result.value === 'string') {
-                    await conn.db().collection(`${domain}__id`).deleteOne({
+                    // console.log(result);
+                    const r11 = await conn.db().collection(`${domain}__id`).deleteOne({
                         _id: result._id
                     }, {
                         session: options && options.transaction ? options.transaction : undefined
                     });
-                    await conn.db().collection(nodeTable).deleteMany({
+                    // console.log(nodeTable);
+                    // console.log(r11, '-----> in ids node with string id');
+                    const r21 = await conn.db().collection(nodeTable).deleteMany({
                         _id: id
                     });
+                    // console.log(r21, '---------> in node mode with string id');
                     cids.push(result._id);
                     if (cidMap[result._id]) {
                         cidMap[result._id] += 1;
@@ -542,7 +557,6 @@ export class DatabaseFactory implements DatabaseAdapter {
             oldDocs.push(Object.assign(updateModel.update.$set, updateModel.filter));
             return this.writeMany(domain, oldDocs, context, options);
         }
-        // console.log(oldDocs,'-----> old docs');
         return Promise.all(oldDocs.map(async x => await this.updateOne(
             domain,
             {

@@ -94,13 +94,13 @@ export class DatabaseController {
             await this.handleDomainValidation(domain);
         }
         const returnFields = this.getReturnFields<T>(data);
-        const sanitizedData = this.sanitize4Db(data);
-        const sanitizedDataWithCreateMetadata = this.addCreateMetadata(sanitizedData, context);
-        const doc = await this.database.writeOne<T>(domain, sanitizedDataWithCreateMetadata, context, options);
+        const sanitizedDataWithCreateMetadata = this.addCreateMetadata(data, context);
+        const sanitizedData = this.sanitize4Db(sanitizedDataWithCreateMetadata);
+        const doc = await this.database.writeOne<T>(domain, sanitizedData, context, options);
         const cleanDoc = this.sanitize4User<T>(doc, returnFields, []) as T;
-        this.publishChanges(domain,{
+        this.publishChanges(domain, {
             _id: doc?._id,
-            fullDocument: cleanDoc,
+            fullDocument: doc,
             documentKey: doc?._id,
             operationType: "create"
         });
@@ -125,9 +125,9 @@ export class DatabaseController {
         const docs = await this.database.writeMany<any>(domain, sanitizedData, context, options);
         return docs.map(x1 => {
             const cleanDoc = this.sanitize4User(x1, returnFieldsMap[x1._id], []);
-            this.publishChanges(domain,{
+            this.publishChanges(domain, {
                 _id: x1?._id,
-                fullDocument: cleanDoc,
+                fullDocument: x1,
                 documentKey: x1?._id,
                 operationType: "create"
             });
@@ -161,9 +161,9 @@ export class DatabaseController {
         options.dbOptions = updateModel && updateModel.options ? updateModel.options : {};
         const updatedDoc = await this.database.updateOne<any, any>(domain, updateModel, context, options);
         const cleanDoc = this.sanitize4User(updatedDoc, returnFields, []);
-        this.publishChanges(domain,{
+        this.publishChanges(domain, {
             _id: updatedDoc?._id,
-            fullDocument: cleanDoc,
+            fullDocument: updatedDoc,
             documentKey: updatedDoc?._id,
             operationType: "update"
         });
@@ -207,11 +207,11 @@ export class DatabaseController {
                 context,
                 options
             );
-            return docs.map(_t1 =>{
+            return docs.map(_t1 => {
                 const cleanDoc = this.sanitize4User(_t1, updateModel.return, []);
-                this.publishChanges(domain,{
+                this.publishChanges(domain, {
                     _id: _t1?._id,
-                    fullDocument: cleanDoc,
+                    fullDocument: _t1,
                     documentKey: _t1?._id,
                     operationType: "update"
                 });
@@ -240,11 +240,11 @@ export class DatabaseController {
         deleteModel.filter = this.sanitizeWithOperator4Db(deleteModel?.filter as any);
         const result = await this.database.delete<any>(domain, deleteModel, context, options);
         // console.log(result);
-        return result.map(t =>{
+        return result.map(t => {
             const cleanDoc = this.sanitize4User(t, deleteModel.return, []);
-            this.publishChanges(domain,{
+            this.publishChanges(domain, {
                 _id: t?._id,
-                fullDocument: cleanDoc,
+                fullDocument: t,
                 // @ts-ignore
                 documentKey: t?._id,
                 operationType: "delete"
@@ -281,24 +281,29 @@ export class DatabaseController {
             domain,
             pipeline,
             (doc: ChangesModel) => {
-                if (doc.operationType === 'create') {
-                    listener({
-                        name: 'create',
-                        resumeToken: doc._id,
-                        snapshot: this.sanitize4User(doc.fullDocument, [], [])
-                    });
-                } else if (doc.operationType === 'update') {
-                    listener({
-                        name: 'update',
-                        resumeToken: doc._id,
-                        snapshot: this.sanitize4User(doc.fullDocument, [], [])
-                    });
-                } else if (doc.operationType === 'delete') {
-                    listener({
-                        name: 'delete',
-                        resumeToken: doc._id,
-                        snapshot: this.sanitize4User(doc.documentKey, [], [])
-                    });
+                switch (doc.operationType) {
+                    case 'create':
+                        listener({
+                            name: 'create',
+                            resumeToken: doc._id,
+                            snapshot: this.sanitize4User(doc.fullDocument, [], [])
+                        });
+                        return;
+                    case 'update':
+                        listener({
+                            name: 'update',
+                            resumeToken: doc._id,
+                            snapshot: this.sanitize4User(doc.fullDocument, [], [])
+                        });
+                        return;
+                    case 'delete':
+                        // console.log(doc,'--------> deleted doc');
+                        listener({
+                            name: 'delete',
+                            resumeToken: doc._id,
+                            snapshot: this.sanitize4User(doc.fullDocument, [], [])
+                        });
+                        return;
                 }
             },
             options.resumeToken
@@ -376,11 +381,12 @@ export class DatabaseController {
         context?: ContextBlock
     ): T {
         data._created_by = context?.uid;
-        data._created_at = data && data._created_at ? data._created_at : new Date();
-        data._updated_at = data && data._updated_at ? data._updated_at : new Date();
-        if (data && !data.hasOwnProperty('_id')) {
-            data._id = this.security.generateUUID();
-        }
+        data._created_at = data && data.createdAt ? data.createdAt : new Date();
+        data._updated_at = data && data.updatedAt ? data.updatedAt : new Date();
+        data._id = data && data.id ? data.id : this.security.generateUUID();
+        // if (data && !data.hasOwnProperty('_id')) {
+        //     data._id = this.security.generateUUID();
+        // }
         return data;
     }
 

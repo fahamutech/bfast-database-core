@@ -3,7 +3,7 @@ const {before, after} = require('mocha');
 const {assert, should, expect} = require('chai');
 
 describe('Transaction', function () {
-    this.timeout(10000000000000000);
+
     let _rulesController;
     let mongoMemoryReplSet;
     before(async function () {

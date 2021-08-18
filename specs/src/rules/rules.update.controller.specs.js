@@ -4,7 +4,7 @@ const {should, expect, assert} = require("chai");
 const exp = require("constants");
 
 describe('RulesController', function () {
-    this.timeout(10000000000000000);
+
     let _rulesController;
     let mongoMemoryReplSet;
     before(async function () {

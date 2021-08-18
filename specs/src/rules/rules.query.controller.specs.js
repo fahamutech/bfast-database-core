@@ -3,7 +3,7 @@ const {createHash} = require('crypto');
 const {expect, should, assert} = require('chai');
 
 describe('RulesController', function () {
-    this.timeout(10000000000000000);
+
     let _rulesController;
     let mongoMemoryReplSet;
     before(async function () {

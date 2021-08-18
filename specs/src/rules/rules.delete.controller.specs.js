@@ -3,7 +3,6 @@ const {before, after} = require('mocha');
 const {assert, should, expect} = require('chai');
 
 describe('RulesController::Delete Unit Test', function () {
-    this.timeout(10000000000000000);
     let _rulesController;
     let mongoMemoryReplSet;
     before(async function () {
@@ -21,8 +20,8 @@ describe('RulesController::Delete Unit Test', function () {
                     {name: 'wer', price: 100, status: 'new'},
                     {name: 'poi', price: 30, status: 'new'},
                     {id: '16b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b', name: '1'},
-                    {id: '2', name: '2'},
-                    {id: '3', name: '3'},
+                    {id: 'a', name: '2'},
+                    {id: 'b', name: '3'},
                 ]
             }, {errors: {}});
         });
@@ -57,20 +56,20 @@ describe('RulesController::Delete Unit Test', function () {
                         id: function (i) {
                             return [
                                 '16b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b',
-                                2,
-                                3
+                                'a',
+                                'b'
                             ].includes(i);
                         }
                     },
                     return: []
                 }
             }, {errors: {}});
-            // console.log(results.deleteProduct);
+            console.log(results.deleteProduct);
             should().exist(results.deleteProduct);
             expect(Array.isArray(results.deleteProduct)).equal(true);
             expect(results.deleteProduct.length).equal(3);
             expect(results.deleteProduct.map(x => x.id)).to.be.members(
-                ['16b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b', '2', '3']
+                ['16b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b', 'a', 'b']
             );
         });
         it('should not delete objects by empty filter', async function () {
