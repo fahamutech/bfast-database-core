@@ -64,7 +64,7 @@ describe('RulesController::Delete Unit Test', function () {
                     return: []
                 }
             }, {errors: {}});
-            console.log(results.deleteProduct);
+            // console.log(results.deleteProduct);
             should().exist(results.deleteProduct);
             expect(Array.isArray(results.deleteProduct)).equal(true);
             expect(results.deleteProduct.length).equal(3);
