@@ -2,10 +2,11 @@ import EventEmitter from "events";
 import {ChangesModel} from "../model/changes.model";
 
 export class AppEventsFactory {
-    readonly eventEmitter = new EventEmitter();
+    readonly eventEmitter ;
     private static instance: AppEventsFactory;
 
     private constructor() {
+        this.eventEmitter = new EventEmitter();
         this.eventEmitter.setMaxListeners(100000);
     }
 
@@ -17,17 +18,19 @@ export class AppEventsFactory {
     }
 
     public sub(eventName: string, handler: (doc: ChangesModel) => void) {
+        this.eventEmitter.on(eventName, handler);
         // console.log(this.eventEmitter.listenerCount(eventName),'----> max listener');
-        this.eventEmitter.on(eventName, doc => {
-            handler(doc);
-        });
     }
 
-    public unSub(evenName: string, handler: (arg: any) => void) {
+    public unSub(evenName: string, handler: (doc: ChangesModel) => void) {
         this.eventEmitter.removeListener(evenName, handler);
     }
 
     public pub(eventName: string, doc: ChangesModel) {
         this.eventEmitter.emit(eventName, doc);
+    }
+
+    public connected(eventName:string): number{
+        return this.eventEmitter.listenerCount(eventName);
     }
 }

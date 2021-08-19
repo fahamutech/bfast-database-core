@@ -1,6 +1,7 @@
 const bfastnode = require("bfastnode");
 const {expect, should} = require('chai');
 const {config} = require("../../mock.config");
+const {AppEventsFactory} = require("../../../dist/factory/app-events.factory");
 
 const {bfast} = bfastnode;
 
@@ -197,20 +198,20 @@ describe('Changes', function () {
                         bfast.functions()
                             .request('/v2')
                             .post({
-                                applicationId: config.applicationId,
-                                updatetest: {
-                                    filter: {
-                                        createdAt: 'leo'
-                                    },
-                                    update: {
-                                        $set: {
-                                            updatedAt: 'kesho'
-                                        }
-                                    },
-                                    return: []
+                                    applicationId: config.applicationId,
+                                    updatetest: {
+                                        filter: {
+                                            createdAt: 'leo'
+                                        },
+                                        update: {
+                                            $set: {
+                                                updatedAt: 'kesho'
+                                            }
+                                        },
+                                        return: []
+                                    }
                                 }
-                            }
-                        );
+                            );
                     },
                     () => {
                     }
@@ -330,6 +331,46 @@ describe('Changes', function () {
                 done();
                 changes.close();
             });
+        });
+    });
+    describe('removeListener', function () {
+        let c1, c2, r2;
+        before(function () {
+            c1 = bfast.database()
+                .table('test2')
+                .query()
+                .changes();
+            c2 = bfast.database()
+                .table('test2')
+                .query()
+                .changes();
+            c2.addListener((r) => {
+                // console.log(r);
+                if (r.body.info) {
+                    return;
+                }
+                r2 = r.body.change;
+            });
+        })
+        it('should count a total listener', function (done) {
+            setTimeout(args => {
+                const total = AppEventsFactory.getInstance().connected('_db_changes_test2');
+                expect(total).equal(2);
+                done();
+            }, 500);
+        });
+        it('should remove specific listener only', function (done) {
+            c1.close();
+            bfast.database().table('test2').save({name: 'xps', id: 'josh', createdAt: 'leo', updatedAt: 'leo'});
+            setTimeout(args => {
+                const total = AppEventsFactory.getInstance().connected('_db_changes_test2');
+                expect(total).equal(1);
+                expect(r2).eql({
+                    name: 'create',
+                    snapshot: {name: 'xps', id: 'josh', createdAt: 'leo', updatedAt: 'leo', createdBy: null}
+                })
+                done();
+            }, 500);
         });
     });
 });

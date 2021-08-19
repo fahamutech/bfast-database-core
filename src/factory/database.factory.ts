@@ -4,7 +4,7 @@ import {
     DatabaseUpdateOptions,
     DatabaseWriteOptions
 } from '../adapters/database.adapter';
-import {ChangeStream, MongoClient} from 'mongodb';
+import {MongoClient} from 'mongodb';
 import {BasicAttributesModel} from '../model/basic-attributes.model';
 import {ContextBlock} from '../model/rules.model';
 import {QueryModel} from '../model/query-model';
@@ -620,13 +620,14 @@ export class DatabaseFactory implements DatabaseAdapter {
 
     async changes(
         domain: string, pipeline: any[],
-        listener: (doc: ChangesModel) => void, resumeToken = undefined
+        listener: (doc: ChangesModel) => void,
+        resumeToken = undefined
     ): Promise<{ close: () => void }> {
         const appEventInst = AppEventsFactory.getInstance();
         appEventInst.sub(ConstUtil.DB_CHANGES_EVENT.concat(domain), listener);
         return {
             close: () => {
-                // appEventInst.unSub(ConstUtil.DB_CHANGES_EVENT.concat(domain), listener);
+                appEventInst.unSub(ConstUtil.DB_CHANGES_EVENT.concat(domain), listener);
             }
         }
     }
