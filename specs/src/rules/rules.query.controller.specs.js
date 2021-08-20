@@ -133,6 +133,17 @@ describe('RulesController', function () {
             assert(typeof results.queryProduct === "number");
             assert(results.queryProduct === 1);
         });
+        it('should count object based on empty filter', async function () {
+            const results = await _rulesController.handleQueryRules({
+                queryProduct: {
+                    filter: {},
+                    count: true,
+                }
+            }, {errors: {}});
+            assert(results.queryProduct !== undefined);
+            assert(typeof results.queryProduct === "number");
+            assert(results.queryProduct === 3);
+        });
         it('should perform basic query based on empty filter with local hashes supplied', async function () {
             const hash = createHash('sha256')
                 .update(JSON.stringify({

@@ -180,6 +180,9 @@ export class DatabaseFactory implements DatabaseAdapter {
                     const skip = (queryModel.skip && queryModel.skip >= 1) ? queryModel.skip : 0;
                     result = result.slice(skip, (queryModel.size + skip));
                 }
+                if (queryModel?.count === true) {
+                    return result.length;
+                }
                 return Promise.all(result.map(x => this.getDataFromCid(x?.value)));
             } else {
                 return [];
