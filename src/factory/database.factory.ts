@@ -171,11 +171,15 @@ export class DatabaseFactory implements DatabaseAdapter {
         let cids = [];
         const cidMap = {};
         if (keys.length === 0) {
-            const result = await conn.db().collection(`${domain}__id`).find({}, {
+            let result = await conn.db().collection(`${domain}__id`).find({}, {
                 session: options && options.transaction ? options.transaction : undefined
             }).toArray();
             await conn.close();
             if (result && Array.isArray(result)) {
+                if (queryModel?.size && queryModel?.size > 0) {
+                    const skip = (queryModel.skip && queryModel.skip >= 1) ? queryModel.skip : 0;
+                    result = result.slice(skip, (queryModel.size + skip));
+                }
                 return Promise.all(result.map(x => this.getDataFromCid(x?.value)));
             } else {
                 return [];
@@ -257,7 +261,7 @@ export class DatabaseFactory implements DatabaseAdapter {
         cids = Array.from(cids);
         if (queryModel?.size && queryModel?.size > 0) {
             const skip = (queryModel.skip && queryModel.skip >= 0) ? queryModel.skip : 0;
-            cids = cids.slice(skip, queryModel.size);
+            cids = cids.slice(skip, (queryModel.size + skip));
         }
         if (queryModel?.count === true) {
             return cids.length;
@@ -303,12 +307,12 @@ export class DatabaseFactory implements DatabaseAdapter {
             if (result && result.value) {
                 // console.log(result, '------> result');
                 if (typeof result.value === "object") {
-                    for(const k of Object.keys(result.value)){
+                    for (const k of Object.keys(result.value)) {
                         const existInId = await conn.db().collection(`${domain}__id`).findOne({
                             _id: k
                         });
                         // console.log(existInId,'-----> check if exist in _id node');
-                        if (!existInId){
+                        if (!existInId) {
                             delete result.value[k];
                         }
                     }
@@ -514,7 +518,7 @@ export class DatabaseFactory implements DatabaseAdapter {
             const _result1: any[] = Object.values(resultMap);
             return queryModel?.count ? _result1.reduce((a, b) => a + b, 0) : _result1;
         } else {
-            return this.handleQueryObjectTree(queryTree, domain, queryModel, options);
+            return await this.handleQueryObjectTree(queryTree, domain, queryModel, options);
         }
     }
 

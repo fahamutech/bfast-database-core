@@ -62,6 +62,36 @@ describe('RulesController', function () {
             expect(results.queryProduct[0].price).equal(50);
             expect(results.queryProduct[0].status).equal('new');
         });
+        it('should limit size of the results', async function () {
+            const results = await _rulesController.handleQueryRules({
+                queryProduct: {
+                    filter: {},
+                    size: 1,
+                    skip: 0,
+                    return: []
+                }
+            }, {errors: {}});
+            should().exist(results.queryProduct);
+            expect(Array.isArray(results.queryProduct)).equal(true);
+            expect(results.queryProduct).length(1);
+        });
+        it('should limit size of the results when filter applied', async function () {
+            const results = await _rulesController.handleQueryRules({
+                queryProduct: {
+                    filter: {
+                        name: function (n) {
+                            return n.toString().length > 0
+                        }
+                    },
+                    size: 2,
+                    skip: 0,
+                    return: []
+                }
+            }, {errors: {}});
+            should().exist(results.queryProduct);
+            expect(Array.isArray(results.queryProduct)).equal(true);
+            expect(results.queryProduct).length(2);
+        });
         it('should perform basic query based on empty filter', async function () {
             const results = await _rulesController.handleQueryRules({
                 queryProduct: {
