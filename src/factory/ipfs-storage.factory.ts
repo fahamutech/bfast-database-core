@@ -172,9 +172,6 @@ export class IpfsStorageFactory implements FilesAdapter {
             this.domain,
             {
                 filter: {
-                    name: function (f) {
-                        return !!f.includes(query.prefix);
-                    }
                 },
                 return: [],
                 size: query.size,
@@ -183,7 +180,7 @@ export class IpfsStorageFactory implements FilesAdapter {
             {}
         );
         if (Array.isArray(r)) {
-            r = r.map(x => IpfsStorageFactory.sanitize4User(x));
+            r = r.filter(x=>x?.name?.toString()?.includes(query.prefix)).map(x => IpfsStorageFactory.sanitize4User(x));
             return r;
         } else {
             return [];

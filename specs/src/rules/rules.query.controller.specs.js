@@ -79,8 +79,8 @@ describe('RulesController', function () {
             const results = await _rulesController.handleQueryRules({
                 queryProduct: {
                     filter: {
-                        name: function (n) {
-                            return n.toString().length > 0
+                        name:  {
+                            $fn: `return it.toString().length > 0`
                         }
                     },
                     size: 2,
@@ -286,20 +286,14 @@ describe('RulesController', function () {
             const results = await _rulesController.handleQueryRules({
                 queryProduct: {
                     filter: {
-                        price: function (p) {
-                            return (p === 50 || p === 100);
-                        },
-                        // name: 'xyz'
+                        price:  {
+                            $fn: `return (it === 50 || it === 100);`
+                        }
                     },
                     return: []
                 }
             }, {errors: {}});
             // console.log(results.queryProduct);
-            // expect(results.queryProduct).to.have.members([
-            //     {id: 'wer_id', name: 'wer', price: 100, status: 'new', createdAt: 'test', updatedAt: 'test'},
-            //     {name: 'xyz', price: 50, status: 'new', id: 'xyzid', createdAt: 'test', updatedAt: 'test'},
-            //     {id: 'poi_id', name: 'poi', price: 50, status: 'new', createdAt: 'test', updatedAt: 'test'},
-            // ]);
             should().exist(results.queryProduct);
             expect(Array.isArray(results.queryProduct)).equal(true);
             expect(results.queryProduct.length).equal(3);

@@ -192,12 +192,13 @@ export class DatabaseFactory implements DatabaseAdapter {
             const nodeTable = key.replace('/', '_').trim();
             const id = queryTree[key];
             let result;
-            if (typeof id === "function") {
+            if (typeof id === "object" && id?.hasOwnProperty('$fn')) {
                 const cursor = conn.db().collection(nodeTable).find({});
                 const docs = [];
                 while (await cursor.hasNext()) {
                     const next = await cursor.next();
-                    id(next._id) === true ? docs.push(next) : null
+                    const fn = new Function('it', id.$fn);
+                    fn(next._id) === true ? docs.push(next) : null
                 }
                 result = docs.reduce((a, b) => {
                     a.value = Object.assign(a.value, b.value);

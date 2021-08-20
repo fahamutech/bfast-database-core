@@ -1130,10 +1130,10 @@ bcryptjs@~2.4.3:
   resolved "https://registry.yarnpkg.com/bcryptjs/-/bcryptjs-2.4.3.tgz#9ab5627b93e60621ff7cdac5da9733027df1d0cb"
   integrity sha1-mrVie5PmBiH/fNrF2pczAn3x0Ms=
 
-bfast-database-tree@~1.0.0-aplha.2:
-  version "1.0.0-aplha.2"
-  resolved "https://registry.yarnpkg.com/bfast-database-tree/-/bfast-database-tree-1.0.0-aplha.2.tgz#273f2d82f525b7e57b6e65c0c3ecbd51353d4988"
-  integrity sha512-vYDvTQoYfG0UEQBKaLwIvg5H37k3viHgj22Ib7y7HYEBWM1WOKVCpr6Gzr2KVHNxCqEQgl4HxC/rECUpPbp/zw==
+bfast-database-tree@~1.0.0-aplha.3:
+  version "1.0.0-aplha.3"
+  resolved "https://registry.yarnpkg.com/bfast-database-tree/-/bfast-database-tree-1.0.0-aplha.3.tgz#5f3e23d9e4d17121a28e2a85533dc3c728783398"
+  integrity sha512-VWaA6T/HMgWb/E8grlCvNI8F5NRwNtQ0ZIkHEsXPaaTzkos0TKa8DgJm5Xbcz8kpRD7zoOcweRFLg8ICn5G4oA==
 
 bfast-function@~1.13.0:
   version "1.13.0"
