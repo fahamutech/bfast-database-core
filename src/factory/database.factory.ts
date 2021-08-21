@@ -550,7 +550,6 @@ export class DatabaseFactory implements DatabaseAdapter {
         const incrementParts = updateModel.update.$inc;
         let newDoc = Object.assign(oldDoc, updateParts);
         newDoc = this.incrementFields(newDoc, incrementParts);
-        // console.log(newDoc);
         return this.writeOne(domain, newDoc, context, options);
     }
 
@@ -562,7 +561,10 @@ export class DatabaseFactory implements DatabaseAdapter {
     ): Promise<any[]> {
         const oldDocs: any[] = await this.findMany(domain, updateModel, context, options);
         if (Array.isArray(oldDocs) && oldDocs.length === 0 && updateModel.upsert === true) {
-            oldDocs.push(Object.assign(updateModel.update.$set, updateModel.filter));
+            let nDoc = Object.assign(updateModel.update.$set, updateModel.filter);
+            const incrementParts = updateModel.update.$inc;
+            nDoc = this.incrementFields(nDoc, incrementParts);
+            oldDocs.push(nDoc);
             return this.writeMany(domain, oldDocs, context, options);
         }
         return Promise.all(oldDocs.map(async x => await this.updateOne(

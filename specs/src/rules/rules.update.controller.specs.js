@@ -1,7 +1,6 @@
 const {getRulesController, mongoRepSet} = require('../../mock.config');
 const {before, after} = require('mocha');
 const {should, expect, assert} = require("chai");
-const exp = require("constants");
 
 describe('RulesController', function () {
 
@@ -331,7 +330,7 @@ describe('RulesController', function () {
                     id: 'josh',
                     update: {
                         $set: {
-                          updatedAt: 'leo'
+                            updatedAt: 'leo'
                         },
                         $inc: {
                             c: 10,
@@ -371,6 +370,41 @@ describe('RulesController', function () {
             }, {errors: {}});
             should().exist(results.updateProduct);
             expect(results.updateProduct.name).equal('ethan');
+        });
+        it('should upsert and increment field when upsert is true and use id', async function () {
+            const results = await _rulesController.handleUpdateRules({
+                updateProduct: {
+                    id: 'josh334',
+                    upsert: true,
+                    update: {
+                        $inc: {
+                            age: 10
+                        }
+                    },
+                    return: []
+                }
+            }, {errors: {}});
+            should().exist(results.updateProduct);
+            expect(results.updateProduct.age).equal(10);
+        });
+        it('should upsert and increment field when upsert is true and use filter', async function () {
+            const results = await _rulesController.handleUpdateRules({
+                updateProduct: {
+                    filter: {
+                        name: 'night'
+                    },
+                    upsert: true,
+                    update: {
+                        $inc: {
+                            age: 10
+                        }
+                    },
+                    return: []
+                }
+            }, {errors: {}});
+            should().exist(results.updateProduct);
+            expect(results.updateProduct[0].age).equal(10);
+            expect(results.updateProduct[0].name).equal('night');
         });
     });
 });

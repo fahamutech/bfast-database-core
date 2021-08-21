@@ -370,7 +370,7 @@ describe('Changes', function () {
                     snapshot: {name: 'xps', id: 'josh', createdAt: 'leo', updatedAt: 'leo', createdBy: null}
                 })
                 done();
-            }, 500);
+            }, 700);
         });
     });
 });
