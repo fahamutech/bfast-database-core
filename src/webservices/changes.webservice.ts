@@ -1,4 +1,4 @@
-import {BFast} from 'bfastnode';
+import {functions} from 'bfast';
 import {DatabaseController} from '../controllers/database.controller';
 import {ChangesDocModel} from "../model/changes-doc.model";
 
@@ -11,7 +11,7 @@ export class ChangesWebservice {
         config: { applicationId: string, masterKey: string },
         prefix = '/'
     ): { name: string, onEvent: any } {
-        return BFast.functions().onEvent(
+        return functions().onEvent(
             `${prefix}v2/__changes__`,
             (request, response) => {
                 if (request.auth.applicationId === config.applicationId) {

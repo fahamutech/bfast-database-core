@@ -1,4 +1,4 @@
-import {BFast} from 'bfastnode';
+import {functions} from 'bfast';
 import {RestController} from '../controllers/rest.controller';
 import {FunctionsModel} from '../model/functions.model';
 
@@ -64,7 +64,7 @@ export class StorageWebservice {
     }
 
     getUploadFileV2(prefix = '/'): FunctionsModel {
-        return BFast.functions().onGetHttpRequest(`${prefix}storage/:appId`,
+        return functions().onGetHttpRequest(`${prefix}storage/:appId`,
             (request, response: any) => {
                 // show a file upload form
                 response.writeHead(200, {'content-type': 'text/html'});
@@ -80,39 +80,39 @@ export class StorageWebservice {
     }
 
     getFileStorageV1(prefix = '/'): FunctionsModel {
-        return BFast.functions().onHttpRequest(`${prefix}files/:appId/:filename`, this.handleGetFile());
+        return functions().onHttpRequest(`${prefix}files/:appId/:filename`, this.handleGetFile());
     }
 
 
     getFileFromStorage(prefix = '/'): FunctionsModel {
-        return BFast.functions().onHttpRequest(`${prefix}storage/:appId/file/:filename`, this.handleGetFile());
+        return functions().onHttpRequest(`${prefix}storage/:appId/file/:filename`, this.handleGetFile());
     }
 
     getFileFromStorageV2(prefix = '/'): FunctionsModel {
-        return BFast.functions().onHttpRequest(`${prefix}v2/storage/:appId/file/:filename`, this.handleGetFile());
+        return functions().onHttpRequest(`${prefix}v2/storage/:appId/file/:filename`, this.handleGetFile());
     }
 
     geThumbnailFromStorage(prefix = '/'): FunctionsModel {
-        return BFast.functions().onGetHttpRequest(`${prefix}storage/:appId/file/:filename/thumbnail`, this.handleGetThumbnail());
+        return functions().onGetHttpRequest(`${prefix}storage/:appId/file/:filename/thumbnail`, this.handleGetThumbnail());
     }
 
     geThumbnailFromStorageV2(prefix = '/'): FunctionsModel {
-        return BFast.functions().onGetHttpRequest(`${prefix}v2/storage/:appId/file/:filename/thumbnail`, this.handleGetThumbnail());
+        return functions().onGetHttpRequest(`${prefix}v2/storage/:appId/file/:filename/thumbnail`, this.handleGetThumbnail());
     }
 
     uploadMultiPartFile(prefix = '/'): FunctionsModel {
-        return BFast.functions().onPostHttpRequest(`${prefix}storage/:appId`, this.handleUploadFile());
+        return functions().onPostHttpRequest(`${prefix}storage/:appId`, this.handleUploadFile());
     }
 
     uploadMultiPartFileV2(prefix = '/'): FunctionsModel {
-        return BFast.functions().onPostHttpRequest(`${prefix}v2/storage/:appId`, this.handleUploadFile());
+        return functions().onPostHttpRequest(`${prefix}v2/storage/:appId`, this.handleUploadFile());
     }
 
     getFilesFromStorage(prefix = '/'): FunctionsModel {
-        return BFast.functions().onGetHttpRequest(`${prefix}storage/:appId/list`, this.handleListFiles());
+        return functions().onGetHttpRequest(`${prefix}storage/:appId/list`, this.handleListFiles());
     }
 
     getFilesFromStorageV2(prefix = '/'): FunctionsModel {
-        return BFast.functions().onGetHttpRequest(`${prefix}v2/storage/:appId/list`, this.handleListFiles());
+        return functions().onGetHttpRequest(`${prefix}v2/storage/:appId/list`, this.handleListFiles());
     }
 }

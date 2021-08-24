@@ -6,7 +6,7 @@ import {StorageController} from './storage.controller';
 import {AuthController} from './auth.controller';
 import {BFastDatabaseOptions} from '../bfast-database.option';
 import formidable from 'formidable';
-import {createReadStream, readFile, ReadStream} from 'fs';
+import {readFile} from 'fs';
 import {promisify} from "util";
 import mime from 'mime'
 
@@ -77,7 +77,7 @@ export class RestController {
                 for (const file of Object.values<any>(files)) {
                     const fileMeta: { name: string, type: string } = {name: undefined, type: undefined};
                     const regx = /[^0-9a-z.]/gi;
-                    fileMeta.name = file.name ? file.name: 'noname'
+                    fileMeta.name = file.name ? file.name : 'noname'
                         .toString()
                         .replace(regx, '');
                     fileMeta.type = file.type;

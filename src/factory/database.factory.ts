@@ -161,19 +161,17 @@ export class DatabaseFactory implements DatabaseAdapter {
     }
 
     private async handleQueryObjectTree(
-        queryTree: { [key: string]: any },
+        mapOfNodesToQuery: { [key: string]: any },
         domain: string,
         queryModel: QueryModel<any>,
         options: DatabaseWriteOptions
     ): Promise<any[] | number> {
-        const keys = Object.keys(queryTree);
+        const nodesPathList = Object.keys(mapOfNodesToQuery);
         const conn = await this.connection();
         let cids = [];
         const cidMap = {};
-        if (keys.length === 0) {
-            let result = await conn.db().collection(`${domain}__id`).find({}, {
-                session: options && options.transaction ? options.transaction : undefined
-            }).toArray();
+        if (nodesPathList.length === 0) {
+            let result = await conn.db().collection(`${domain}__id`).find({}).toArray();
             await conn.close();
             if (result && Array.isArray(result)) {
                 if (queryModel?.size && queryModel?.size > 0) {
@@ -188,16 +186,17 @@ export class DatabaseFactory implements DatabaseAdapter {
                 return [];
             }
         }
-        for (const key of keys) {
-            const nodeTable = key.replace('/', '_').trim();
-            const id = queryTree[key];
+
+        for (const nodePath of nodesPathList) {
+            const nodeTable = nodePath.replace('/', '_').trim();
+            const targetNodeId = mapOfNodesToQuery[nodePath];
             let result;
-            if (typeof id === "object" && id?.hasOwnProperty('$fn')) {
+            if (typeof targetNodeId === "object" && targetNodeId?.hasOwnProperty('$fn')) {
                 const cursor = conn.db().collection(nodeTable).find({});
                 const docs = [];
                 while (await cursor.hasNext()) {
                     const next = await cursor.next();
-                    const fn = new Function('it', id.$fn);
+                    const fn = new Function('it', targetNodeId.$fn);
                     fn(next._id) === true ? docs.push(next) : null
                 }
                 result = docs.reduce((a, b) => {
@@ -205,10 +204,10 @@ export class DatabaseFactory implements DatabaseAdapter {
                     return a;
                 }, {value: {}});
             } else {
-                result = await conn.db().collection(nodeTable).findOne({_id: id}, {
-                    session: options && options.transaction ? options.transaction : undefined
-                });
+                result = await conn.db().collection(nodeTable).findOne({_id: targetNodeId});
             }
+
+
             if (result && result.value) {
                 if (typeof result.value === "object") {
                     for (const k of Object.keys(result.value)) {
@@ -217,13 +216,13 @@ export class DatabaseFactory implements DatabaseAdapter {
                         });
                         if (!_r1) {
                             delete result.value[k];
-                            await conn.db().collection(nodeTable).updateOne({
-                                _id: id
+                            conn.db().collection(nodeTable).updateOne({
+                                _id: targetNodeId
                             }, {
                                 $unset: {
                                     [`value.${k}`]: 1
                                 }
-                            });
+                            }).catch(console.log);
                         }
                     }
                     Object.values(result.value).forEach((v: string) => {
@@ -240,13 +239,13 @@ export class DatabaseFactory implements DatabaseAdapter {
                     });
                     if (!_r1) {
                         result.value = null;
-                        await conn.db().collection(nodeTable).updateOne({
-                            _id: id
+                        conn.db().collection(nodeTable).updateOne({
+                            _id: targetNodeId
                         }, {
                             $unset: {
                                 value: 1
                             }
-                        });
+                        }).catch(console.log);
                     } else {
                         cids.push(result.value);
                         if (cidMap[result.value]) {
@@ -260,7 +259,7 @@ export class DatabaseFactory implements DatabaseAdapter {
         }
         await conn.close();
         cids = cids
-            .filter(x => cidMap[x] === keys.length)
+            .filter(x => cidMap[x] === nodesPathList.length)
             .reduce((a, b) => a.add(b), new Set());
         cids = Array.from(cids);
         if (queryModel?.size && queryModel?.size > 0) {
@@ -502,16 +501,16 @@ export class DatabaseFactory implements DatabaseAdapter {
         context: ContextBlock,
         options?: DatabaseWriteOptions
     ): Promise<any> {
-        let queryTree;
+        let nodesToQueryData;
         try {
-            queryTree = await treeController.query(domain, queryModel.filter);
+            nodesToQueryData = await treeController.query(domain, queryModel.filter);
         } catch (e) {
             console.log(e);
             return [];
         }
-        if (Array.isArray(queryTree)) {
+        if (Array.isArray(nodesToQueryData)) {
             const resultMap = {}
-            for (const _tree of queryTree) {
+            for (const _tree of nodesToQueryData) {
                 const r = await this.handleQueryObjectTree(_tree, domain, queryModel, options);
                 Array.isArray(r) ?
                     (r.forEach(_r1 => {
@@ -522,7 +521,7 @@ export class DatabaseFactory implements DatabaseAdapter {
             const _result1: any[] = Object.values(resultMap);
             return queryModel?.count ? _result1.reduce((a, b) => a + b, 0) : _result1;
         } else {
-            return await this.handleQueryObjectTree(queryTree, domain, queryModel, options);
+            return await this.handleQueryObjectTree(nodesToQueryData, domain, queryModel, options);
         }
     }
 

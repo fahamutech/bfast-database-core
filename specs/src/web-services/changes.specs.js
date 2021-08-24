@@ -1,9 +1,8 @@
-const bfastnode = require("bfastnode");
+const bfast = require("bfast");
 const {expect, should} = require('chai');
 const {config} = require("../../mock.config");
 const {AppEventsFactory} = require("../../../dist/factory/app-events.factory");
 
-const {bfast} = bfastnode;
 
 describe('Changes', function () {
     this.timeout(5000);

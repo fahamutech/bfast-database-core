@@ -1,5 +1,5 @@
 const {BfastDatabaseCore, EnvUtil} = require('../../dist');
-const {bfast} = require("bfastnode");
+const bfast = require("bfast");
 const {config} = require("../mock.config");
 const envUtil = new EnvUtil();
 let myConfig = envUtil.loadEnv();
@@ -21,3 +21,5 @@ module.exports.changes = webService.realtime(myConfig).changes;
 for (const fR of Object.keys(webService.storage())) {
     module.exports[fR] = webService.storage()[fR];
 }
+
+// console.log('*********88')

@@ -1,4 +1,4 @@
-import {BFast} from 'bfastnode';
+import {functions} from 'bfast';
 import {RestController} from '../controllers/rest.controller';
 import {BFastDatabaseOptions} from '../bfast-database.option';
 import httpStatus from 'http-status-codes';
@@ -10,7 +10,7 @@ export class RestWebservice {
     }
 
     rulesV2(prefix = '/'): { path: string, onRequest: any, method: string } {
-        return BFast.functions().onPostHttpRequest(`${prefix}v2`, [
+        return functions().onPostHttpRequest(`${prefix}v2`, [
             (rq, rs, n) => this.restController.verifyMethod(rq, rs, n),
             (rq, rs, n) => this.restController.verifyBodyData(rq, rs, n),
             (rq, rs, n) => this.restController.verifyApplicationId(rq, rs, n),
@@ -20,7 +20,7 @@ export class RestWebservice {
     }
 
     authJwk() {
-        return BFast.functions().onHttpRequest(
+        return functions().onHttpRequest(
             '/jwk',
             (request, response) => {
                 if (this.options.rsaPublicKeyInJson) {

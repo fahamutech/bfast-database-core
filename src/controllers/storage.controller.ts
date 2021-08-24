@@ -5,7 +5,7 @@ import mime from 'mime';
 import {StatusCodes} from 'http-status-codes';
 import {PassThrough, pipeline, Stream} from 'stream';
 import {BFastDatabaseOptions} from '../bfast-database.option';
-import {bfast} from 'bfastnode';
+import bfast from 'bfast';
 import sharp from 'sharp';
 import {SecurityController} from './security.controller';
 import {ReadStream} from "fs";

@@ -3,7 +3,7 @@
 module.exports = {
     exit: true,
     // bail: true,
-    timeout: 60000,
+    timeout: 10000,
     recursive: true,
     require: 'specs/hook.js'
 }

@@ -13,7 +13,7 @@ describe('RulesController', function () {
     after(async function () {
         await mongoMemoryReplSet.stop();
     });
-    describe('Query::Anonymous', function () {
+    describe('Query', function () {
         before(async function () {
             await _rulesController.handleCreateRules({
                 createProduct: [
@@ -22,6 +22,23 @@ describe('RulesController', function () {
                     {id: 'poi_id', name: 'poi', price: 50, status: 'new', createdAt: 'test', updatedAt: 'test'},
                 ]
             }, {errors: {}});
+        });
+        it('should perform match for AND operation', async function () {
+            const results = await _rulesController.handleQueryRules({
+                queryProduct: {
+                    filter: {
+                        name: 'xyz',
+                        price: 50,
+                        status: 'new'
+                    },
+                    return: []
+                }
+            }, {errors: {}});
+            should().exist(results);
+            should().exist(results.queryProduct);
+            expect(results.queryProduct).length(1);
+            expect(results.queryProduct[0].id).equal('xyzid');
+            // console.log(results.queryProduct);
         });
         it('should return query result based on id', async function () {
             const results = await _rulesController.handleQueryRules({
@@ -79,7 +96,7 @@ describe('RulesController', function () {
             const results = await _rulesController.handleQueryRules({
                 queryProduct: {
                     filter: {
-                        name:  {
+                        name: {
                             $fn: `return it.toString().length > 0`
                         }
                     },
@@ -175,7 +192,7 @@ describe('RulesController', function () {
             expect(results.queryProduct.length).equal(3);
             expect(results.queryProduct[2]).equal(hash);
         });
-        it('should perform query based on id f with local hashes supplied', async function () {
+        it('should perform query based on id if with local hashes supplied', async function () {
             const data = {
                 name: 'poi',
                 price: 50,
@@ -286,7 +303,7 @@ describe('RulesController', function () {
             const results = await _rulesController.handleQueryRules({
                 queryProduct: {
                     filter: {
-                        price:  {
+                        price: {
                             $fn: `return (it === 50 || it === 100);`
                         }
                     },
