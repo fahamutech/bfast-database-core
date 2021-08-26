@@ -41,7 +41,7 @@ export class DatabaseFactory implements DatabaseAdapter {
     }
 
     private async connection(): Promise<MongoClient> {
-        const mongoUri = config.mongoDbUri;
+        const mongoUri = config.mongoDbUri.replace('replicaSet=mdbRepl', '');
         return new MongoClient(mongoUri).connect();
     }
 
