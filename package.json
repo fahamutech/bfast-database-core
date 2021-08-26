@@ -1,6 +1,6 @@
 {
   "name": "bfast-database-core",
-  "version": "0.1.1-alpha.19",
+  "version": "0.1.1-alpha.20",
   "main": "dist/index.js",
   "license": "MIT",
   "author": {
@@ -35,6 +35,7 @@
     "jsonwebtoken": "~8.5.1",
     "mime": "~2.5.2",
     "minio": "~7.0.18",
+    "mongo-url-parser": "^1.0.1",
     "mongodb": "~4.0.0",
     "njwt": "~1.1.0",
     "node-jwk": "~0.1.0",

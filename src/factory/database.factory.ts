@@ -14,6 +14,8 @@ import {BFastDatabaseOptions} from '../bfast-database.option';
 import {AppEventsFactory} from "./app-events.factory";
 import {ConstUtil} from "../utils/const.util";
 
+const mongoUrlParse = require('mongo-url-parser');
+
 let config: BFastDatabaseOptions;
 
 export class DatabaseFactory implements DatabaseAdapter {
@@ -41,7 +43,14 @@ export class DatabaseFactory implements DatabaseAdapter {
     }
 
     private async connection(): Promise<MongoClient> {
-        const mongoUri = config.mongoDbUri.replace('replicaSet=mdbRepl', '');
+        let mongoUri;
+        const parsed = mongoUrlParse(config.mongoDbUri);
+        if (parsed.auth) {
+            mongoUri = `mongodb://${parsed.auth.user}:${parsed.auth.password}@2.mongo.fahamutech.com:27017/${parsed.dbName}?authSource=admin`
+        } else {
+            mongoUri = `mongodb://localhost:27017/${parsed.dbName}`
+        }
+        // console.log(mongoUri);
         return new MongoClient(mongoUri).connect();
     }
 
