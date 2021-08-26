@@ -5326,6 +5326,11 @@ mocha@~9.0.3:
     yargs-parser "20.2.4"
     yargs-unparser "2.0.0"
 
+mongo-url-parser@^1.0.1:
+  version "1.0.1"
+  resolved "https://registry.yarnpkg.com/mongo-url-parser/-/mongo-url-parser-1.0.1.tgz#e0c23ea562fbbbe3630568f6e6b912c851966863"
+  integrity sha512-jKygfGx7xf97yqp7Kwx0/fEOmMAbuhNGAhedD490BtN+UKSutkv7RBKk5p8o8W+hkA1AeOYdtLr+OjkXSLkh7g==
+
 mongodb-connection-string-url@^1.0.1:
   version "1.1.0"
   resolved "https://registry.yarnpkg.com/mongodb-connection-string-url/-/mongodb-connection-string-url-1.1.0.tgz#0bd769f16aa1767758c119c275ea22bb5110915f"

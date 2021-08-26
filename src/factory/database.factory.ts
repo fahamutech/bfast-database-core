@@ -20,6 +20,7 @@ import {v4} from 'uuid';
 import {ChangesModel} from "../model/changes.model";
 import {ConstUtil} from "../utils/const.util";
 import {AppEventsFactory} from "./app-events.factory";
+const mongoUrlParse = require('mongo-url-parser')
 
 let web3Storage: Web3Storage;
 const treeController = new TreeController();
@@ -396,8 +397,17 @@ export class DatabaseFactory implements DatabaseAdapter {
     }
 
     private async connection(): Promise<MongoClient> {
-        const mongoUri = this.config.mongoDbUri.replace('replicaSet=mdbRepl', '');
+        let mongoUri;
+        const parsed = mongoUrlParse(this.config.mongoDbUri);
+        if (parsed.auth) {
+            mongoUri = `mongodb://${parsed.auth.user}:${parsed.auth.password}@2.mongo.fahamutech.com:27017/${parsed.dbName}?authSource=admin`
+        } else {
+            mongoUri = `mongodb://localhost:27017/${parsed.dbName}`
+        }
+        // console.log(mongoUri);
         return new MongoClient(mongoUri).connect();
+        // const mongoUri = this.config.mongoDbUri.replace('replicaSet=mdbRepl', '');
+        // return new MongoClient(mongoUri).connect();
     }
 
     async init(): Promise<any> {
