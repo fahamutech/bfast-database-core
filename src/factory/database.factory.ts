@@ -149,7 +149,7 @@ export class DatabaseFactory implements DatabaseAdapter {
                                 $set: $setMap
                             }, {
                                 upsert: true,
-                                session: options && options.transaction ? options.transaction : undefined
+
                             }
                         );
                 }
@@ -289,9 +289,7 @@ export class DatabaseFactory implements DatabaseAdapter {
             const id = deleteTree[key];
             let result;
             if (typeof id === "function") {
-                const cursor = conn.db().collection(nodeTable).find({}, {
-                    session: options && options.transaction ? options.transaction : undefined
-                });
+                const cursor = conn.db().collection(nodeTable).find({}, {});
                 const docs = [];
                 while (await cursor.hasNext()) {
                     const next = await cursor.next();
@@ -303,9 +301,7 @@ export class DatabaseFactory implements DatabaseAdapter {
                     return a;
                 }, {value: {}, _id: []});
             } else {
-                result = await conn.db().collection(nodeTable).findOne({_id: id}, {
-                    session: options && options.transaction ? options.transaction : undefined
-                });
+                result = await conn.db().collection(nodeTable).findOne({_id: id}, {});
             }
             if (result && result.value) {
                 // console.log(result, '------> result');
@@ -323,17 +319,13 @@ export class DatabaseFactory implements DatabaseAdapter {
                         _id: {
                             $in: Object.keys(result.value)
                         }
-                    }, {
-                        session: options && options.transaction ? options.transaction : undefined
-                    });
+                    }, {});
                     // console.log(r11, '-----> in ids node');
                     const r21 = await conn.db().collection(nodeTable).deleteMany({
                         _id: {
                             $in: Array.isArray(result._id) ? result._id : [result._id]
                         }
-                    }, {
-                        session: options && options.transaction ? options.transaction : undefined
-                    });
+                    }, {});
                     // console.log(r21, '---------> in node mode');
                     Object.keys(result.value).forEach((v: string) => {
                         cids.push(v);
@@ -347,9 +339,7 @@ export class DatabaseFactory implements DatabaseAdapter {
                     // console.log(result);
                     const r11 = await conn.db().collection(`${domain}__id`).deleteOne({
                         _id: result._id
-                    }, {
-                        session: options && options.transaction ? options.transaction : undefined
-                    });
+                    }, {});
                     // console.log(nodeTable);
                     // console.log(r11, '-----> in ids node with string id');
                     const r21 = await conn.db().collection(nodeTable).deleteMany({
@@ -405,12 +395,7 @@ export class DatabaseFactory implements DatabaseAdapter {
 
     private async connection(): Promise<MongoClient> {
         const mongoUri = this.config.mongoDbUri;
-        return new MongoClient(mongoUri, {
-            w: "majority",
-            readConcern: {
-                level: "majority"
-            }
-        }).connect();
+        return new MongoClient(mongoUri).connect();
     }
 
     async init(): Promise<any> {
@@ -482,12 +467,9 @@ export class DatabaseFactory implements DatabaseAdapter {
         const conn = await this.connection();
         const result = await conn.db().collection(table).findOne(
             {_id: id},
-            {
-                session: options && options.transaction ? options.transaction : undefined,
-            }
+            {}
         );
         await conn.close();
-        // console.log(result,'----> db find one')
         if (!result) {
             return null;
         }
