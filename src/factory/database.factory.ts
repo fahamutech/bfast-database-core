@@ -1,17 +1,22 @@
-import { DatabaseAdapter, DatabaseBasicOptions, DatabaseUpdateOptions, DatabaseWriteOptions } from '../adapters/database.adapter';
-import { ChangeStream, MongoClient, ChangeStreamDocument, ModifyResult } from 'mongodb';
-import { BasicAttributesModel } from '../model/basic-attributes.model';
-import { ContextBlock } from '../model/rules.model';
-import { QueryModel } from '../model/query-model';
-import { UpdateRuleRequestModel } from '../model/update-rule-request.model';
-import { DeleteModel } from '../model/delete-model';
-import { BFastDatabaseOptions } from '../bfast-database.option';
-import { FindOneAndUpdateOptions } from 'mongodb';
+import {
+    DatabaseAdapter,
+    DatabaseBasicOptions,
+    DatabaseUpdateOptions,
+    DatabaseWriteOptions
+} from '../adapters/database.adapter';
+import {FindOneAndUpdateOptions, ModifyResult, MongoClient} from 'mongodb';
+import {BasicAttributesModel} from '../model/basic-attributes.model';
+import {ContextBlock} from '../model/rules.model';
+import {QueryModel} from '../model/query-model';
+import {UpdateRuleRequestModel} from '../model/update-rule-request.model';
+import {DeleteModel} from '../model/delete-model';
+import {BFastDatabaseOptions} from '../bfast-database.option';
+import {AppEventsFactory} from "./app-events.factory";
+import {ConstUtil} from "../utils/const.util";
 
 let config: BFastDatabaseOptions;
 
 export class DatabaseFactory implements DatabaseAdapter {
-    private mongoClient: MongoClient;
 
     constructor(configAdapter: BFastDatabaseOptions) {
         config = configAdapter;
@@ -22,9 +27,7 @@ export class DatabaseFactory implements DatabaseAdapter {
         const conn = await this.connection();
         const response = await conn.db()
             .collection(domain)
-            .insertMany(data as any, {
-                session: options && options.transaction ? options.transaction : undefined
-            });
+            .insertMany(data as any, {});
         conn.close().catch(console.warn);
         return response.insertedIds as any;
     }
@@ -33,20 +36,13 @@ export class DatabaseFactory implements DatabaseAdapter {
         : Promise<any> {
         const conn = await this.connection();
         const response = await conn.db().collection(domain)
-            .insertOne(data as any, {
-                // w: 'majority',
-                session: options && options.transaction ? options.transaction : undefined
-            });
+            .insertOne(data as any, {});
         return response.insertedId;
     }
 
     private async connection(): Promise<MongoClient> {
-        // if (this.mongoClient && this.mongoClient.isConnected()) {
-        //     return this.mongoClient;
-        // } else {
         const mongoUri = config.mongoDbUri;
         return new MongoClient(mongoUri).connect();
-        // }
     }
 
     async init(): Promise<any> {
@@ -81,7 +77,7 @@ export class DatabaseFactory implements DatabaseAdapter {
                 const indexOptions: any = {};
                 Object.assign(indexOptions, value);
                 delete indexOptions.field;
-                await conn.db().collection(domain).createIndex({ [value.field]: 1 }, indexOptions);
+                await conn.db().collection(domain).createIndex({[value.field]: 1}, indexOptions);
             }
             await conn.close(); // .catch(console.warn);
             return 'Indexes added';
@@ -120,9 +116,9 @@ export class DatabaseFactory implements DatabaseAdapter {
         const result = await conn.db()
             .collection(domain)
             .findOne(
-                { _id: queryModel._id },
+                {_id: queryModel._id},
                 {
-                    session: options && options.transaction ? options.transaction : undefined,
+
                     // projection: fieldsToReturn
                 }
             );
@@ -131,10 +127,10 @@ export class DatabaseFactory implements DatabaseAdapter {
     }
 
     async query<T extends BasicAttributesModel>(domain: string, queryModel: QueryModel<T>,
-        context: ContextBlock, options?: DatabaseWriteOptions): Promise<any> {
+                                                context: ContextBlock, options?: DatabaseWriteOptions): Promise<any> {
         const conn = await this.connection();
         const query = conn.db().collection(domain).find(queryModel.filter, {
-            session: options && options.transaction ? options.transaction : undefined,
+
             // allowDiskUse: true
         });
         // query.allowDiskUse();
@@ -143,11 +139,11 @@ export class DatabaseFactory implements DatabaseAdapter {
         } else {
             query.skip(0);
         }
-        if (queryModel.size && queryModel.size !== -1 && queryModel.size!==100) {
+        if (queryModel.size && queryModel.size !== -1 && queryModel.size !== 100) {
             query.limit(queryModel.size);
             console.log(queryModel.size);
-        } else if(!queryModel.count){
-                query.limit(50);
+        } else if (!queryModel.count) {
+            query.limit(50);
         }
         if (queryModel.orderBy && Array.isArray(queryModel.orderBy) && queryModel.orderBy?.length > 0) {
             queryModel.orderBy.forEach(value => {
@@ -176,7 +172,7 @@ export class DatabaseFactory implements DatabaseAdapter {
     }
 
     async update<T extends BasicAttributesModel, V>(domain: string, updateModel: UpdateRuleRequestModel,
-        context: ContextBlock, options?: DatabaseUpdateOptions): Promise<V> {
+                                                    context: ContextBlock, options?: DatabaseUpdateOptions): Promise<V> {
         const conn = await this.connection();
         let updateOptions: FindOneAndUpdateOptions = {
             upsert: typeof updateModel.upsert === 'boolean' ? updateModel.upsert : false,
@@ -184,66 +180,64 @@ export class DatabaseFactory implements DatabaseAdapter {
             returnOriginal: false,
             // new: true,
             returnDocument: 'after',
-            session: options && options.transaction ? options.transaction : undefined
+
         };
         updateOptions = Object.assign(updateOptions, options && options.dbOptions ? options.dbOptions : {});
         // @ts-ignore
         const response: ModifyResult<any> = await conn.db().collection(domain)
-        .findOneAndUpdate(
-            updateModel.filter,
-            updateModel.update,
-            updateOptions
-        );
+            .findOneAndUpdate(
+                updateModel.filter,
+                updateModel.update,
+                updateOptions
+            );
         await conn.close();
-        if(response.ok === 1){
+        if (response.ok === 1) {
             return response.value as any;
-        }else{
+        } else {
             throw "Failt to updae";
         }
     }
 
     async deleteOne<T extends BasicAttributesModel, V>(domain: string, deleteModel: DeleteModel<T>,
-        context: ContextBlock, options?: DatabaseBasicOptions): Promise<V> {
+                                                       context: ContextBlock, options?: DatabaseBasicOptions): Promise<V> {
         const conn = await this.connection();
         const response = await conn.db()
             .collection(domain)
-            .findOneAndDelete(deleteModel.filter, {
-                session: options && options.transaction ? options.transaction : undefined,
-            });
+            .findOneAndDelete(deleteModel.filter, {});
         await conn.close();
         return response.value as any;
     }
 
     async transaction<V>(operations: (session: any) => Promise<any>): Promise<any> {
         const conn = await this.connection();
-        const session = conn.startSession();
+        // const session = conn.startSession();
         try {
-            await session.withTransaction(async _ => {
-                return await operations(session);
-            }, {
-                // readPreference: 'primary',
-                // readConcern: {
-                //     level: 'local'
-                // },
-                // readConcern: {
-                //     level: '',
-                //     toJSON: 
-                // },
-                writeConcern: {
-                    w: 'majority'
-                }
-            });
+            // await session.withTransaction(async _ => {
+            return await operations(null);
+            // }, {
+            // readPreference: 'primary',
+            // readConcern: {
+            //     level: 'local'
+            // },
+            // readConcern: {
+            //     level: '',
+            //     toJSON:
+            // },
+            // writeConcern: {
+            //     w: 'majority'
+            // }
+            // });
         } finally {
-            await session.endSession();
+            //     await session.endSession();
+            await conn.close();
         }
-        await conn.close();
     }
 
     async aggregate(domain: string, pipelines: any[], context: ContextBlock, options?: DatabaseWriteOptions): Promise<any> {
         const conn = await this.connection();
         const aggOps = {
             allowDiskUse: true,
-            session: options && options.transaction ? options.transaction : undefined
+
         };
         const result = await conn.db().collection(domain).aggregate(pipelines, aggOps).toArray();
         await conn.close();
@@ -252,15 +246,14 @@ export class DatabaseFactory implements DatabaseAdapter {
 
     async changes(
         domain: string, pipeline: any[],
-        listener: (doc: ChangeStreamDocument) => void, resumeToken = undefined
-        ): Promise<ChangeStream> {
-        const conn = await this.connection();
-        const options: any = { fullDocument: 'updateLookup' };
-        if (resumeToken && resumeToken.toString() !== 'undefined' && resumeToken.toString() !== 'null') {
-            options.startAfter = resumeToken;
+        listener: (doc: any) => void, resumeToken = undefined
+    ): Promise<{ close: () => void }> {
+        const appEventInst = AppEventsFactory.getInstance();
+        appEventInst.sub(ConstUtil.DB_CHANGES_EVENT.concat(domain), listener);
+        return {
+            close: () => {
+                appEventInst.unSub(ConstUtil.DB_CHANGES_EVENT.concat(domain), listener);
+            }
         }
-        return conn.db().collection(domain).watch(pipeline, options).on('change', doc => {
-            listener(doc);
-        });
     }
 }

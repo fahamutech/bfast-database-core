@@ -55,6 +55,6 @@ describe('Transaction', function () {
             }
         }
         const transactionResponse = await axios.post(serverUrl, transaction);
-        console.log(transactionResponse.data);
+        // console.log(transactionResponse.data);
     });
 });

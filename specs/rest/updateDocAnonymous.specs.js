@@ -41,6 +41,6 @@ describe('Update Document Anonymous', function () {
                 return: ['updatedAt']
             }
         });
-        console.log(updateResponse.data);
+        // console.log(updateResponse.data);
     });
 });

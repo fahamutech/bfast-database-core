@@ -83,7 +83,7 @@ describe('RulesController::Query Unit Test', function () {
                     return: ["name"]
                 }
             }, { errors: {} });
-            console.log(results);
+            // console.log(results);
             assert(results.queryProduct !== undefined);
             assert(Array.isArray(results.queryProduct));
             assert(results.queryProduct.length === 3);

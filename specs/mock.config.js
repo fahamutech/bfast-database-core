@@ -1,50 +1,23 @@
-
-const { LogController } = require("../dist/controllers/log.controller");
-const { BfastDatabaseCore } = require("../dist/bfast-database-core");
-const { MongoMemoryServer } = require('mongodb-memory-server');
-const { MongoMemoryReplSet } = require('mongodb-memory-server');
-const { RulesController } = require('../dist/controllers/rules.controller');
-const { UpdateRuleController } = require('../dist/controllers/update.rule.controller');
+const {LogController} = require("../dist/controllers/log.controller");
+const {BfastDatabaseCore} = require("../dist/bfast-database-core");
+const {RulesController} = require('../dist/controllers/rules.controller');
+const {UpdateRuleController} = require('../dist/controllers/update.rule.controller');
 const mongodb = require('mongodb');
 
-/**
- *
- * @return {MongoMemoryServer}
- */
-
-/**
- *
- * @return {MongoMemoryReplSet | MongoMemoryServer}
- */
 const mongoMemoryReplSet = () => {
-    if (process.env.CHROME_OS === 'ndio') {
-        return {
-            getUri: function () {
-                return 'mongodb://localhost/_test?replicaSet=bfast';
-            },
-            start: async function () {
-                const conn = await mongodb.MongoClient.connect(this.getUri());
-                // const db = await conn.db();
-                await conn.db().dropDatabase(); 
-                console.log('***START MONGODB*****');
-            },
-            waitUntilRunning: async function () {
-            },
-            stop: async function(){
-                console.log('***STOP MONGODB*****');
-            }
+    return {
+        getUri: function () {
+            return 'mongodb://localhost/_test';
+        },
+        start: async function () {
+            const conn = await mongodb.MongoClient.connect(this.getUri());
+            // const db = await conn.db();
+            await conn.db().dropDatabase();
+        },
+        waitUntilRunning: async function () {
+        },
+        stop: async function () {
         }
-    } else {
-        return new MongoMemoryReplSet({
-            autoStart: true,
-            replSet: {
-                count: 3,
-                storageEngine: "wiredTiger",
-            },
-            binary: {
-                version: '5.0.0'
-            }
-        });
     }
 }
 

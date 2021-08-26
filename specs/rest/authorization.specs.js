@@ -78,7 +78,6 @@ describe('Authorization', function () {
             };
             const response = await axios.post(serverUrl, authorization);
             const data = response.data;
-            console.log(data);
             assert(typeof data !== "undefined");
             assert(typeof data === "object");
             assert(data['ResultOfCreateProduct'] === undefined);

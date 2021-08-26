@@ -55,6 +55,6 @@ describe('Delete document anonymous', function () {
             }
         }
         const queryResponse = await axios.post(serverUrl, queryTest);
-        console.log(queryResponse.data);
+        // console.log(queryResponse.data);
     });
 });

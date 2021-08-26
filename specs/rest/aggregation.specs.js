@@ -3,15 +3,15 @@ const {serverUrl, daas, config} = require('../mock.config');
 const assert = require('assert');
 
 describe('Aggregation', function () {
-    let _daas ;
-    before(function(){
-        _daas = await daas();
-        _daas.init(config)
-    });
-
-    after(function(){
-        _daas
-    });
+    // let _daas ;
+    // before(async function(){
+    //     _daas = await daas();
+    //     _daas.init(config)
+    // });
+    //
+    // after(function(){
+    //     _daas
+    // });
 
     it('should be able to perform aggregation', async function () {
         const aggregation = {

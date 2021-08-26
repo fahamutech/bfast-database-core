@@ -24,7 +24,7 @@ describe('CreateRule with Many Document & Default Database', function () {
             ]
         });
         const data = response.data;
-        console.log(data);
+        // console.log(data);
         assert(typeof data === 'object');
         assert(Array.isArray(data.Test));
         assert(data.Test.length === 2);

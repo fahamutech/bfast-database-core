@@ -20,7 +20,7 @@ describe('CreateRule With Single Document & Default Database', function () {
         }
         const response = await axios.post('http://localhost:3000/daas', rule);
         const data = response.data;
-        console.log(data);
+        // console.log(data);
         assert(typeof data === 'object');
         assert(typeof data.Test === 'object');
         assert(data.errors === undefined);
@@ -42,7 +42,7 @@ describe('CreateRule With Single Document & Default Database', function () {
         }
         const response = await axios.post('http://localhost:3000/daas', rule);
         const data = response.data;
-        console.log(data);
+        // console.log(data);
         assert(typeof data === 'object');
         assert(typeof data.Test === 'object');
         assert(data.errors === undefined);
@@ -61,7 +61,7 @@ describe('CreateRule With Single Document & Default Database', function () {
         }
         const response = await axios.post('http://localhost:3000/daas', rule);
         const data = response.data;
-        console.log(data);
+        // console.log(data);
         assert(typeof data === 'object');
         assert(typeof data.Test === 'object');
         assert(data.errors === undefined);
@@ -82,7 +82,7 @@ describe('CreateRule With Single Document & Default Database', function () {
         }
         const response = await axios.post('http://localhost:3000/daas', rule);
         const data = response.data;
-        console.log(data);
+        // console.log(data);
         assert(typeof data === 'object');
         assert(typeof data.Test === 'object');
         assert(data.errors === undefined);
