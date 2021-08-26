@@ -4,7 +4,7 @@ const bfastFs = new BfastFunctions({
     port: config.port,
     functionsConfig: {
         functionsDirPath: __dirname + '/functions',
-        bfastJsonPath: __dirname + '/functions/bfast.json'
+        bfastJsonPath: __dirname + '/bfast.json'
     }
 });
 exports.mochaHooks = {

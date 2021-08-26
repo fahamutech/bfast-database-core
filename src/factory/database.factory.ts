@@ -23,15 +23,17 @@ import {AppEventsFactory} from "./app-events.factory";
 
 let web3Storage: Web3Storage;
 const treeController = new TreeController();
-let ipfs: IPFS;
+
+// let ipfs: IPFS;
 
 export class DatabaseFactory implements DatabaseAdapter {
 
-    constructor(private readonly config: BFastDatabaseOptions,
-                _ipfs: IPFS = null) {
-        if (_ipfs) {
-            ipfs = _ipfs;
-        }
+    static ipfs: IPFS
+
+    constructor(private readonly config: BFastDatabaseOptions) {
+        // if (_ipfs) {
+        //     ipfs = _ipfs;
+        // }
         web3Storage = new Web3Storage({
             token: config.web3Token
         });
@@ -44,10 +46,10 @@ export class DatabaseFactory implements DatabaseAdapter {
     ): Promise<{ cid: string, size: number }> {
         if (this.config.useLocalIpfs) {
             try {
-                if (!ipfs) {
-                    ipfs = await create();
+                if (!DatabaseFactory.ipfs) {
+                    DatabaseFactory.ipfs = await create();
                 }
-                const r = await ipfs.add(buffer, {
+                const r = await DatabaseFactory.ipfs.add(buffer, {
                     wrapWithDirectory: false
                 });
                 return {
@@ -85,10 +87,10 @@ export class DatabaseFactory implements DatabaseAdapter {
         start: undefined,
         end: undefined
     }): Promise<object | ReadableStream | Buffer> {
-        if (!ipfs) {
-            ipfs = await create();
+        if (!DatabaseFactory.ipfs) {
+            DatabaseFactory.ipfs = await create();
         }
-        const results = await ipfs.cat(cid, {
+        const results = await DatabaseFactory.ipfs.cat(cid, {
             offset: options && options.json === false && options.start ? options.start : undefined,
             length: options && options.json === false && options.end ? options.end : undefined
         });
