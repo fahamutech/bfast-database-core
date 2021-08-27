@@ -145,7 +145,7 @@ export class DatabaseFactory implements DatabaseAdapter {
                     }
                     const conn = await this.connection();
                     await conn.db()
-                        .collection(path.toString().replace('/', '_'))
+                        .collection(this.nodeTable(path.toString()))
                         .updateOne({
                             _id: isNaN(Number(key)) ? key.trim() : Number(key),
                         }, {
@@ -197,7 +197,7 @@ export class DatabaseFactory implements DatabaseAdapter {
         }
 
         for (const nodePath of nodesPathList) {
-            const nodeTable = nodePath.replace('/', '_').trim();
+            const nodeTable = this.nodeTable(nodePath);
             const targetNodeId = mapOfNodesToQuery[nodePath];
             let result;
             if (typeof targetNodeId === "object" && targetNodeId?.hasOwnProperty('$fn')) {
@@ -283,6 +283,10 @@ export class DatabaseFactory implements DatabaseAdapter {
         return Promise.all(cids.map(async x => await this.getDataFromCid(x as string)));
     }
 
+    private nodeTable(nodePath){
+        return nodePath?.replace(new RegExp('/','ig'), '_').trim();
+    }
+
     private async handleDeleteObjectTree(
         deleteTree: { [key: string]: any },
         domain: string,
@@ -296,7 +300,7 @@ export class DatabaseFactory implements DatabaseAdapter {
             return [];
         }
         for (const key of keys) {
-            const nodeTable = key.replace('/', '_').trim();
+            const nodeTable = this.nodeTable(key);
             const id = deleteTree[key];
             let result;
             if (typeof id === "function") {
@@ -414,8 +418,6 @@ export class DatabaseFactory implements DatabaseAdapter {
         }
         // console.log(mongoUri);
         return new MongoClient(mongoUri).connect();
-        // const mongoUri = this.config.mongoDbUri.replace('replicaSet=mdbRepl', '');
-        // return new MongoClient(mongoUri).connect();
     }
 
     async init(): Promise<any> {
@@ -482,7 +484,7 @@ export class DatabaseFactory implements DatabaseAdapter {
         const queryTree = await treeController.query(domain, {
             _id: queryModel._id
         });
-        const table = Object.keys(queryTree)[0].replace('/', '_').trim();
+        const table = this.nodeTable(Object.keys(queryTree)[0]);
         const id = Object.values(queryTree)[0];
         const conn = await this.connection();
         const result = await conn.db().collection(table).findOne(

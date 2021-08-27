@@ -1,6 +1,6 @@
-const {getRulesController, mongoRepSet} = require('../../mock.config');
-const {createHash} = require('crypto');
-const {expect, should, assert} = require('chai');
+const { getRulesController, mongoRepSet } = require('../../mock.config');
+const { createHash } = require('crypto');
+const { expect, should, assert } = require('chai');
 
 describe('RulesController', function () {
 
@@ -17,11 +17,11 @@ describe('RulesController', function () {
         before(async function () {
             await _rulesController.handleCreateRules({
                 createProduct: [
-                    {name: 'xyz', price: 50, status: 'new', id: 'xyzid', createdAt: 'test', updatedAt: 'test'},
-                    {id: 'wer_id', name: 'wer', price: 100, status: 'new', createdAt: 'test', updatedAt: 'test'},
-                    {id: 'poi_id', name: 'poi', price: 50, status: 'new', createdAt: 'test', updatedAt: 'test'},
+                    { name: 'xyz', price: 50, tags: { a: 1, b: { c: 2 } }, status: 'new', id: 'xyzid', createdAt: 'test', updatedAt: 'test' },
+                    { id: 'wer_id', name: 'wer', price: 100, status: 'new', createdAt: 'test', updatedAt: 'test' },
+                    { id: 'poi_id', name: 'poi', price: 50, status: 'new', createdAt: 'test', updatedAt: 'test' },
                 ]
-            }, {errors: {}});
+            }, { errors: {} });
         });
         it('should perform match for AND operation', async function () {
             const results = await _rulesController.handleQueryRules({
@@ -33,7 +33,7 @@ describe('RulesController', function () {
                     },
                     return: []
                 }
-            }, {errors: {}});
+            }, { errors: {} });
             should().exist(results);
             should().exist(results.queryProduct);
             expect(results.queryProduct).length(1);
@@ -46,7 +46,7 @@ describe('RulesController', function () {
                     id: 'xyzid',
                     return: []
                 }
-            }, {errors: {}});
+            }, { errors: {} });
             assert(results.queryProduct !== undefined);
             assert(results.queryProduct.name === 'xyz');
             assert(results.queryProduct.id === 'xyzid');
@@ -59,7 +59,7 @@ describe('RulesController', function () {
                     id: 'xyz1234hint',
                     return: []
                 }
-            }, {errors: {}});
+            }, { errors: {} });
             assert(results.queryProduct === null);
         });
         it('should return query result based on filter', async function () {
@@ -70,7 +70,7 @@ describe('RulesController', function () {
                     },
                     return: []
                 }
-            }, {errors: {}});
+            }, { errors: {} });
             should().exist(results.queryProduct);
             expect(Array.isArray(results.queryProduct)).equal(true);
             should().exist(results.queryProduct[0]);
@@ -87,7 +87,7 @@ describe('RulesController', function () {
                     skip: 0,
                     return: []
                 }
-            }, {errors: {}});
+            }, { errors: {} });
             should().exist(results.queryProduct);
             expect(Array.isArray(results.queryProduct)).equal(true);
             expect(results.queryProduct).length(1);
@@ -104,7 +104,7 @@ describe('RulesController', function () {
                     skip: 0,
                     return: []
                 }
-            }, {errors: {}});
+            }, { errors: {} });
             should().exist(results.queryProduct);
             expect(Array.isArray(results.queryProduct)).equal(true);
             expect(results.queryProduct).length(2);
@@ -115,24 +115,24 @@ describe('RulesController', function () {
                     filter: {},
                     return: ['name', 'price']
                 }
-            }, {errors: {}});
+            }, { errors: {} });
             should().exist(results.queryProduct);
             expect(Array.isArray(results.queryProduct)).equal(true);
             expect(results.queryProduct.length).equal(3);
             expect(results.queryProduct).eql([
-                {name: 'xyz', price: 50, id: 'xyzid', createdAt: 'test', updatedAt: 'test'},
-                {id: 'wer_id', name: 'wer', price: 100, createdAt: 'test', updatedAt: 'test'},
-                {id: 'poi_id', name: 'poi', price: 50, createdAt: 'test', updatedAt: 'test'},
+                { name: 'xyz', price: 50, id: 'xyzid', createdAt: 'test', updatedAt: 'test' },
+                { id: 'wer_id', name: 'wer', price: 100, createdAt: 'test', updatedAt: 'test' },
+                { id: 'poi_id', name: 'poi', price: 50, createdAt: 'test', updatedAt: 'test' },
             ])
         });
         it('should perform basic query based on empty filter with orderBy', async function () {
             const results = await _rulesController.handleQueryRules({
                 queryProduct: {
                     filter: {},
-                    orderBy: [{'name': 1}],
+                    orderBy: [{ 'name': 1 }],
                     return: ["name"]
                 }
-            }, {errors: {}});
+            }, { errors: {} });
             should().exist(results.queryProduct);
             expect(Array.isArray(results.queryProduct)).equal(true);
             expect(results.queryProduct.length).equal(3);
@@ -145,7 +145,7 @@ describe('RulesController', function () {
                     },
                     count: true,
                 }
-            }, {errors: {}});
+            }, { errors: {} });
             assert(results.queryProduct !== undefined);
             assert(typeof results.queryProduct === "number");
             assert(results.queryProduct === 1);
@@ -156,7 +156,7 @@ describe('RulesController', function () {
                     filter: {},
                     count: true,
                 }
-            }, {errors: {}});
+            }, { errors: {} });
             assert(results.queryProduct !== undefined);
             assert(typeof results.queryProduct === "number");
             assert(results.queryProduct === 3);
@@ -186,7 +186,7 @@ describe('RulesController', function () {
                     hashes: Object.keys(localData),
                     return: ['name', 'price']
                 }
-            }, {errors: {}});
+            }, { errors: {} });
             should().exist(results.queryProduct);
             expect(Array.isArray(results.queryProduct)).equal(true);
             expect(results.queryProduct.length).equal(3);
@@ -213,7 +213,7 @@ describe('RulesController', function () {
                     hashes: Object.keys(localData),
                     return: ['name', 'price']
                 }
-            }, {errors: {}});
+            }, { errors: {} });
             should().exist(results.queryProduct);
             expect(typeof results.queryProduct).equal('string');
             expect(results.queryProduct).equal(hash);
@@ -222,58 +222,58 @@ describe('RulesController', function () {
             const results = await _rulesController.handleQueryRules({
                 queryProduct: {
                     filter: [
-                        {name: 'xyz'},
-                        {name: 'poi'}
+                        { name: 'xyz' },
+                        { name: 'poi' }
                     ],
                     return: []
                 }
-            }, {errors: {}});
+            }, { errors: {} });
             should().exist(results.queryProduct);
             expect(Array.isArray(results.queryProduct)).equal(true);
             expect(results.queryProduct.length).equal(2);
             expect(results.queryProduct).eql([
-                {name: 'xyz', price: 50, status: 'new', id: 'xyzid', createdAt: 'test', updatedAt: 'test'},
-                {id: 'poi_id', name: 'poi', price: 50, status: 'new', createdAt: 'test', updatedAt: 'test'},
+                { name: 'xyz', price: 50, tags: { a: 1, b: { c: 2 } }, status: 'new', id: 'xyzid', createdAt: 'test', updatedAt: 'test' },
+                { id: 'poi_id', name: 'poi', price: 50, status: 'new', createdAt: 'test', updatedAt: 'test' },
             ]);
         });
         it('should perform query when filter is in or format/array and one query is false', async function () {
             const results = await _rulesController.handleQueryRules({
                 queryProduct: {
                     filter: [
-                        {name: 'xyz'},
-                        {name: 'joshua'}
+                        { name: 'xyz' },
+                        { name: 'joshua' }
                     ],
                     return: []
                 }
-            }, {errors: {}});
+            }, { errors: {} });
             should().exist(results.queryProduct);
             expect(Array.isArray(results.queryProduct)).equal(true);
             expect(results.queryProduct.length).equal(1);
             expect(results.queryProduct).eql([
-                {name: 'xyz', price: 50, status: 'new', id: 'xyzid', createdAt: 'test', updatedAt: 'test'},
+                { name: 'xyz', tags: { a: 1, b: { c: 2 } }, price: 50, status: 'new', id: 'xyzid', createdAt: 'test', updatedAt: 'test' },
             ]);
         });
         it('should perform count query when filter is in or format/array', async function () {
             const results = await _rulesController.handleQueryRules({
                 queryProduct: {
                     filter: [
-                        {name: 'xyz'},
-                        {name: 'poi'}
+                        { name: 'xyz' },
+                        { name: 'poi' }
                     ],
                     count: true,
                     return: []
                 }
-            }, {errors: {}});
+            }, { errors: {} });
             should().exist(results.queryProduct);
             expect(results.queryProduct).equal(2);
         });
         it('should return empty when and operation not met', async function () {
             const results = await _rulesController.handleQueryRules({
                 queryProduct: {
-                    filter: {name: 'xyz', tag: 'joshua'},
+                    filter: { name: 'xyz', tag: 'joshua' },
                     return: []
                 }
-            }, {errors: {}});
+            }, { errors: {} });
             should().exist(results.queryProduct);
             expect(Array.isArray(results.queryProduct)).equal(true);
             expect(results.queryProduct.length).equal(0);
@@ -284,6 +284,7 @@ describe('RulesController', function () {
                     filter: {
                         name: 'xyz',
                         price: 50,
+                        tags: { a: 1, b: { c: 2 } },
                         status: 'new',
                         id: 'xyzid',
                         createdAt: 'test',
@@ -291,12 +292,12 @@ describe('RulesController', function () {
                     },
                     return: []
                 }
-            }, {errors: {}});
+            }, { errors: {} });
             should().exist(results.queryProduct);
             expect(Array.isArray(results.queryProduct)).equal(true);
             expect(results.queryProduct.length).equal(1);
             expect(results.queryProduct).eql([
-                {name: 'xyz', price: 50, status: 'new', id: 'xyzid', createdAt: 'test', updatedAt: 'test'}
+                { name: 'xyz', price: 50, tags: { a: 1, b: { c: 2 } }, status: 'new', id: 'xyzid', createdAt: 'test', updatedAt: 'test' }
             ]);
         });
         it('should perform query with expression', async function () {
@@ -309,11 +310,44 @@ describe('RulesController', function () {
                     },
                     return: []
                 }
-            }, {errors: {}});
+            }, { errors: {} });
             // console.log(results.queryProduct);
             should().exist(results.queryProduct);
             expect(Array.isArray(results.queryProduct)).equal(true);
             expect(results.queryProduct.length).equal(3);
+        });
+        it('should deep match', async function () {
+            const results = await _rulesController.handleQueryRules({
+                queryProduct: {
+                    filter: {
+                        tags: {
+                            b: {
+                                c: 2
+                            }
+                        }
+                    },
+                    return: []
+                }
+            }, { errors: {} });
+            should().exist(results.queryProduct);
+            expect(Array.isArray(results.queryProduct)).equal(true);
+            expect(results.queryProduct.length).equal(1);
+            expect(results.queryProduct).eql([
+                {
+                    name: 'xyz',
+                    price: 50,
+                    tags: { 
+                        a: 1, 
+                        b: { 
+                            c: 2 
+                        } 
+                    },
+                    status: 'new',
+                    id: 'xyzid',
+                    createdAt: 'test',
+                    updatedAt: 'test'
+                }
+            ]);
         });
     });
 });
