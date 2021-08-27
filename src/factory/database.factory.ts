@@ -4,22 +4,22 @@ import {
     DatabaseUpdateOptions,
     DatabaseWriteOptions
 } from '../adapters/database.adapter';
-import {MongoClient} from 'mongodb';
-import {BasicAttributesModel} from '../model/basic-attributes.model';
-import {ContextBlock} from '../model/rules.model';
-import {QueryModel} from '../model/query-model';
-import {UpdateRuleRequestModel} from '../model/update-rule-request.model';
-import {DeleteModel} from '../model/delete-model';
-import {BFastDatabaseOptions} from '../bfast-database.option';
-import {TreeController} from 'bfast-database-tree';
-import {File as web3File, Web3Storage,} from 'web3.storage';
-import {create, IPFS} from "ipfs-core";
+import { MongoClient } from 'mongodb';
+import { BasicAttributesModel } from '../model/basic-attributes.model';
+import { ContextBlock } from '../model/rules.model';
+import { QueryModel } from '../model/query-model';
+import { UpdateRuleRequestModel } from '../model/update-rule-request.model';
+import { DeleteModel } from '../model/delete-model';
+import { BFastDatabaseOptions } from '../bfast-database.option';
+import { TreeController } from 'bfast-database-tree';
+import { File as web3File, Web3Storage, } from 'web3.storage';
+import { create, IPFS } from "ipfs-core";
 import itToStream from 'it-to-stream';
-import {Buffer} from "buffer";
-import {v4} from 'uuid';
-import {ChangesModel} from "../model/changes.model";
-import {ConstUtil} from "../utils/const.util";
-import {AppEventsFactory} from "./app-events.factory";
+import { Buffer } from "buffer";
+import { v4 } from 'uuid';
+import { ChangesModel } from "../model/changes.model";
+import { ConstUtil } from "../utils/const.util";
+import { AppEventsFactory } from "./app-events.factory";
 const mongoUrlParse = require('mongo-url-parser');
 
 let web3Storage: Web3Storage;
@@ -92,8 +92,8 @@ export class DatabaseFactory implements DatabaseAdapter {
             DatabaseFactory.ipfs = await create();
         }
         const results = await DatabaseFactory.ipfs.cat(cid, {
-            offset: options && options.json === false && options.start ? options.start : undefined,
-            length: options && options.json === false && options.end ? options.end : undefined
+            offset: (options && options.json === false && options.start) ? options.start : undefined,
+            length: (options && options.json === false && options.end) ? options.end : undefined
         });
         if (options?.json === true) {
             let data = '';
@@ -129,7 +129,7 @@ export class DatabaseFactory implements DatabaseAdapter {
 
     private nodeProcess(cid: string, options: DatabaseWriteOptions) {
         return {
-            nodeHandler: async ({path, node}) => {
+            nodeHandler: async ({ path, node }) => {
                 const keys = Object.keys(node);
                 for (const key of keys) {
                     let $setMap = {};
@@ -147,13 +147,13 @@ export class DatabaseFactory implements DatabaseAdapter {
                     await conn.db()
                         .collection(path.toString().replace('/', '_'))
                         .updateOne({
-                                _id: isNaN(Number(key)) ? key.trim() : Number(key),
-                            }, {
-                                $set: $setMap
-                            }, {
-                                upsert: true,
+                            _id: isNaN(Number(key)) ? key.trim() : Number(key),
+                        }, {
+                            $set: $setMap
+                        }, {
+                            upsert: true,
 
-                            }
+                        }
                         );
                 }
             },
@@ -184,7 +184,13 @@ export class DatabaseFactory implements DatabaseAdapter {
                 if (queryModel?.count === true) {
                     return result.length;
                 }
-                return Promise.all(result.map(x => this.getDataFromCid(x?.value)));
+                const datas = [];
+                for (const r of result) {
+                    datas.push(await this.getDataFromCid(r?.value,{
+                        json: true
+                    }));
+                }
+                return datas;
             } else {
                 return [];
             }
@@ -205,9 +211,9 @@ export class DatabaseFactory implements DatabaseAdapter {
                 result = docs.reduce((a, b) => {
                     a.value = Object.assign(a.value, b.value);
                     return a;
-                }, {value: {}});
+                }, { value: {} });
             } else {
-                result = await conn.db().collection(nodeTable).findOne({_id: targetNodeId});
+                result = await conn.db().collection(nodeTable).findOne({ _id: targetNodeId });
             }
 
 
@@ -301,12 +307,12 @@ export class DatabaseFactory implements DatabaseAdapter {
                     id(next._id) === true ? docs.push(next) : null
                 }
                 result = docs.reduce((a, b) => {
-                    a.value = Object.assign(a.value, typeof b.value === "string" ? {[b._id]: b.value} : b.value);
+                    a.value = Object.assign(a.value, typeof b.value === "string" ? { [b._id]: b.value } : b.value);
                     a._id.push(b._id);
                     return a;
-                }, {value: {}, _id: []});
+                }, { value: {}, _id: [] });
             } else {
-                result = await conn.db().collection(nodeTable).findOne({_id: id}, {});
+                result = await conn.db().collection(nodeTable).findOne({ _id: id }, {});
             }
             if (result && result.value) {
                 // console.log(result, '------> result');
@@ -379,9 +385,9 @@ export class DatabaseFactory implements DatabaseAdapter {
         options?: DatabaseWriteOptions
     ): Promise<any[]> {
         for (const _data of data) {
-            const buffer = Buffer.from(JSON.stringify({..._data}));
-            const {cid} = await this.dataCid({..._data}, buffer, domain);
-            await treeController.objectToTree({..._data}, domain, this.nodeProcess(cid.toString(), options));
+            const buffer = Buffer.from(JSON.stringify({ ..._data }));
+            const { cid } = await this.dataCid({ ..._data }, buffer, domain);
+            await treeController.objectToTree({ ..._data }, domain, this.nodeProcess(cid.toString(), options));
         }
         return data;
     }
@@ -393,8 +399,8 @@ export class DatabaseFactory implements DatabaseAdapter {
         options?: DatabaseWriteOptions
     ): Promise<any> {
         const buffer = Buffer.from(JSON.stringify(data));
-        const {cid} = await this.dataCid(data, buffer, domain);
-        await treeController.objectToTree({...data}, domain, this.nodeProcess(cid.toString(), options));
+        const { cid } = await this.dataCid(data, buffer, domain);
+        await treeController.objectToTree({ ...data }, domain, this.nodeProcess(cid.toString(), options));
         return data;
     }
 
@@ -480,7 +486,7 @@ export class DatabaseFactory implements DatabaseAdapter {
         const id = Object.values(queryTree)[0];
         const conn = await this.connection();
         const result = await conn.db().collection(table).findOne(
-            {_id: id},
+            { _id: id },
             {}
         );
         await conn.close();
@@ -536,7 +542,7 @@ export class DatabaseFactory implements DatabaseAdapter {
             options
         );
         if (!oldDoc && updateModel.upsert === true) {
-            oldDoc = {_id: updateModel.id};
+            oldDoc = { _id: updateModel.id };
         }
         if (!oldDoc) {
             return null;
@@ -584,7 +590,7 @@ export class DatabaseFactory implements DatabaseAdapter {
         try {
             deleteTree = await treeController.query(
                 domain,
-                deleteModel.id ? {_id: deleteModel.id} : deleteModel.filter
+                deleteModel.id ? { _id: deleteModel.id } : deleteModel.filter
             );
         } catch (e) {
             console.log(e);
