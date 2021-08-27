@@ -20,7 +20,7 @@ import {v4} from 'uuid';
 import {ChangesModel} from "../model/changes.model";
 import {ConstUtil} from "../utils/const.util";
 import {AppEventsFactory} from "./app-events.factory";
-const mongoUrlParse = require('mongo-url-parser')
+const mongoUrlParse = require('mongo-url-parser');
 
 let web3Storage: Web3Storage;
 const treeController = new TreeController();
@@ -220,7 +220,9 @@ export class DatabaseFactory implements DatabaseAdapter {
                         if (!_r1) {
                             delete result.value[k];
                             conn.db().collection(nodeTable).updateOne({
-                                _id: targetNodeId
+                                [`value.${k}`]: {
+                                    $exists: true
+                                }
                             }, {
                                 $unset: {
                                     [`value.${k}`]: 1
