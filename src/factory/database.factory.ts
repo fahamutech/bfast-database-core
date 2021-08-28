@@ -412,7 +412,7 @@ export class DatabaseFactory implements DatabaseAdapter {
         let mongoUri;
         const parsed = mongoUrlParse(this.config.mongoDbUri);
         if (parsed.auth) {
-            mongoUri = `mongodb://${parsed.auth.user}:${parsed.auth.password}@2.mongo.fahamutech.com:27017/${parsed.dbName}?authSource=admin`
+            mongoUri = `mongodb://${parsed.auth.user}:${parsed.auth.password}@139.162.206.182:27017/${parsed.dbName}?authSource=admin`
         } else {
             mongoUri = `mongodb://localhost:27017/${parsed.dbName}`
         }
