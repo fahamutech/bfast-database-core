@@ -4,15 +4,15 @@ import {
     DatabaseUpdateOptions,
     DatabaseWriteOptions
 } from '../adapters/database.adapter';
-import {FindOneAndUpdateOptions, ModifyResult, MongoClient} from 'mongodb';
-import {BasicAttributesModel} from '../model/basic-attributes.model';
-import {ContextBlock} from '../model/rules.model';
-import {QueryModel} from '../model/query-model';
-import {UpdateRuleRequestModel} from '../model/update-rule-request.model';
-import {DeleteModel} from '../model/delete-model';
-import {BFastDatabaseOptions} from '../bfast-database.option';
-import {AppEventsFactory} from "./app-events.factory";
-import {ConstUtil} from "../utils/const.util";
+import { Db, FindOneAndUpdateOptions, ModifyResult, MongoClient } from 'mongodb';
+import { BasicAttributesModel } from '../model/basic-attributes.model';
+import { ContextBlock } from '../model/rules.model';
+import { QueryModel } from '../model/query-model';
+import { UpdateRuleRequestModel } from '../model/update-rule-request.model';
+import { DeleteModel } from '../model/delete-model';
+import { BFastDatabaseOptions } from '../bfast-database.option';
+import { AppEventsFactory } from "./app-events.factory";
+import { ConstUtil } from "../utils/const.util";
 
 const mongoUrlParse = require('mongo-url-parser');
 
@@ -20,39 +20,47 @@ let config: BFastDatabaseOptions;
 
 export class DatabaseFactory implements DatabaseAdapter {
 
+    private static mongoClient;
+
     constructor(configAdapter: BFastDatabaseOptions) {
         config = configAdapter;
     }
 
     async writeMany<T extends BasicAttributesModel, V>(domain: string, data: T[], context: ContextBlock, options?: DatabaseWriteOptions)
         : Promise<V> {
-        const conn = await this.connection();
-        const response = await conn.db()
+        const db = await this.mDb();
+        const response = await db
             .collection(domain)
             .insertMany(data as any, {});
-        conn.close().catch(console.warn);
         return response.insertedIds as any;
     }
 
     async writeOne<T extends BasicAttributesModel>(domain: string, data: T, context: ContextBlock, options?: DatabaseWriteOptions)
         : Promise<any> {
-        const conn = await this.connection();
-        const response = await conn.db().collection(domain)
-            .insertOne(data as any, {});
+        const db = await this.mDb();
+        const response = await db.collection(domain).insertOne(data as any, {});
         return response.insertedId;
     }
 
-    private async connection(): Promise<MongoClient> {
-        let mongoUri;
-        const parsed = mongoUrlParse(config.mongoDbUri);
-        if (parsed.auth) {
-            mongoUri = `mongodb://${parsed.auth.user}:${parsed.auth.password}@2.mongo.fahamutech.com:27017/${parsed.dbName}?authSource=admin`
-        } else {
-            mongoUri = `mongodb://localhost:27017/${parsed.dbName}`
+    private async mDb(): Promise<Db> {
+        if (!DatabaseFactory.mongoClient) {
+            DatabaseFactory.mongoClient = await new MongoClient(config.mongoDbUri).connect();
+            return DatabaseFactory.mongoClient.db();
         }
-        // console.log(mongoUri);
-        return new MongoClient(mongoUri).connect();
+        return DatabaseFactory.mongoClient.db();
     }
+
+    // private async connection(): Promise<MongoClient> {
+    //     let mongoUri;
+    //     const parsed = mongoUrlParse(config.mongoDbUri);
+    //     if (parsed.auth) {
+    //         mongoUri = `mongodb://${parsed.auth.user}:${parsed.auth.password}@2.mongo.fahamutech.com:27017/${parsed.dbName}?authSource=admin`
+    //     } else {
+    //         mongoUri = `mongodb://localhost:27017/${parsed.dbName}`
+    //     }
+    //     // console.log(mongoUri);
+    //     return new MongoClient(mongoUri).connect();
+    // }
 
     async init(): Promise<any> {
         try {
@@ -81,14 +89,13 @@ export class DatabaseFactory implements DatabaseAdapter {
 
     async createIndexes(domain: string, indexes: any[]): Promise<any> {
         if (indexes && Array.isArray(indexes)) {
-            const conn = await this.connection();
+            const db = await this.mDb();
             for (const value of indexes) {
                 const indexOptions: any = {};
                 Object.assign(indexOptions, value);
                 delete indexOptions.field;
-                await conn.db().collection(domain).createIndex({[value.field]: 1}, indexOptions);
+                await db.collection(domain).createIndex({ [value.field]: 1 }, indexOptions);
             }
-            await conn.close(); // .catch(console.warn);
             return 'Indexes added';
         } else {
             throw new Error('Must supply array of indexes to be added');
@@ -96,23 +103,21 @@ export class DatabaseFactory implements DatabaseAdapter {
     }
 
     async dropIndexes(domain: string): Promise<boolean> {
-        const conn = await this.connection();
-        await conn.db().collection(domain).dropIndexes();
-        await conn.close();
+        const db = await this.mDb();
+        await db.collection(domain).dropIndexes();
         return true;
     }
 
     async listIndexes(domain: string): Promise<any[]> {
-        const conn = await this.connection();
-        const indexes = await conn.db().collection(domain).listIndexes().toArray();
-        await conn.close();
+        const db = await this.mDb();
+        const indexes = await db.collection(domain).listIndexes().toArray();
         return indexes;
     }
 
     async findOne<T extends BasicAttributesModel>(
         domain: string, queryModel: QueryModel<T>,
         context: ContextBlock, options?: DatabaseWriteOptions): Promise<any> {
-        const conn = await this.connection();
+        const db = await this.mDb();
         const fieldsToReturn = {
             '_created_at': 1,
             '_updated_at': 1,
@@ -122,23 +127,20 @@ export class DatabaseFactory implements DatabaseAdapter {
                 fieldsToReturn[x] = 1;
             });
         }
-        const result = await conn.db()
-            .collection(domain)
-            .findOne(
-                {_id: queryModel._id},
-                {
+        const result = await db.collection(domain).findOne(
+            { _id: queryModel._id },
+            {
 
-                    // projection: fieldsToReturn
-                }
-            );
-        await conn.close();
+                // projection: fieldsToReturn
+            }
+        );
         return result;
     }
 
     async query<T extends BasicAttributesModel>(domain: string, queryModel: QueryModel<T>,
-                                                context: ContextBlock, options?: DatabaseWriteOptions): Promise<any> {
-        const conn = await this.connection();
-        const query = conn.db().collection(domain).find(queryModel.filter, {
+        context: ContextBlock, options?: DatabaseWriteOptions): Promise<any> {
+        const db = await this.mDb();
+        const query = db.collection(domain).find(queryModel.filter, {
 
             // allowDiskUse: true
         });
@@ -176,13 +178,12 @@ export class DatabaseFactory implements DatabaseAdapter {
         } else {
             result = await query.toArray();
         }
-        await conn.close();
         return result;
     }
 
     async update<T extends BasicAttributesModel, V>(domain: string, updateModel: UpdateRuleRequestModel,
-                                                    context: ContextBlock, options?: DatabaseUpdateOptions): Promise<V> {
-        const conn = await this.connection();
+        context: ContextBlock, options?: DatabaseUpdateOptions): Promise<V> {
+        const db = await this.mDb();
         let updateOptions: FindOneAndUpdateOptions = {
             upsert: typeof updateModel.upsert === 'boolean' ? updateModel.upsert : false,
             // @ts-ignore
@@ -192,14 +193,12 @@ export class DatabaseFactory implements DatabaseAdapter {
 
         };
         updateOptions = Object.assign(updateOptions, options && options.dbOptions ? options.dbOptions : {});
-        // @ts-ignore
-        const response: ModifyResult<any> = await conn.db().collection(domain)
+        const response: ModifyResult<any> = await db.collection(domain)
             .findOneAndUpdate(
                 updateModel.filter,
                 updateModel.update,
                 updateOptions
             );
-        await conn.close();
         if (response.ok === 1) {
             return response.value as any;
         } else {
@@ -208,48 +207,23 @@ export class DatabaseFactory implements DatabaseAdapter {
     }
 
     async deleteOne<T extends BasicAttributesModel, V>(domain: string, deleteModel: DeleteModel<T>,
-                                                       context: ContextBlock, options?: DatabaseBasicOptions): Promise<V> {
-        const conn = await this.connection();
-        const response = await conn.db()
-            .collection(domain)
-            .findOneAndDelete(deleteModel.filter, {});
-        await conn.close();
+        context: ContextBlock, options?: DatabaseBasicOptions): Promise<V> {
+        const db = await this.mDb();
+        const response = await db.collection(domain).findOneAndDelete(deleteModel.filter, {});
         return response.value as any;
     }
 
     async transaction<V>(operations: (session: any) => Promise<any>): Promise<any> {
-        const conn = await this.connection();
-        // const session = conn.startSession();
-        try {
-            // await session.withTransaction(async _ => {
-            return await operations(null);
-            // }, {
-            // readPreference: 'primary',
-            // readConcern: {
-            //     level: 'local'
-            // },
-            // readConcern: {
-            //     level: '',
-            //     toJSON:
-            // },
-            // writeConcern: {
-            //     w: 'majority'
-            // }
-            // });
-        } finally {
-            //     await session.endSession();
-            await conn.close();
-        }
+        return await operations(null);
     }
 
     async aggregate(domain: string, pipelines: any[], context: ContextBlock, options?: DatabaseWriteOptions): Promise<any> {
-        const conn = await this.connection();
+        const db = await this.mDb();
         const aggOps = {
             allowDiskUse: true,
 
         };
-        const result = await conn.db().collection(domain).aggregate(pipelines, aggOps).toArray();
-        await conn.close();
+        const result = await db.collection(domain).aggregate(pipelines, aggOps).toArray();
         return result;
     }
 
