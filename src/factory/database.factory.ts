@@ -4,7 +4,7 @@ import {
     DatabaseUpdateOptions,
     DatabaseWriteOptions
 } from '../adapters/database.adapter';
-import { MongoClient } from 'mongodb';
+import { Db, MongoClient, MongoDBNamespace } from 'mongodb';
 import { BasicAttributesModel } from '../model/basic-attributes.model';
 import { ContextBlock } from '../model/rules.model';
 import { QueryModel } from '../model/query-model';
@@ -29,15 +29,19 @@ const treeController = new TreeController();
 
 export class DatabaseFactory implements DatabaseAdapter {
 
-    static ipfs: IPFS
+    static ipfs: IPFS;
+    private static mongoClient: MongoClient;
 
     constructor(private readonly config: BFastDatabaseOptions) {
-        // if (_ipfs) {
-        //     ipfs = _ipfs;
-        // }
         web3Storage = new Web3Storage({
             token: config.web3Token
         });
+    }
+
+    async ensureIpfs() {
+        if (!DatabaseFactory.ipfs) {
+            DatabaseFactory.ipfs = await create();
+        }
     }
 
     async dataCid(
@@ -47,9 +51,7 @@ export class DatabaseFactory implements DatabaseAdapter {
     ): Promise<{ cid: string, size: number }> {
         if (this.config.useLocalIpfs) {
             try {
-                if (!DatabaseFactory.ipfs) {
-                    DatabaseFactory.ipfs = await create();
-                }
+                await this.ensureIpfs();
                 const r = await DatabaseFactory.ipfs.add(buffer, {
                     wrapWithDirectory: false
                 });
@@ -88,9 +90,7 @@ export class DatabaseFactory implements DatabaseAdapter {
         start: undefined,
         end: undefined
     }): Promise<object | ReadableStream | Buffer> {
-        if (!DatabaseFactory.ipfs) {
-            DatabaseFactory.ipfs = await create();
-        }
+        await this.ensureIpfs();
         const results = await DatabaseFactory.ipfs.cat(cid, {
             offset: (options && options.json === false && options.start) ? options.start : undefined,
             length: (options && options.json === false && options.end) ? options.end : undefined
@@ -143,18 +143,16 @@ export class DatabaseFactory implements DatabaseAdapter {
                             value: node[key]
                         }
                     }
-                    const conn = await this.connection();
-                    await conn.db()
-                        .collection(this.nodeTable(path.toString()))
-                        .updateOne({
-                            _id: isNaN(Number(key)) ? key.trim() : Number(key),
-                        }, {
-                            $set: $setMap
-                        }, {
-                            upsert: true,
+                    const db = await this.mDb();
+                    await db.collection(this.nodeTable(path.toString())).updateOne({
+                        _id: isNaN(Number(key)) ? key.trim() : Number(key),
+                    }, {
+                        $set: $setMap
+                    }, {
+                        upsert: true,
 
-                        }
-                        );
+                    }
+                    );
                 }
             },
             nodeIdHandler: async function () {
@@ -170,12 +168,11 @@ export class DatabaseFactory implements DatabaseAdapter {
         options: DatabaseWriteOptions
     ): Promise<any[] | number> {
         const nodesPathList = Object.keys(mapOfNodesToQuery);
-        const conn = await this.connection();
+        const db = await this.mDb();
         let cids = [];
         const cidMap = {};
         if (nodesPathList.length === 0) {
-            let result = await conn.db().collection(`${domain}__id`).find({}).toArray();
-            await conn.close();
+            let result = await db.collection(`${domain}__id`).find({}).toArray();
             if (result && Array.isArray(result)) {
                 if (queryModel?.size && queryModel?.size > 0) {
                     const skip = (queryModel.skip && queryModel.skip >= 1) ? queryModel.skip : 0;
@@ -186,7 +183,7 @@ export class DatabaseFactory implements DatabaseAdapter {
                 }
                 const datas = [];
                 for (const r of result) {
-                    datas.push(await this.getDataFromCid(r?.value,{
+                    datas.push(await this.getDataFromCid(r?.value, {
                         json: true
                     }));
                 }
@@ -201,7 +198,7 @@ export class DatabaseFactory implements DatabaseAdapter {
             const targetNodeId = mapOfNodesToQuery[nodePath];
             let result;
             if (typeof targetNodeId === "object" && targetNodeId?.hasOwnProperty('$fn')) {
-                const cursor = conn.db().collection(nodeTable).find({});
+                const cursor = db.collection(nodeTable).find({});
                 const docs = [];
                 while (await cursor.hasNext()) {
                     const next = await cursor.next();
@@ -213,19 +210,19 @@ export class DatabaseFactory implements DatabaseAdapter {
                     return a;
                 }, { value: {} });
             } else {
-                result = await conn.db().collection(nodeTable).findOne({ _id: targetNodeId });
+                result = await db.collection(nodeTable).findOne({ _id: targetNodeId });
             }
 
 
             if (result && result.value) {
                 if (typeof result.value === "object") {
                     for (const k of Object.keys(result.value)) {
-                        const _r1 = await conn.db().collection(`${domain}__id`).findOne({
+                        const _r1 = await db.collection(`${domain}__id`).findOne({
                             _id: k
                         });
                         if (!_r1) {
                             delete result.value[k];
-                            conn.db().collection(nodeTable).updateOne({
+                            db.collection(nodeTable).updateOne({
                                 [`value.${k}`]: {
                                     $exists: true
                                 }
@@ -245,12 +242,12 @@ export class DatabaseFactory implements DatabaseAdapter {
                         }
                     });
                 } else if (typeof result.value === 'string') {
-                    const _r1 = await conn.db().collection(`${domain}__id`).findOne({
+                    const _r1 = await db.collection(`${domain}__id`).findOne({
                         _id: result._id
                     });
                     if (!_r1) {
                         result.value = null;
-                        conn.db().collection(nodeTable).updateOne({
+                        db.collection(nodeTable).updateOne({
                             _id: targetNodeId
                         }, {
                             $unset: {
@@ -268,7 +265,6 @@ export class DatabaseFactory implements DatabaseAdapter {
                 }
             }
         }
-        await conn.close();
         cids = cids
             .filter(x => cidMap[x] === nodesPathList.length)
             .reduce((a, b) => a.add(b), new Set());
@@ -283,8 +279,8 @@ export class DatabaseFactory implements DatabaseAdapter {
         return Promise.all(cids.map(async x => await this.getDataFromCid(x as string)));
     }
 
-    private nodeTable(nodePath){
-        return nodePath?.replace(new RegExp('/','ig'), '_').trim();
+    private nodeTable(nodePath) {
+        return nodePath?.replace(new RegExp('/', 'ig'), '_').trim();
     }
 
     private async handleDeleteObjectTree(
@@ -293,7 +289,7 @@ export class DatabaseFactory implements DatabaseAdapter {
         options: DatabaseWriteOptions
     ): Promise<{ _id: string }[]> {
         const keys = Object.keys(deleteTree);
-        const conn = await this.connection();
+        const db = await this.mDb();
         let cids = [];
         const cidMap = {};
         if (keys.length === 0) {
@@ -304,7 +300,7 @@ export class DatabaseFactory implements DatabaseAdapter {
             const id = deleteTree[key];
             let result;
             if (typeof id === "function") {
-                const cursor = conn.db().collection(nodeTable).find({}, {});
+                const cursor = db.collection(nodeTable).find({}, {});
                 const docs = [];
                 while (await cursor.hasNext()) {
                     const next = await cursor.next();
@@ -316,13 +312,13 @@ export class DatabaseFactory implements DatabaseAdapter {
                     return a;
                 }, { value: {}, _id: [] });
             } else {
-                result = await conn.db().collection(nodeTable).findOne({ _id: id }, {});
+                result = await db.collection(nodeTable).findOne({ _id: id }, {});
             }
             if (result && result.value) {
                 // console.log(result, '------> result');
                 if (typeof result.value === "object") {
                     for (const k of Object.keys(result.value)) {
-                        const existInId = await conn.db().collection(`${domain}__id`).findOne({
+                        const existInId = await db.collection(`${domain}__id`).findOne({
                             _id: k
                         });
                         // console.log(existInId,'-----> check if exist in _id node');
@@ -330,13 +326,13 @@ export class DatabaseFactory implements DatabaseAdapter {
                             delete result.value[k];
                         }
                     }
-                    const r11 = await conn.db().collection(`${domain}__id`).deleteMany({
+                    const r11 = await db.collection(`${domain}__id`).deleteMany({
                         _id: {
                             $in: Object.keys(result.value)
                         }
                     }, {});
                     // console.log(r11, '-----> in ids node');
-                    const r21 = await conn.db().collection(nodeTable).deleteMany({
+                    const r21 = await db.collection(nodeTable).deleteMany({
                         _id: {
                             $in: Array.isArray(result._id) ? result._id : [result._id]
                         }
@@ -352,12 +348,12 @@ export class DatabaseFactory implements DatabaseAdapter {
                     });
                 } else if (typeof result.value === 'string') {
                     // console.log(result);
-                    const r11 = await conn.db().collection(`${domain}__id`).deleteOne({
+                    const r11 = await db.collection(`${domain}__id`).deleteOne({
                         _id: result._id
                     }, {});
                     // console.log(nodeTable);
                     // console.log(r11, '-----> in ids node with string id');
-                    const r21 = await conn.db().collection(nodeTable).deleteMany({
+                    const r21 = await db.collection(nodeTable).deleteMany({
                         _id: id
                     });
                     // console.log(r21, '---------> in node mode with string id');
@@ -370,8 +366,6 @@ export class DatabaseFactory implements DatabaseAdapter {
                 }
             }
         }
-        await conn.close();
-        // console.log(cids);
         cids = cids
             // .filter(x => cidMap[x] === keys.length)
             .reduce((a, b) => a.add(b), new Set());
@@ -408,72 +402,16 @@ export class DatabaseFactory implements DatabaseAdapter {
         return data;
     }
 
-    private async connection(): Promise<MongoClient> {
-        let mongoUri;
-        const parsed = mongoUrlParse(this.config.mongoDbUri);
-        if (parsed.auth) {
-            mongoUri = `mongodb://${parsed.auth.user}:${parsed.auth.password}@139.162.206.182:27017/${parsed.dbName}?authSource=admin`
-        } else {
-            mongoUri = `mongodb://localhost:27017/${parsed.dbName}`
+    private async mDb(): Promise<Db> {
+        if (!DatabaseFactory.mongoClient) {
+            DatabaseFactory.mongoClient = await new MongoClient(this.config.mongoDbUri).connect();
+            return DatabaseFactory.mongoClient.db();
         }
-        // console.log(mongoUri);
-        return new MongoClient(mongoUri).connect();
+        return DatabaseFactory.mongoClient.db();
     }
 
     async init(): Promise<any> {
-        // try {
-        //     await this.dropIndexes('_User');
-        // } catch (_) {
-        // }
-        // return await this.createIndexes('_User', [
-        //     {
-        //         field: 'email',
-        //         unique: true,
-        //         collation: {
-        //             locale: 'en',
-        //             strength: 2
-        //         }
-        //     },
-        //     {
-        //         field: 'username',
-        //         unique: true,
-        //         collation: {
-        //             locale: 'en',
-        //             strength: 2
-        //         }
-        //     }
-        // ]);
     }
-
-    // async createIndexes(domain: string, indexes: any[]): Promise<any> {
-    //     if (indexes && Array.isArray(indexes)) {
-    //         const conn = await this.connection();
-    //         for (const value of indexes) {
-    //             const indexOptions: any = {};
-    //             Object.assign(indexOptions, value);
-    //             delete indexOptions.field;
-    //             await conn.db().collection(domain).createIndex({[value.field]: 1}, indexOptions);
-    //         }
-    //         await conn.close(); // .catch(console.warn);
-    //         return 'Indexes added';
-    //     } else {
-    //         throw new Error('Must supply array of indexes to be added');
-    //     }
-    // }
-    //
-    // async dropIndexes(domain: string): Promise<boolean> {
-    //     const conn = await this.connection();
-    //     await conn.db().collection(domain).dropIndexes();
-    //     await conn.close();
-    //     return true;
-    // }
-    //
-    // async listIndexes(domain: string): Promise<any[]> {
-    //     const conn = await this.connection();
-    //     const indexes = await conn.db().collection(domain).listIndexes().toArray();
-    //     await conn.close();
-    //     return indexes;
-    // }
 
     async findOne<T extends BasicAttributesModel>(
         domain: string,
@@ -486,12 +424,11 @@ export class DatabaseFactory implements DatabaseAdapter {
         });
         const table = this.nodeTable(Object.keys(queryTree)[0]);
         const id = Object.values(queryTree)[0];
-        const conn = await this.connection();
-        const result = await conn.db().collection(table).findOne(
+        const db = await this.mDb();
+        const result = await db.collection(table).findOne(
             { _id: id },
             {}
         );
-        await conn.close();
         if (!result) {
             return null;
         }
@@ -615,20 +552,7 @@ export class DatabaseFactory implements DatabaseAdapter {
      * @param operations
      */
     async bulk<V>(operations: (session: any) => Promise<any>): Promise<any> {
-        // const conn = await this.connection();
-        // const session = conn.startSession();
-        // try {
-        //     await session.withTransaction(async _ => {
         return await operations(null);
-        //     }, {
-        //         // writeConcern: {
-        //         //     w: 'majority'
-        //         // }
-        //     });
-        // } finally {
-        //     await session.endSession();
-        // }
-        // await conn.close();
     }
 
     async changes(
