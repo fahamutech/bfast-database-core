@@ -3,7 +3,7 @@ const bfast = require("bfast");
 const {config} = require("../mock.config");
 const envUtil = new EnvUtil();
 let myConfig = envUtil.loadEnv();
-myConfig = Object.assign(myConfig, config)
+myConfig = Object.assign(config, myConfig)
 const bfd = new BfastDatabaseCore();
 const webService = bfd.init(myConfig, true);
 
@@ -22,4 +22,3 @@ for (const fR of Object.keys(webService.storage())) {
     module.exports[fR] = webService.storage()[fR];
 }
 
-// console.log('*********88')

@@ -43,7 +43,6 @@ exports.serverUrl = 'http://localhost:3111/v2';
 exports.mongoRepSet = mongoMemoryReplSet;
 exports.daas = daas;
 exports.config = {
-    useLocalIpfs: true,
     applicationId: 'bfast_test',
     projectId: 'bfast_test',
     port: '3111',

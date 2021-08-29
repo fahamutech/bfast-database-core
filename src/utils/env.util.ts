@@ -20,6 +20,7 @@ enum EnvNames {
     LOGS = 'LOGS',
     TAARIFA_TOKEN = 'TAARIFA_TOKEN',
     WEB_3_TOKEN = 'WEB_3_TOKEN',
+    USE_LOCAL_IPFS = 'USE_LOCAL_IPFS',
     S3_REGION = 'S3_REGION',
     PORT = 'PORT',
 }
@@ -84,6 +85,7 @@ export class EnvUtil {
         }
         // @ts-ignore
         const options: BFastDatabaseOptions = {};
+        options.useLocalIpfs = this.getEnv(process.env[EnvNames.USE_LOCAL_IPFS])?.toString()?.toLowerCase() === 'true';
         options.applicationId = this.getEnv(process.env[EnvNames.APPLICATION_ID]);
         options.projectId = this.getEnv(process.env[EnvNames.PROJECT_ID]);
         options.port = this.getEnv(process.env[EnvNames.PORT]);

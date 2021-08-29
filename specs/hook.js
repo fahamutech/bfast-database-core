@@ -17,6 +17,7 @@ exports.mochaHooks = {
         process.env.TAARIFA_TOKEN = config.taarifaToken;
         process.env.RSA_PUBLIC_KEY = JSON.stringify(config.rsaPublicKeyInJson);
         process.env.RSA_KEY = JSON.stringify(config.rsaKeyPairInJson);
+        process.env.USE_LOCAL_IPFS = 'true';
         console.log('________START__________');
         await bfastFs.start()
     },
