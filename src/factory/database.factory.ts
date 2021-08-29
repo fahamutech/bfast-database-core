@@ -161,6 +161,28 @@ export class DatabaseFactory implements DatabaseAdapter {
         }
     }
 
+    private async nodeSearchResult(nodeTable: string, targetNodeId: any, db: Db): Promise<{ value: any, _id: string }> {
+        if (typeof targetNodeId === "object" && targetNodeId?.hasOwnProperty('$fn')) {
+            const cursor = db.collection(nodeTable).find({});
+            const docs = [];
+            while (await cursor.hasNext()) {
+                const next = await cursor.next();
+                const fn = new Function('it', targetNodeId.$fn);
+                fn(next._id) === true ? docs.push(next) : null
+            }
+            return docs.reduce((a, b) => {
+                if(typeof b?.value === 'string'){
+                    a.value = Object.assign(a.value, {[b._id]:b.value});   
+                }else{
+                    a.value = Object.assign(a.value, b.value);
+                }
+                return a;
+            }, { value: {} });
+        } else {
+            return db.collection(nodeTable).findOne({ _id: targetNodeId }) as any;
+        }
+    }
+
     private async handleQueryObjectTree(
         mapOfNodesToQuery: { [key: string]: any },
         domain: string,
@@ -196,65 +218,37 @@ export class DatabaseFactory implements DatabaseAdapter {
         for (const nodePath of nodesPathList) {
             const nodeTable = this.nodeTable(nodePath);
             const targetNodeId = mapOfNodesToQuery[nodePath];
-            let result;
-            if (typeof targetNodeId === "object" && targetNodeId?.hasOwnProperty('$fn')) {
-                const cursor = db.collection(nodeTable).find({});
-                const docs = [];
-                while (await cursor.hasNext()) {
-                    const next = await cursor.next();
-                    const fn = new Function('it', targetNodeId.$fn);
-                    fn(next._id) === true ? docs.push(next) : null
-                }
-                result = docs.reduce((a, b) => {
-                    a.value = Object.assign(a.value, b.value);
-                    return a;
-                }, { value: {} });
-            } else {
-                result = await db.collection(nodeTable).findOne({ _id: targetNodeId });
-            }
-
+            let result = await this.nodeSearchResult(
+                nodeTable,
+                targetNodeId,
+                db
+            );
 
             if (result && result.value) {
                 if (typeof result.value === "object") {
-                    for (const k of Object.keys(result.value)) {
-                        const _r1 = await db.collection(`${domain}__id`).findOne({
-                            _id: k
-                        });
-                        if (!_r1) {
-                            delete result.value[k];
-                            db.collection(nodeTable).updateOne({
-                                [`value.${k}`]: {
-                                    $exists: true
-                                }
-                            }, {
-                                $unset: {
-                                    [`value.${k}`]: 1
-                                }
-                            }).catch(console.log);
-                        }
-                    }
-                    Object.values(result.value).forEach((v: string) => {
+                    result = await this.pruneNode(
+                        result,
+                        nodeTable,
+                        domain,
+                        db
+                    );
+                    for (const v of Object.values<string>(result.value)) {
                         cids.push(v);
                         if (cidMap[v]) {
                             cidMap[v] += 1;
                         } else {
                             cidMap[v] = 1;
                         }
-                    });
+                    };
                 } else if (typeof result.value === 'string') {
-                    const _r1 = await db.collection(`${domain}__id`).findOne({
-                        _id: result._id
-                    });
-                    if (!_r1) {
-                        result.value = null;
-                        db.collection(nodeTable).updateOne({
-                            _id: targetNodeId
-                        }, {
-                            $unset: {
-                                value: 1
-                            }
-                        }).catch(console.log);
-                    } else {
+                    result = await this.pruneNodeWithStringValue(
+                        targetNodeId,
+                        result,
+                        nodeTable,
+                        domain,
+                        db
+                    );
+                    if (result && result.value) {
                         cids.push(result.value);
                         if (cidMap[result.value]) {
                             cidMap[result.value] += 1;
@@ -283,6 +277,55 @@ export class DatabaseFactory implements DatabaseAdapter {
         return nodePath?.replace(new RegExp('/', 'ig'), '_').trim();
     }
 
+    private async pruneNode(
+        nodeValue: { value: any, _id: string },
+        nodeTable: string,
+        domain: string,
+        db: Db
+    ): Promise<{ value: any, _id: string }> {
+        for (const k of Object.keys(nodeValue.value)) {
+            const _r1 = await db.collection(`${domain}__id`).findOne({
+                _id: k
+            });
+            if (!_r1) {
+                delete nodeValue.value[k];
+                db.collection(nodeTable).updateOne({
+                    [`value.${k}`]: {
+                        $exists: true
+                    }
+                }, {
+                    $unset: {
+                        [`value.${k}`]: 1
+                    }
+                }).catch(console.log);
+            }
+        }
+        return nodeValue;
+    }
+
+    private async pruneNodeWithStringValue(
+        targetNodeId: string,
+        nodeValue: { value: any, _id: string },
+        nodeTable: string,
+        domain: string,
+        db: Db
+    ): Promise<any> {
+        const _r1 = await db.collection(`${domain}__id`).findOne({
+            _id: nodeValue._id
+        });
+        if (!_r1) {
+            nodeValue.value = null;
+            db.collection(nodeTable).updateOne({
+                _id: targetNodeId
+            }, {
+                $unset: {
+                    value: 1
+                }
+            }).catch(console.log);
+        }
+        return nodeValue;
+    }
+
     private async handleDeleteObjectTree(
         deleteTree: { [key: string]: any },
         domain: string,
@@ -298,82 +341,58 @@ export class DatabaseFactory implements DatabaseAdapter {
         for (const key of keys) {
             const nodeTable = this.nodeTable(key);
             const id = deleteTree[key];
-            let result;
-            if (typeof id === "function") {
-                const cursor = db.collection(nodeTable).find({}, {});
-                const docs = [];
-                while (await cursor.hasNext()) {
-                    const next = await cursor.next();
-                    id(next._id) === true ? docs.push(next) : null
-                }
-                result = docs.reduce((a, b) => {
-                    a.value = Object.assign(a.value, typeof b.value === "string" ? { [b._id]: b.value } : b.value);
-                    a._id.push(b._id);
-                    return a;
-                }, { value: {}, _id: [] });
-            } else {
-                result = await db.collection(nodeTable).findOne({ _id: id }, {});
-            }
+            let result = await this.nodeSearchResult(
+                nodeTable,
+                id,
+                db
+            );
             if (result && result.value) {
-                // console.log(result, '------> result');
                 if (typeof result.value === "object") {
-                    for (const k of Object.keys(result.value)) {
-                        const existInId = await db.collection(`${domain}__id`).findOne({
-                            _id: k
-                        });
-                        // console.log(existInId,'-----> check if exist in _id node');
-                        if (!existInId) {
-                            delete result.value[k];
-                        }
-                    }
-                    const r11 = await db.collection(`${domain}__id`).deleteMany({
-                        _id: {
-                            $in: Object.keys(result.value)
-                        }
-                    }, {});
-                    // console.log(r11, '-----> in ids node');
-                    const r21 = await db.collection(nodeTable).deleteMany({
-                        _id: {
-                            $in: Array.isArray(result._id) ? result._id : [result._id]
-                        }
-                    }, {});
-                    // console.log(r21, '---------> in node mode');
-                    Object.keys(result.value).forEach((v: string) => {
+                    result = await this.pruneNode(
+                        result,
+                        nodeTable,
+                        domain,
+                        db
+                    );
+                    for (const v of Object.keys(result.value)) {
                         cids.push(v);
                         if (cidMap[v]) {
                             cidMap[v] += 1;
                         } else {
                             cidMap[v] = 1;
                         }
-                    });
+                    };
                 } else if (typeof result.value === 'string') {
-                    // console.log(result);
-                    const r11 = await db.collection(`${domain}__id`).deleteOne({
-                        _id: result._id
-                    }, {});
-                    // console.log(nodeTable);
-                    // console.log(r11, '-----> in ids node with string id');
-                    const r21 = await db.collection(nodeTable).deleteMany({
-                        _id: id
-                    });
-                    // console.log(r21, '---------> in node mode with string id');
-                    cids.push(result._id);
-                    if (cidMap[result._id]) {
-                        cidMap[result._id] += 1;
-                    } else {
-                        cidMap[result._id] = 1;
+                    result = await this.pruneNodeWithStringValue(
+                        id,
+                        result,
+                        nodeTable,
+                        domain,
+                        db
+                    );
+                    if (result && result._id) {
+                        cids.push(result._id);
+                        if (cidMap[result._id]) {
+                            cidMap[result._id] += 1;
+                        } else {
+                            cidMap[result._id] = 1;
+                        }
                     }
                 }
             }
         }
         cids = cids
-            // .filter(x => cidMap[x] === keys.length)
+            .filter(x => cidMap[x] === keys.length)
             .reduce((a, b) => a.add(b), new Set());
-        return Array.from(cids).map(x => {
+        cids = Array.from(cids);
+        return Promise.all(cids.map(async x => {
+            await db.collection(`${domain}__id`).deleteOne({
+                _id: x
+            }, {});
             return {
                 _id: x
-            };
-        });
+            }
+        }));
     }
 
     async writeMany<T extends BasicAttributesModel>(

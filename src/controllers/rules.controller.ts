@@ -282,26 +282,12 @@ export class RulesController {
                         if (!rulesBlockModelElement?.filter) {
                             throw new Error('filter field is required if you dont supply id field');
                         }
+                        if (rulesBlockModelElement?.filter && Array.isArray(rulesBlockModelElement?.filter) && rulesBlockModelElement.filter.length === 0) {
+                            throw new Error('Empty filter array is not supported in delete rule');
+                        }
                         if (rulesBlockModelElement?.filter && Object.keys(rulesBlockModelElement?.filter).length === 0) {
                             throw new Error('Empty filter map is not supported in delete rule');
                         }
-                        // const query: any[] = await databaseController.query(domain, rulesBlockModelElement, rulesBlockModel?.context, {
-                        //     bypassDomainVerification: rulesBlockModel?.context?.useMasterKey === true,
-                        //     transaction: transactionSession
-                        // });
-                        // const deleteResults = [];
-                        // if (query && Array.isArray(query)) {
-                        //     for (const value of query) {
-                        //         rulesBlockModelElement.filter = {
-                        //             _id: value.id
-                        //         };
-                        //         const result = await databaseController.delete(domain, rulesBlockModelElement, rulesBlockModel?.context, {
-                        //             bypassDomainVerification: rulesBlockModel?.context?.useMasterKey === true,
-                        //             transaction: transactionSession
-                        //         });
-                        //         deleteResults.push(result);
-                        //     }
-                        // }
                         ruleResultModel[deleteRule] = await this.databaseController.delete(
                             domain,
                             rulesBlockModelElement,

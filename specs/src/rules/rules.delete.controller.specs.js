@@ -53,12 +53,8 @@ describe('RulesController::Delete Unit Test', function () {
             const results = await _rulesController.handleDeleteRules({
                 deleteProduct: {
                     filter: {
-                        id: function (i) {
-                            return [
-                                '16b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b',
-                                'a',
-                                'b'
-                            ].includes(i);
+                        id: {
+                            $fn: `return JSON.parse('${JSON.stringify(['16b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b','a','b'])}').includes(it);`
                         }
                     },
                     return: []

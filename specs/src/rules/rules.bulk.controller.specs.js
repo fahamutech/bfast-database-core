@@ -1,6 +1,7 @@
-const {getRulesController, mongoRepSet} = require('../../mock.config');
-const {before, after} = require('mocha');
-const {assert, should, expect} = require('chai');
+const { getRulesController, mongoRepSet } = require('../../mock.config');
+const { before, after } = require('mocha');
+const { assert, should, expect } = require('chai');
+const { database } = require('bfast');
 
 describe('Transaction', function () {
 
@@ -13,23 +14,23 @@ describe('Transaction', function () {
     after(async function () {
         await mongoMemoryReplSet.stop();
     });
-    describe('commit', function () {
+    describe('compound', function () {
         before(async function () {
             await _rulesController.handleCreateRules({
                 createProduct: [
-                    {name: 'xyz', price: 50, status: 'new', id: 'xyz', createdAt: 'leo', updatedAt: 'leo'},
-                    {name: 'zyx', price: 50, status: 'new', id: 'zyx', createdAt: 'leo', updatedAt: 'leo'},
-                    {name: 'uuu', price: 50, status: 'new', id: 'uuu', createdAt: 'leo', updatedAt: 'leo'},
+                    { name: 'xyz', price: 50, status: 'new', id: 'xyz', createdAt: 'leo', updatedAt: 'leo' },
+                    { name: 'zyx', price: 50, status: 'new', id: 'zyx', createdAt: 'leo', updatedAt: 'leo' },
+                    { name: 'uuu', price: 50, status: 'new', id: 'uuu', createdAt: 'leo', updatedAt: 'leo' },
                 ]
-            }, {errors: {}});
+            }, { errors: {} });
         });
         it('should perform transaction', async function () {
             const results = await _rulesController.handleBulkRule({
                 transaction: {
                     commit: {
                         createProduct: [
-                            {id: 't1', createdAt: 'leo', updatedAt: 'leo', name: 'zxc', price: 100, status: 'new'},
-                            {id: 't2', createdAt: 'leo', updatedAt: 'leo', name: 'mnb', price: 30, status: 'new'},
+                            { id: 't1', createdAt: 'leo', updatedAt: 'leo', name: 'zxc', price: 100, status: 'new' },
+                            { id: 't2', createdAt: 'leo', updatedAt: 'leo', name: 'mnb', price: 30, status: 'new' },
                         ],
                         updateProduct: {
                             id: 'xyz',
@@ -51,22 +52,22 @@ describe('Transaction', function () {
                         }
                     }
                 }
-            }, {errors: {}});
+            }, { errors: {} });
             should().exist(results.transaction);
             should().exist(results.transaction.commit);
-            const _r = {...results.transaction.commit}
+            const _r = { ...results.transaction.commit }
             delete _r.queryProduct;
             expect(_r).eql({
                 errors: {},
                 createProduct: [
-                    {id: 't1'},
-                    {id: 't2'},
+                    { id: 't1' },
+                    { id: 't2' },
                 ],
                 updateProduct: {
                     name: 'apple', price: 1000, status: 'new', id: 'xyz', createdAt: 'leo', updatedAt: 'leo'
                 },
                 deleteProduct: [
-                    {id: 'xyz'}
+                    { id: 'xyz' }
                 ],
             });
             should().exist(results.transaction.commit.createProduct);
@@ -88,8 +89,8 @@ describe('Transaction', function () {
                 transaction: {
                     commit: {
                         createProduct: [
-                            {name: 'zxc', price: 100, status: 'new'},
-                            {name: 'mnb', price: 30, status: 'new'},
+                            { name: 'zxc', price: 100, status: 'new' },
+                            { name: 'mnb', price: 30, status: 'new' },
                         ],
                         updateProduct: [
                             {
@@ -122,7 +123,7 @@ describe('Transaction', function () {
                         }
                     }
                 }
-            }, {errors: {}});
+            }, { errors: {} });
             should().exist(results.transaction);
             should().exist(results.transaction.commit);
             should().exist(results.transaction.commit.createProduct);
@@ -149,8 +150,8 @@ describe('Transaction', function () {
                 transaction: {
                     commit: {
                         createProduct: [
-                            {id: 'doe', name: 'zxc', price: 100, status: 'new', createdAt: 'leo', updatedAt: 'leo'},
-                            {id: 'doe2', name: 'mnb', price: 30, status: 'new', createdAt: 'leo', updatedAt: 'leo'},
+                            { id: 'doe', name: 'zxc', price: 100, status: 'new', createdAt: 'leo', updatedAt: 'leo' },
+                            { id: 'doe2', name: 'mnb', price: 30, status: 'new', createdAt: 'leo', updatedAt: 'leo' },
                         ],
                         updateProduct: {
                             id: 'xyz',
@@ -169,19 +170,74 @@ describe('Transaction', function () {
                         }
                     }
                 },
-            }, {errors: {}});
+            }, { errors: {} });
             should().exist(results.transaction);
             should().not.exist(results.errors.transaction);
-            const _r = {...results.transaction.commit}
+            const _r = { ...results.transaction.commit }
             delete _r.queryProduct;
             expect(_r).eql({
                 errors: {},
                 createProduct: [
-                    {id: 'doe'},
-                    {id: 'doe2'},
+                    { id: 'doe' },
+                    { id: 'doe2' },
                 ],
                 updateProduct: null
             });
         });
     });
+    describe('delete', function () {
+
+        before(async function () {
+            await _rulesController.handleCreateRules({
+                createProduct: [
+                    {
+                        name: 'xps',
+                        price: 50,
+                        user: {
+                            email: 'a@a.com'
+                        },
+                        id: 'xpsid',
+                        createdAt: 'leo',
+                        updatedAt: 'leo'
+                    },
+                    {
+                        name: 'hp',
+                        price: 100,
+                        user: {
+                            email: 'a@a.com'
+                        },
+                        id: 'hpip',
+                        createdAt: 'leo',
+                        updatedAt: 'leo'
+                    }
+                ]
+            }, { errors: {} });
+        });
+
+        it('should delete only matches', async function () {
+            const results = await _rulesController.handleBulkRule({
+                transaction: {
+                    commit: {
+                        deleteProduct: {
+                            filter: {
+                                name: 'xps',
+                                user: {
+                                    email: 'a@a.com'
+                                }
+                            }
+                        }
+                    }
+                }
+            }, { errors: {} });
+            should().exist(results.transaction);
+            should().exist(results.transaction.commit);
+            const _r = { ...results.transaction.commit }
+            expect(_r).eql({
+                errors: {},
+                deleteProduct: [
+                    { id: 'xpsid' }
+                ],
+            });
+        });
+    })
 });
