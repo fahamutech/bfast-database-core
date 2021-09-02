@@ -70,7 +70,7 @@ export class DatabaseFactory implements DatabaseAdapter {
                     [file],
                     {
                         wrapWithDirectory: false,
-                        name: data?._id ? `${domain}_${data?._id}` : undefined,
+                        // name: data?._id ? `${domain}_${data?._id}` : undefined,
                     }
                 );
                 return {
@@ -91,6 +91,20 @@ export class DatabaseFactory implements DatabaseAdapter {
         end: undefined
     }): Promise<object | ReadableStream | Buffer> {
         await this.ensureIpfs();
+        if (!this.config.useLocalIpfs) {
+            try {
+                const data = await web3Storage.get(cid);
+                if (data.ok && await data.files) {
+                    // cid is available.
+                } else {
+                    console.log(data.text(),'------> no such cid');
+                    return null;
+                }
+            } catch (e) {
+                console.log(e,'----> no such cid');
+                return null;
+            }
+        }
         const results = await DatabaseFactory.ipfs.cat(cid, {
             offset: (options && options.json === false && options.start) ? options.start : undefined,
             length: (options && options.json === false && options.end) ? options.end : undefined
@@ -113,18 +127,6 @@ export class DatabaseFactory implements DatabaseAdapter {
                 return buffer;
             }
         }
-        // try {
-        //     const data = await web3Storage.get(cid);
-        //     if (data.ok && await data.files) {
-        //         const file = await bfast.functions('_ignore').request('https://' + cid + '.ipfs.dweb.link').get();
-        //         return typeof file === "string" ? JSON.parse(file) : file;
-        //     } else {
-        //         throw await data.json();
-        //     }
-        // } catch (e) {
-        //     console.log(e);
-        //     throw e;
-        // }
     }
 
     private nodeProcess(cid: string, options: DatabaseWriteOptions) {
@@ -171,9 +173,9 @@ export class DatabaseFactory implements DatabaseAdapter {
                 fn(next._id) === true ? docs.push(next) : null
             }
             return docs.reduce((a, b) => {
-                if(typeof b?.value === 'string'){
-                    a.value = Object.assign(a.value, {[b._id]:b.value});   
-                }else{
+                if (typeof b?.value === 'string') {
+                    a.value = Object.assign(a.value, { [b._id]: b.value });
+                } else {
                     a.value = Object.assign(a.value, b.value);
                 }
                 return a;
@@ -205,9 +207,12 @@ export class DatabaseFactory implements DatabaseAdapter {
                 }
                 const datas = [];
                 for (const r of result) {
-                    datas.push(await this.getDataFromCid(r?.value, {
+                    const _data = await this.getDataFromCid(r?.value, {
                         json: true
-                    }));
+                    });
+                    if(_data !== null){
+                        datas.push(_data);
+                    }
                 }
                 return datas;
             } else {
@@ -270,7 +275,8 @@ export class DatabaseFactory implements DatabaseAdapter {
         if (queryModel?.count === true) {
             return cids.length;
         }
-        return Promise.all(cids.map(async x => await this.getDataFromCid(x as string)));
+        const _all = await Promise.all(cids.map(async x => await this.getDataFromCid(x as string)));
+        return _all.filter(x=>x!==null);
     }
 
     private nodeTable(nodePath) {
@@ -452,7 +458,7 @@ export class DatabaseFactory implements DatabaseAdapter {
             return null;
         }
         const cid = result.value;
-        return await this.getDataFromCid(cid);
+        return this.getDataFromCid(cid);
     }
 
     async findMany<T extends BasicAttributesModel>(
