@@ -91,19 +91,24 @@ export class DatabaseFactory implements DatabaseAdapter {
         end: undefined
     }): Promise<object | ReadableStream | Buffer> {
         await this.ensureIpfs();
+        let exist = false;
         if (!this.config.useLocalIpfs) {
             try {
                 const data = await web3Storage.get(cid);
                 if (data.ok && await data.files) {
                     // cid is available.
+                    exist = true;
                 } else {
-                    console.log(data.text(),'------> no such cid');
-                    return null;
+                    console.log(await data.text(),'------> no such cid');
+                    exist = false;
                 }
             } catch (e) {
                 console.log(e,'----> no such cid');
-                return null;
+                exist = false;
             }
+        }
+        if(exist === false){
+            return null;
         }
         const results = await DatabaseFactory.ipfs.cat(cid, {
             offset: (options && options.json === false && options.start) ? options.start : undefined,
