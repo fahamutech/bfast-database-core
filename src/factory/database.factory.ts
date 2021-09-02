@@ -106,6 +106,8 @@ export class DatabaseFactory implements DatabaseAdapter {
                 console.log(e,'----> no such cid');
                 exist = false;
             }
+        }else{
+            exist = true;
         }
         if(exist === false){
             return null;
