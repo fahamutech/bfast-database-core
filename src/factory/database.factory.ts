@@ -13,7 +13,7 @@ import {DeleteModel} from '../model/delete-model';
 import {BFastDatabaseOptions} from '../bfast-database.option';
 import {TreeController} from 'bfast-database-tree';
 import {File as web3File, Web3Storage,} from 'web3.storage';
-import {create, IPFS} from "ipfs-core";
+import {CID, create, IPFS} from "ipfs-core";
 import itToStream from 'it-to-stream';
 import {Buffer} from "buffer";
 import {v4} from 'uuid';
@@ -62,6 +62,7 @@ export class DatabaseFactory implements DatabaseAdapter {
                     wrapWithDirectory: false
                 });
                 devLog('done save file to local ipfs with cid', r.cid.toString());
+                DatabaseFactory.ipfs.pin.add(r.cid).catch(console.log);
                 return {
                     cid: r.cid.toString(),
                     size: r.size
@@ -140,8 +141,9 @@ export class DatabaseFactory implements DatabaseAdapter {
             results = DatabaseFactory.ipfs.cat(cid, {
                 offset: (options && options.json === false && options.start) ? options.start : undefined,
                 length: (options && options.json === false && options.end) ? options.end : undefined,
-                timeout: 1000 * 60
+                timeout: 60000 * 5
             });
+            DatabaseFactory.ipfs.pin.add(CID.parse(cid)).catch(console.log);
         } catch (e) {
             console.log(e);
         }
