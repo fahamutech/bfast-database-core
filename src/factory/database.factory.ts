@@ -110,6 +110,7 @@ export class DatabaseFactory implements DatabaseAdapter {
                 }, 500);
             });
         }
+        /*
         let exist: boolean;
         if (!this.config.useLocalIpfs) {
             devLog('check cid in web3 ipfs');
@@ -132,13 +133,14 @@ export class DatabaseFactory implements DatabaseAdapter {
         if (exist === false) {
             return null;
         }
+         */
         devLog('____start fetch cid with jsipfs_______');
         let results = null;
         try {
             results = DatabaseFactory.ipfs.cat(cid, {
                 offset: (options && options.json === false && options.start) ? options.start : undefined,
                 length: (options && options.json === false && options.end) ? options.end : undefined,
-                timeout: 1000 * 5
+                timeout: 1000 * 60
             });
         } catch (e) {
             console.log(e);
