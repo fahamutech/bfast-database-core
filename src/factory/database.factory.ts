@@ -222,6 +222,7 @@ export class DatabaseFactory implements DatabaseAdapter {
                     return result.length;
                 }
                 const datas = [];
+                devLog('total cids to fetch data from', result.length);
                 for (const r of result) {
                     devLog('try get data from cid',r?.value,result.indexOf(r));
                     const _data: any = await this.getDataFromCid(r?.value, {
@@ -292,6 +293,7 @@ export class DatabaseFactory implements DatabaseAdapter {
             return cids.length;
         }
         const _all = [];
+        devLog('total cids to fetch data from',cids.length);
         for (const cid of cids) {
             devLog('try get data from cid',cid,cids.indexOf(cid));
             const _d: any = await this.getDataFromCid(cid, {
