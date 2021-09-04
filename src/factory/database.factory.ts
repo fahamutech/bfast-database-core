@@ -115,13 +115,13 @@ export class DatabaseFactory implements DatabaseAdapter {
         if (exist === false) {
             return null;
         }
-        devLog('start fetch cid with jsipfs');
+        devLog('____start fetch cid with jsipfs_______');
         const results = await DatabaseFactory.ipfs.cat(cid, {
             offset: (options && options.json === false && options.start) ? options.start : undefined,
             length: (options && options.json === false && options.end) ? options.end : undefined,
             timeout: 60000
         });
-        devLog('cid content found');
+        devLog('____cid content found with jsipfs______');
         if (options?.json === true) {
             let data = '';
             for await (const chunk of results) {
@@ -178,7 +178,7 @@ export class DatabaseFactory implements DatabaseAdapter {
 
     private async nodeSearchResult(nodeTable: string, targetNodeId: any, db: Db): Promise<{ value: any, _id: string }> {
         if (typeof targetNodeId === "object" && targetNodeId?.hasOwnProperty('$fn')) {
-            devLog('handle query by expression',targetNodeId.$fn);
+            devLog('handle query by expression', targetNodeId.$fn);
             const cursor = db.collection(nodeTable).find({});
             const docs = [];
             while (await cursor.hasNext()) {
@@ -189,7 +189,7 @@ export class DatabaseFactory implements DatabaseAdapter {
             devLog('query has found items', docs.length);
             return docs.reduce((a, b) => {
                 if (typeof b?.value === 'string') {
-                    a.value = Object.assign(a.value, {[b._id?b._id:b.id]: b.value});
+                    a.value = Object.assign(a.value, {[b._id ? b._id : b.id]: b.value});
                 } else {
                     a.value = Object.assign(a.value, b.value);
                 }
@@ -234,7 +234,6 @@ export class DatabaseFactory implements DatabaseAdapter {
                 return [];
             }
         }
-
         for (const nodePath of nodesPathList) {
             const nodeTable = DatabaseFactory.nodeTable(nodePath);
             const targetNodeId = mapOfNodesToQuery[nodePath];
@@ -279,9 +278,7 @@ export class DatabaseFactory implements DatabaseAdapter {
                 }
             }
         }
-        cids = cids
-            .filter(x => cidMap[x] === nodesPathList.length)
-            .reduce((a, b) => a.add(b), new Set());
+        cids = cids.filter(x => cidMap[x] === nodesPathList.length).reduce((a, b) => a.add(b), new Set());
         cids = Array.from(cids);
         if (queryModel?.size && queryModel?.size > 0) {
             const skip = (queryModel.skip && queryModel.skip >= 0) ? queryModel.skip : 0;
@@ -290,8 +287,14 @@ export class DatabaseFactory implements DatabaseAdapter {
         if (queryModel?.count === true) {
             return cids.length;
         }
-        const _all = await Promise.all(cids.map(async x => await this.getDataFromCid(x as string)));
-        return _all.filter(x => x !== null);
+        const _all = [];
+        for (const cid of cids) {
+            const _d = await this.getDataFromCid(cid);
+            if (_d !== null) {
+                _all.push(_d);
+            }
+        }
+        return _all;
     }
 
     private static nodeTable(nodePath) {
@@ -405,14 +408,16 @@ export class DatabaseFactory implements DatabaseAdapter {
             .filter(x => cidMap[x] === keys.length)
             .reduce((a, b) => a.add(b), new Set());
         cids = Array.from(cids);
-        return Promise.all(cids.map(async x => {
+        for (const x of cids) {
             await db.collection(`${domain}__id`).deleteOne({
                 _id: x
             }, {});
+        }
+        return cids.map(y => {
             return {
-                _id: x
+                _id: y
             }
-        }));
+        });
     }
 
     async writeMany<T extends BasicAttributesModel>(
@@ -546,17 +551,20 @@ export class DatabaseFactory implements DatabaseAdapter {
             oldDocs.push(nDoc);
             return this.writeMany(domain, oldDocs, context, options);
         }
-        return Promise.all(oldDocs.map(async x => await this.updateOne(
-            domain,
-            {
-                update: updateModel.update,
-                upsert: updateModel.upsert,
-                id: x._id,
-                return: []
-            },
-            context,
-            options
-        )));
+        for (const x of oldDocs) {
+            oldDocs[oldDocs.indexOf(x)] = await this.updateOne(
+                domain,
+                {
+                    update: updateModel.update,
+                    upsert: updateModel.upsert,
+                    id: x._id,
+                    return: []
+                },
+                context,
+                options
+            );
+        }
+        return oldDocs;
     }
 
     async delete<T extends BasicAttributesModel>(

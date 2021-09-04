@@ -117,9 +117,9 @@ describe('RulesController::Auth Unit Test', function () {
         });
     });
 
-    describe('RulesController::Auth::SignIn', function () {
+    describe('SignIn', function () {
         before(async function () {
-            await _rulesController.handleAuthenticationRule({
+            const r = await _rulesController.handleAuthenticationRule({
                 auth: {
                     signUp: {
                         username: 'doe2',
@@ -127,7 +127,8 @@ describe('RulesController::Auth Unit Test', function () {
                         password: 'doe'
                     }
                 }
-            }, {errors: {}})
+            }, {errors: {}});
+            should().exist(r.auth.signUp);
         });
         after(async function () {
             await _rulesController.handleDeleteRules({
