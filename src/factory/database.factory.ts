@@ -110,7 +110,6 @@ export class DatabaseFactory implements DatabaseAdapter {
                 },500);
             });
         }
-        /*
         let exist: boolean;
         if (!this.config.useLocalIpfs) {
             devLog('check cid in web3 ipfs');
@@ -133,7 +132,6 @@ export class DatabaseFactory implements DatabaseAdapter {
         if (exist === false) {
             return null;
         }
-        */
         devLog('____start fetch cid with jsipfs_______');
         const results = await DatabaseFactory.ipfs.cat(cid, {
             offset: (options && options.json === false && options.start) ? options.start : undefined,
@@ -248,20 +246,6 @@ export class DatabaseFactory implements DatabaseAdapter {
                     });
                 });
                 const _all = await Promise.all(_all_p);
-                /*
-                for (const r of result) {
-                    devLog('try get data from cid',r?.value,result.indexOf(r));
-                    const _data: any = await this.getDataFromCid(r?.value, {
-                        json: true
-                    });
-                    if (_data !== null) {
-                        datas.push(_data);
-                        devLog('data is available', _data._id);
-                    }else {
-                        devLog('data is null',r?.value);
-                    }
-                }
-                */
                 return _all.filter(b=>b!==null);
             } else {
                 return [];
@@ -326,20 +310,6 @@ export class DatabaseFactory implements DatabaseAdapter {
             });
         });
         const _all = await Promise.all(_all_p);
-        /*
-        for (const cid of cids) {
-            devLog('try get data from cid', cid, cids.indexOf(cid));
-            const _d: any = await this.getDataFromCid(cid, {
-                json: true
-            });
-            if (_d !== null) {
-                _all.push(_d);
-                devLog('data is available', _d._id);
-            } else {
-                devLog('data is null',cid);
-            }
-        }
-        */
         return _all.filter(t=>t!==null);
     }
 
