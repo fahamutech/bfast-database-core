@@ -86,12 +86,15 @@ export class DatabaseFactory implements DatabaseAdapter {
         }
     }
 
-    async getDataFromCid(cid: string, options: { json?: boolean, start?: number, end?: number, stream?: boolean } = {
+    async getDataFromCid(
+        cid: string,
+        options: { json?: boolean, start?: number, end?: number, stream?: boolean } = {
         json: true,
         stream: false,
         start: undefined,
         end: undefined
-    }): Promise<object | ReadableStream | Buffer> {
+    }
+    ): Promise<object | ReadableStream | Buffer> {
         await this.ensureIpfs();
         /*
         let exist: boolean;
@@ -225,6 +228,13 @@ export class DatabaseFactory implements DatabaseAdapter {
                 }
                 const datas = [];
                 devLog('total cids to fetch data from', result.length);
+                const _all_p = result.map(x=>{
+                    return this.getDataFromCid(x?.value, {
+                        json: true
+                    });
+                });
+                const _all = await Promise.all(_all_p);
+                /*
                 for (const r of result) {
                     devLog('try get data from cid',r?.value,result.indexOf(r));
                     const _data: any = await this.getDataFromCid(r?.value, {
@@ -237,7 +247,8 @@ export class DatabaseFactory implements DatabaseAdapter {
                         devLog('data is null',r?.value);
                     }
                 }
-                return datas;
+                */
+                return _all.filter(b=>b!==null);
             } else {
                 return [];
             }
@@ -294,21 +305,28 @@ export class DatabaseFactory implements DatabaseAdapter {
         if (queryModel?.count === true) {
             return cids.length;
         }
-        const _all = [];
         devLog('total cids to fetch data from',cids.length);
+        const _all_p = cids.map(x=>{
+            return this.getDataFromCid(x, {
+                json: true
+            });
+        });
+        const _all = await Promise.all(_all_p);
+        /*
         for (const cid of cids) {
-            devLog('try get data from cid',cid,cids.indexOf(cid));
+            devLog('try get data from cid', cid, cids.indexOf(cid));
             const _d: any = await this.getDataFromCid(cid, {
                 json: true
             });
             if (_d !== null) {
                 _all.push(_d);
                 devLog('data is available', _d._id);
-            }else {
+            } else {
                 devLog('data is null',cid);
             }
         }
-        return _all;
+        */
+        return _all.filter(t=>t!==null);
     }
 
     private static nodeTable(nodePath) {

@@ -1,6 +1,6 @@
 {
   "name": "bfast-database-core",
-  "version": "1.0.0-beta.26",
+  "version": "1.0.0-beta.27",
   "main": "dist/index.js",
   "license": "MIT",
   "author": {
@@ -27,8 +27,8 @@
   "dependencies": {
     "base64url": "~3.0.1",
     "bcryptjs": "~2.4.3",
-    "bfast-database-tree": "~1.0.0-aplha.3",
     "bfast": "~5.0.0-beta.0",
+    "bfast-database-tree": "~1.0.0-aplha.3",
     "formidable": "~1.2.2",
     "http-status-codes": "~2.1.4",
     "ipfs-core": "^0.10.3",
