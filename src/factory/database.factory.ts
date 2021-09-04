@@ -119,7 +119,7 @@ export class DatabaseFactory implements DatabaseAdapter {
         const results = await DatabaseFactory.ipfs.cat(cid, {
             offset: (options && options.json === false && options.start) ? options.start : undefined,
             length: (options && options.json === false && options.end) ? options.end : undefined,
-            timeout: 60000
+            // timeout: 60000
         });
         devLog('____cid content found with jsipfs______');
         if (options?.json === true) {
@@ -211,6 +211,7 @@ export class DatabaseFactory implements DatabaseAdapter {
         let cids = [];
         const cidMap = {};
         if (nodesPathList.length === 0) {
+            devLog('try to get all data on this node', `${domain}__id`);
             let result = await db.collection(`${domain}__id`).find({}).toArray();
             if (result && Array.isArray(result)) {
                 if (queryModel?.size && queryModel?.size > 0) {
@@ -223,11 +224,14 @@ export class DatabaseFactory implements DatabaseAdapter {
                 const datas = [];
                 for (const r of result) {
                     devLog('try get data from cid',r?.value,result.indexOf(r));
-                    const _data = await this.getDataFromCid(r?.value, {
+                    const _data: any = await this.getDataFromCid(r?.value, {
                         json: true
                     });
                     if (_data !== null) {
                         datas.push(_data);
+                        devLog('data is available', _data._id);
+                    }else {
+                        devLog('data is null',r?.value);
                     }
                 }
                 return datas;
@@ -243,7 +247,6 @@ export class DatabaseFactory implements DatabaseAdapter {
                 targetNodeId,
                 db
             );
-
             if (result && result.value) {
                 if (typeof result.value === "object") {
                     result = await DatabaseFactory.pruneNode(
@@ -291,9 +294,14 @@ export class DatabaseFactory implements DatabaseAdapter {
         const _all = [];
         for (const cid of cids) {
             devLog('try get data from cid',cid,cids.indexOf(cid));
-            const _d = await this.getDataFromCid(cid);
+            const _d: any = await this.getDataFromCid(cid, {
+                json: true
+            });
             if (_d !== null) {
                 _all.push(_d);
+                devLog('data is available', _d._id);
+            }else {
+                devLog('data is null',cid);
             }
         }
         return _all;
