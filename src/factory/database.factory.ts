@@ -222,6 +222,7 @@ export class DatabaseFactory implements DatabaseAdapter {
                 }
                 const datas = [];
                 for (const r of result) {
+                    devLog('try get data from cid',r?.value,result.indexOf(r));
                     const _data = await this.getDataFromCid(r?.value, {
                         json: true
                     });
@@ -289,6 +290,7 @@ export class DatabaseFactory implements DatabaseAdapter {
         }
         const _all = [];
         for (const cid of cids) {
+            devLog('try get data from cid',cid,cids.indexOf(cid));
             const _d = await this.getDataFromCid(cid);
             if (_d !== null) {
                 _all.push(_d);
