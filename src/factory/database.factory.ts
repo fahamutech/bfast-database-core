@@ -93,6 +93,7 @@ export class DatabaseFactory implements DatabaseAdapter {
         end: undefined
     }): Promise<object | ReadableStream | Buffer> {
         await this.ensureIpfs();
+        /*
         let exist: boolean;
         if (!this.config.useLocalIpfs) {
             devLog('check cid in web3 ipfs');
@@ -115,11 +116,12 @@ export class DatabaseFactory implements DatabaseAdapter {
         if (exist === false) {
             return null;
         }
+        */
         devLog('____start fetch cid with jsipfs_______');
         const results = await DatabaseFactory.ipfs.cat(cid, {
             offset: (options && options.json === false && options.start) ? options.start : undefined,
             length: (options && options.json === false && options.end) ? options.end : undefined,
-            // timeout: 60000
+            timeout: 60000 * 5
         });
         devLog('____cid content found with jsipfs______');
         if (options?.json === true) {
