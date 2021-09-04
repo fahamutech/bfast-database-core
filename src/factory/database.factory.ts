@@ -48,6 +48,14 @@ export class DatabaseFactory implements DatabaseAdapter {
         domain: string
     ): Promise<{ cid: string, size: number }> {
         if (this.config.useLocalIpfs) {
+            if (!DatabaseFactory.ipfs){
+                await new Promise((resolve, _)=>{
+                    setTimeout(_ => {
+                        resolve('');
+                        return this.dataCid(data,buffer,domain);
+                    },500);
+                });
+            }
             devLog('use local ipfs');
             try {
                 const r = await DatabaseFactory.ipfs.add(buffer, {
@@ -94,6 +102,14 @@ export class DatabaseFactory implements DatabaseAdapter {
         end: undefined
     }
     ): Promise<object | ReadableStream | Buffer> {
+        if (!DatabaseFactory.ipfs){
+            await new Promise((resolve, _)=>{
+                setTimeout(_ => {
+                    resolve('');
+                    return this.getDataFromCid(cid,options);
+                },500);
+            });
+        }
         /*
         let exist: boolean;
         if (!this.config.useLocalIpfs) {
