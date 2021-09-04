@@ -48,12 +48,12 @@ export class DatabaseFactory implements DatabaseAdapter {
         domain: string
     ): Promise<{ cid: string, size: number }> {
         if (this.config.useLocalIpfs) {
-            if (!DatabaseFactory.ipfs){
-                await new Promise((resolve, _)=>{
+            if (!DatabaseFactory.ipfs) {
+                await new Promise((resolve, _) => {
                     setTimeout(_ => {
                         resolve('');
-                        return this.dataCid(data,buffer,domain);
-                    },500);
+                        return this.dataCid(data, buffer, domain);
+                    }, 500);
                 });
             }
             devLog('use local ipfs');
@@ -96,18 +96,18 @@ export class DatabaseFactory implements DatabaseAdapter {
     async getDataFromCid(
         cid: string,
         options: { json?: boolean, start?: number, end?: number, stream?: boolean } = {
-        json: true,
-        stream: false,
-        start: undefined,
-        end: undefined
-    }
+            json: true,
+            stream: false,
+            start: undefined,
+            end: undefined
+        }
     ): Promise<object | ReadableStream | Buffer> {
-        if (!DatabaseFactory.ipfs){
-            await new Promise((resolve, _)=>{
+        if (!DatabaseFactory.ipfs) {
+            await new Promise((resolve, _) => {
                 setTimeout(_ => {
                     resolve('');
-                    return this.getDataFromCid(cid,options);
-                },500);
+                    return this.getDataFromCid(cid, options);
+                }, 500);
             });
         }
         let exist: boolean;
@@ -133,11 +133,20 @@ export class DatabaseFactory implements DatabaseAdapter {
             return null;
         }
         devLog('____start fetch cid with jsipfs_______');
-        const results = await DatabaseFactory.ipfs.cat(cid, {
-            offset: (options && options.json === false && options.start) ? options.start : undefined,
-            length: (options && options.json === false && options.end) ? options.end : undefined,
-            timeout: 60000 * 5
-        });
+        let results = null;
+        try {
+            results = DatabaseFactory.ipfs.cat(cid, {
+                offset: (options && options.json === false && options.start) ? options.start : undefined,
+                length: (options && options.json === false && options.end) ? options.end : undefined,
+                timeout: 1000 * 5
+            });
+        } catch (e) {
+            console.log(e);
+        }
+        if (results === null){
+            devLog('____cid content NOT found with jsipfs______');
+            return null;
+        }
         devLog('____cid content found with jsipfs______');
         if (options?.json === true) {
             let data = '';
@@ -240,13 +249,13 @@ export class DatabaseFactory implements DatabaseAdapter {
                 }
                 const datas = [];
                 devLog('total cids to fetch data from', result.length);
-                const _all_p = result.map(x=>{
+                const _all_p = result.map(x => {
                     return this.getDataFromCid(x?.value, {
                         json: true
                     });
                 });
                 const _all = await Promise.all(_all_p);
-                return _all.filter(b=>b!==null);
+                return _all.filter(b => b !== null);
             } else {
                 return [];
             }
@@ -303,14 +312,14 @@ export class DatabaseFactory implements DatabaseAdapter {
         if (queryModel?.count === true) {
             return cids.length;
         }
-        devLog('total cids to fetch data from',cids.length);
-        const _all_p = cids.map(x=>{
+        devLog('total cids to fetch data from', cids.length);
+        const _all_p = cids.map(x => {
             return this.getDataFromCid(x, {
                 json: true
             });
         });
         const _all = await Promise.all(_all_p);
-        return _all.filter(t=>t!==null);
+        return _all.filter(t => t !== null);
     }
 
     private static nodeTable(nodePath) {
