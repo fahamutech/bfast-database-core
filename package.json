@@ -1,12 +1,12 @@
 {
   "name": "bfast-database-core",
-  "version": "1.0.0-beta.20",
+  "version": "1.0.0-beta.21",
   "main": "dist/index.js",
   "license": "MIT",
   "author": {
     "name": "FahamuTech",
     "email": "mama27j@gmail.com",
-    "url": "http://fahamutech.com"
+    "url": "https://fahamutech.com"
   },
   "maintainers": [
     "joshuamshana(https://github.com/joshuamshana)",
@@ -27,7 +27,6 @@
   "dependencies": {
     "base64url": "~3.0.1",
     "bcryptjs": "~2.4.3",
-    "mongo-url-parser": "^1.0.1",
     "bfast-database-tree": "~1.0.0-aplha.3",
     "bfast": "~5.0.0-beta.0",
     "formidable": "~1.2.2",

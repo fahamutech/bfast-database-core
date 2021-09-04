@@ -7,7 +7,7 @@ const fs = require('fs');
 describe('StorageWebService', function () {
     let mongoMemoryReplSet
     before(async function () {
-        mongoMemoryReplSet = await mongoRepSet();
+        mongoMemoryReplSet = mongoRepSet();
         await mongoMemoryReplSet.start();
     });
     after(async function () {
