@@ -50,7 +50,6 @@ export class DatabaseFactory implements DatabaseAdapter {
         if (this.config.useLocalIpfs) {
             devLog('use local ipfs');
             try {
-                await this.ensureIpfs();
                 const r = await DatabaseFactory.ipfs.add(buffer, {
                     wrapWithDirectory: false
                 });
@@ -95,7 +94,6 @@ export class DatabaseFactory implements DatabaseAdapter {
         end: undefined
     }
     ): Promise<object | ReadableStream | Buffer> {
-        await this.ensureIpfs();
         /*
         let exist: boolean;
         if (!this.config.useLocalIpfs) {
@@ -487,6 +485,7 @@ export class DatabaseFactory implements DatabaseAdapter {
     }
 
     async init(): Promise<any> {
+        await this.ensureIpfs();
     }
 
     async findOne<T extends BasicAttributesModel>(
