@@ -39,7 +39,7 @@ export class DatabaseFactory implements DatabaseAdapter {
     async ensureIpfs() {
         if (!DatabaseFactory.ipfs) {
             DatabaseFactory.ipfs = await create({
-                port: 5002
+                host: this.config.useLocalIpfs===true?'localhost':'ipfsnode'
             });
         }
     }
