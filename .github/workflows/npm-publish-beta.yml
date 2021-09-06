@@ -30,7 +30,7 @@ jobs:
           npm install -g ipfs
           jsipfs init
           jsipfs config --json Addresses.API '["/ip4/127.0.0.1/tcp/5002"]'
-          ipfs daemon &
+          jsipfs daemon &
           yarn install
           yarn test
           yarn publish --non-interactive --tag beta
