@@ -109,7 +109,6 @@ exports.getRulesController = async function (memoryReplSet) {
     );
 }
 
-
 exports.sendRuleRequest = async function sendRequest(data, code = 200) {
     const response = await axios.post(exports.serverUrl, data);
     expect(response.status).equal(code);

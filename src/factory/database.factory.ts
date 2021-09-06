@@ -13,7 +13,7 @@ import {DeleteModel} from '../model/delete-model';
 import {BFastDatabaseOptions} from '../bfast-database.option';
 import {TreeController} from 'bfast-database-tree';
 import {File as web3File, Web3Storage,} from 'web3.storage';
-import {CID, create, IPFS} from "ipfs-core";
+import {CID, create, IPFSHTTPClient} from "ipfs-http-client";
 import itToStream from 'it-to-stream';
 import {Buffer} from "buffer";
 import {v4} from 'uuid';
@@ -27,7 +27,7 @@ const treeController = new TreeController();
 
 export class DatabaseFactory implements DatabaseAdapter {
 
-    static ipfs: IPFS;
+    static ipfs: IPFSHTTPClient;
     private static mongoClient: MongoClient;
 
     constructor(private readonly config: BFastDatabaseOptions) {
@@ -38,63 +38,27 @@ export class DatabaseFactory implements DatabaseAdapter {
 
     async ensureIpfs() {
         if (!DatabaseFactory.ipfs) {
-            DatabaseFactory.ipfs = await create();
+            DatabaseFactory.ipfs = await create({
+                port: 5002
+            });
         }
     }
 
-    async dataCid(
+    async generateCidFromData(
         data: { [k: string]: any },
         buffer: Buffer,
         domain: string
     ): Promise<{ cid: string, size: number }> {
         if (this.config.useLocalIpfs) {
-            if (!DatabaseFactory.ipfs) {
-                await new Promise((resolve, _) => {
-                    setTimeout(_ => {
-                        resolve('');
-                        return this.dataCid(data, buffer, domain);
-                    }, 500);
-                });
-            }
             devLog('use local ipfs');
-            try {
-                const r = await DatabaseFactory.ipfs.add(buffer, {
-                    wrapWithDirectory: false
-                });
-                devLog('done save file to local ipfs with cid', r.cid.toString());
-                DatabaseFactory.ipfs.pin.add(r.cid).catch(console.log);
-                return {
-                    cid: r.cid.toString(),
-                    size: r.size
-                }
-            } catch (e) {
-                devLog('error save file to ipfs', e);
-                throw e;
-            }
+            return this.generateCidFromLocalIpfsNode(buffer);
         } else {
             devLog('use web3 ipfs');
-            try {
-                const file = new web3File([buffer], `${domain}_${data._id}`);
-                const r = await web3Storage.put(
-                    [file],
-                    {
-                        wrapWithDirectory: false,
-                        // name: data?._id ? `${domain}_${data?._id}` : undefined,
-                    }
-                );
-                devLog('done save file to web3 ipfs with cid', r);
-                return {
-                    cid: r,
-                    size: 0
-                }
-            } catch (e) {
-                devLog('error save file to web3', e);
-                throw e;
-            }
+            return this.generateCidFromWeb3IpfsNode(buffer, domain, data);
         }
     }
 
-    async getDataFromCid(
+    async generateDataFromCid(
         cid: string,
         options: { json?: boolean, start?: number, end?: number, stream?: boolean } = {
             json: true,
@@ -103,54 +67,16 @@ export class DatabaseFactory implements DatabaseAdapter {
             end: undefined
         }
     ): Promise<object | ReadableStream | Buffer> {
-        if (!DatabaseFactory.ipfs) {
-            await new Promise((resolve, _) => {
-                setTimeout(_ => {
-                    resolve('');
-                    return this.getDataFromCid(cid, options);
-                }, 500);
-            });
-        }
-        /*
-        let exist: boolean;
-        if (!this.config.useLocalIpfs) {
-            devLog('check cid in web3 ipfs');
-            try {
-                const data = await web3Storage.get(cid);
-                if (data.ok && await data.files) {
-                    exist = true;
-                    devLog('cid exists in web3 ipfs');
-                } else {
-                    exist = false;
-                    devLog('cid not exists in web3 ipfs', await data.text());
-                }
-            } catch (e) {
-                devLog('cid not exists in web3 ipfs', e);
-                exist = false;
-            }
-        } else {
-            exist = true;
-        }
-        if (exist === false) {
+        if ((await this.checkIfWeHaveCidInWeb3(cid)) === false) {
             return null;
         }
-         */
-        devLog('____start fetch cid with jsipfs_______');
-        let results = null;
-        try {
-            results = DatabaseFactory.ipfs.cat(cid, {
-                offset: (options && options.json === false && options.start) ? options.start : undefined,
-                length: (options && options.json === false && options.end) ? options.end : undefined,
-                timeout: 60000 * 5
-            });
-            DatabaseFactory.ipfs.pin.add(CID.parse(cid)).catch(console.log);
-        } catch (e) {
-            console.log(e);
-        }
-        if (results === null){
-            devLog('____cid content NOT found with jsipfs______');
-            return null;
-        }
+        devLog('____start fetch cid content with jsipfs_______');
+        const results = await DatabaseFactory.ipfs.cat(cid, {
+            offset: (options && options.json === false && options.start) ? options.start : undefined,
+            length: (options && options.json === false && options.end) ? options.end : undefined,
+            timeout: 1000 * 60 * 5,
+        });
+        DatabaseFactory.ipfs.pin.add(CID.parse(cid)).catch(console.log);
         devLog('____cid content found with jsipfs______');
         if (options?.json === true) {
             let data = '';
@@ -172,11 +98,10 @@ export class DatabaseFactory implements DatabaseAdapter {
         }
     }
 
-    private nodeProcess(cid: string) {
+    private whenWantToSaveADataNodeToATree(cid: string) {
         return {
             nodeHandler: async ({path, node}) => {
-                const keys = Object.keys(node);
-                for (const key of keys) {
+                for (const key of Object.keys(node)) {
                     let $setMap = {};
                     if (typeof node[key] === "object") {
                         $setMap = Object.keys(node[key]).reduce((a, b) => {
@@ -206,7 +131,11 @@ export class DatabaseFactory implements DatabaseAdapter {
         }
     }
 
-    private async nodeSearchResult(nodeTable: string, targetNodeId: any, db: Db): Promise<{ value: any, _id: string }> {
+    private async nodeSearchResult(
+        nodeTable: string,
+        targetNodeId: any,
+        db: Db
+    ): Promise<{ value: any, _id: string }> {
         if (typeof targetNodeId === "object" && targetNodeId?.hasOwnProperty('$fn')) {
             devLog('handle query by expression', targetNodeId.$fn);
             const cursor = db.collection(nodeTable).find({});
@@ -238,77 +167,20 @@ export class DatabaseFactory implements DatabaseAdapter {
     ): Promise<any[] | number> {
         const nodesPathList = Object.keys(mapOfNodesToQuery);
         const db = await this.mDb();
-        let cids = [];
-        const cidMap = {};
         if (nodesPathList.length === 0) {
             devLog('try to get all data on this node', `${domain}__id`);
-            let result = await db.collection(`${domain}__id`).find({}).toArray();
-            if (result && Array.isArray(result)) {
-                if (queryModel?.size && queryModel?.size > 0) {
-                    const skip = (queryModel.skip && queryModel.skip >= 1) ? queryModel.skip : 0;
-                    result = result.slice(skip, (queryModel.size + skip));
-                }
-                if (queryModel?.count === true) {
-                    return result.length;
-                }
-                const datas = [];
-                devLog('total cids to fetch data from', result.length);
-                const _all_p = result.map(x => {
-                    return this.getDataFromCid(x?.value, {
-                        json: true
-                    });
-                });
-                const _all = await Promise.all(_all_p);
-                return _all.filter(b => b !== null);
-            } else {
-                return [];
-            }
-        }
-        for (const nodePath of nodesPathList) {
-            const nodeTable = DatabaseFactory.nodeTable(nodePath);
-            const targetNodeId = mapOfNodesToQuery[nodePath];
-            let result = await this.nodeSearchResult(
-                nodeTable,
-                targetNodeId,
-                db
+            return this.getAllContentsFromTreeTable(
+                db,
+                domain,
+                queryModel
             );
-            if (result && result.value) {
-                if (typeof result.value === "object") {
-                    result = await DatabaseFactory.pruneNode(
-                        result,
-                        nodeTable,
-                        domain,
-                        db
-                    );
-                    for (const v of Object.values<string>(result.value)) {
-                        cids.push(v);
-                        if (cidMap[v]) {
-                            cidMap[v] += 1;
-                        } else {
-                            cidMap[v] = 1;
-                        }
-                    }
-                } else if (typeof result.value === 'string') {
-                    result = await DatabaseFactory.pruneNodeWithStringValue(
-                        targetNodeId,
-                        result,
-                        nodeTable,
-                        domain,
-                        db
-                    );
-                    if (result && result.value) {
-                        cids.push(result.value);
-                        if (cidMap[result.value]) {
-                            cidMap[result.value] += 1;
-                        } else {
-                            cidMap[result.value] = 1;
-                        }
-                    }
-                }
-            }
         }
-        cids = cids.filter(x => cidMap[x] === nodesPathList.length).reduce((a, b) => a.add(b), new Set());
-        cids = Array.from(cids);
+        let cids = await this.processTreeSearchResultToCidList(
+            mapOfNodesToQuery,
+            nodesPathList,
+            domain,
+            db
+        );
         if (queryModel?.size && queryModel?.size > 0) {
             const skip = (queryModel.skip && queryModel.skip >= 0) ? queryModel.skip : 0;
             cids = cids.slice(skip, (queryModel.size + skip));
@@ -318,7 +190,7 @@ export class DatabaseFactory implements DatabaseAdapter {
         }
         devLog('total cids to fetch data from', cids.length);
         const _all_p = cids.map(x => {
-            return this.getDataFromCid(x, {
+            return this.generateDataFromCid(x, {
                 json: true
             });
         });
@@ -456,9 +328,12 @@ export class DatabaseFactory implements DatabaseAdapter {
         options?: DatabaseWriteOptions
     ): Promise<any[]> {
         for (const _data of data) {
-            const buffer = Buffer.from(JSON.stringify({..._data}));
-            const {cid} = await this.dataCid({..._data}, buffer, domain);
-            await treeController.objectToTree({..._data}, domain, this.nodeProcess(cid.toString()));
+            await this.writeOne(
+                domain,
+                _data,
+                context,
+                options
+            );
         }
         return data;
     }
@@ -470,8 +345,8 @@ export class DatabaseFactory implements DatabaseAdapter {
         options?: DatabaseWriteOptions
     ): Promise<any> {
         const buffer = Buffer.from(JSON.stringify(data));
-        const {cid} = await this.dataCid(data, buffer, domain);
-        await treeController.objectToTree({...data}, domain, this.nodeProcess(cid.toString()));
+        const {cid} = await this.generateCidFromData(data, buffer, domain);
+        await treeController.objectToTree(data, domain, this.whenWantToSaveADataNodeToATree(cid.toString()));
         return data;
     }
 
@@ -507,7 +382,9 @@ export class DatabaseFactory implements DatabaseAdapter {
             return null;
         }
         const cid = result.value;
-        return this.getDataFromCid(cid);
+        return this.generateDataFromCid(cid, {
+            json: true
+        });
     }
 
     async findMany<T extends BasicAttributesModel>(
@@ -666,5 +543,141 @@ export class DatabaseFactory implements DatabaseAdapter {
             }
             return newDoc;
         }
+    }
+
+    async generateCidFromLocalIpfsNode(buffer: Buffer) {
+        const r = await DatabaseFactory.ipfs.add(buffer, {
+            wrapWithDirectory: false
+        });
+        devLog('done save file to local ipfs with cid', r.cid.toString());
+        DatabaseFactory.ipfs.pin.add(r.cid).catch(console.log);
+        return {
+            cid: r.cid.toString(),
+            size: r.size
+        }
+    }
+
+    async generateCidFromWeb3IpfsNode(buffer: Buffer, domain: string, data: { [k: string]: any }) {
+        // try {
+        const file = new web3File([buffer], `${domain}_${data._id}`);
+        const r = await web3Storage.put(
+            [file],
+            {
+                wrapWithDirectory: false,
+                // name: data?._id ? `${domain}_${data?._id}` : undefined,
+            }
+        );
+        devLog('done save file to web3 ipfs with cid', r);
+        return {
+            cid: r,
+            size: 0
+        }
+        // } catch (e) {
+        //     devLog('error save file to web3', e);
+        //     throw e;
+        // }
+    }
+
+    async checkIfWeHaveCidInWeb3(cid: string) {
+        if (/* when testing */this.config.useLocalIpfs === true) {
+            return true;
+        } else {
+            devLog('check cid in web3 ipfs');
+            // try {
+            const data = await web3Storage.get(cid);
+            if (data.ok && await data.files) {
+                devLog('cid exists in web3 ipfs');
+                return true;
+            } else {
+                devLog('cid not exists in web3 ipfs', await data.text());
+                return false;
+            }
+            // } catch (e) {
+            //     devLog('cid not exists in web3 ipfs', e);
+            //     return false;
+            // }
+        }
+    }
+
+    async getAllContentsFromTreeTable(
+        db: Db,
+        domain: string,
+        queryModel: QueryModel<any>,
+    ): Promise<any[] | number> {
+        let result = await db.collection(`${domain}__id`).find({}).toArray();
+        if (result && Array.isArray(result)) {
+            if (queryModel?.size && queryModel?.size > 0) {
+                const skip = (queryModel.skip && queryModel.skip >= 1) ? queryModel.skip : 0;
+                result = result.slice(skip, (queryModel.size + skip));
+            }
+            if (queryModel?.count === true) {
+                return result.length;
+            }
+            devLog('total cids to fetch data from', result.length);
+            const _all_p = result.map(x => {
+                return this.generateDataFromCid(x?.value, {
+                    json: true
+                });
+            });
+            const _all = await Promise.all(_all_p);
+            return _all.filter(b => b !== null);
+        } else {
+            return [];
+        }
+    }
+
+    async processTreeSearchResultToCidList(
+        mapOfNodesToQuery,
+        nodesPathList,
+        domain: string,
+        db: Db): Promise<string[]> {
+        let cids = [];
+        const cidMap = {};
+        for (const nodePath of nodesPathList) {
+            const nodeTable = DatabaseFactory.nodeTable(nodePath);
+            const targetNodeId = mapOfNodesToQuery[nodePath];
+            let result = await this.nodeSearchResult(
+                nodeTable,
+                targetNodeId,
+                db
+            );
+            if (result && result.value) {
+                if (typeof result.value === "object") {
+                    result = await DatabaseFactory.pruneNode(
+                        result,
+                        nodeTable,
+                        domain,
+                        db
+                    );
+                    for (const v of Object.values<string>(result.value)) {
+                        cids.push(v);
+                        if (cidMap[v]) {
+                            cidMap[v] += 1;
+                        } else {
+                            cidMap[v] = 1;
+                        }
+                    }
+                } else if (typeof result.value === 'string') {
+                    result = await DatabaseFactory.pruneNodeWithStringValue(
+                        targetNodeId,
+                        result,
+                        nodeTable,
+                        domain,
+                        db
+                    );
+                    if (result && result.value) {
+                        cids.push(result.value);
+                        if (cidMap[result.value]) {
+                            cidMap[result.value] += 1;
+                        } else {
+                            cidMap[result.value] = 1;
+                        }
+                    }
+                }
+            }
+        }
+        cids = cids.filter(x => cidMap[x] === nodesPathList.length).reduce((a, b) => a.add(b), new Set());
+        cids = Array.from(cids);
+        return cids;
     }
 }

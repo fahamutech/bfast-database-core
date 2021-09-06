@@ -349,5 +349,16 @@ describe('RulesController', function () {
                 }
             ]);
         });
+
+        // it('should query many data', async function () {
+        //     this.timeout(100000000000000);
+        //     const results = await _rulesController.handleQueryRules({
+        //         querysales: {
+        //             filter: {},
+        //             return: []
+        //         }
+        //     }, { errors: {} });
+        //     console.log(results)
+        // });
     });
 });

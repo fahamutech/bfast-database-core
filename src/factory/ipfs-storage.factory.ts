@@ -87,7 +87,7 @@ export class IpfsStorageFactory implements FilesAdapter {
         );
         file = IpfsStorageFactory.sanitize4User(file);
         if (file && file.cid) {
-            const data = await this.databaseFactory.getDataFromCid(file.cid, {
+            const data = await this.databaseFactory.generateDataFromCid(file.cid, {
                 json: false,
                 stream: asStream
             });
@@ -143,7 +143,7 @@ export class IpfsStorageFactory implements FilesAdapter {
                 "Content-Length": `${end - start + 1}`,
                 "Content-Type": file.type
             });
-            const buffer = await this.databaseFactory.getDataFromCid(file.cid, {
+            const buffer = await this.databaseFactory.generateDataFromCid(file.cid, {
                 json: false,
                 stream: true,
                 start: start,
@@ -215,7 +215,7 @@ export class IpfsStorageFactory implements FilesAdapter {
             type: contentType,
             cid: null
         });
-        const dataRes = await this.databaseFactory.dataCid(_obj, data, this.domain);
+        const dataRes = await this.databaseFactory.generateCidFromData(_obj, data, this.domain);
         _obj.cid = dataRes.cid;
         // _obj.cidSize = dataRes.size;
         _obj.size = size;

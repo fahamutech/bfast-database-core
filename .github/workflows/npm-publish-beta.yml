@@ -27,9 +27,15 @@ jobs:
       - name: publish to npm@beta
         run: |
           npm install -g yarn
+          npm install -g ipfs
+          jsipfs init
+          jsipfs config --json Addresses.API '["/ip4/127.0.0.1/tcp/5002"]'
+          ipfs daemon &
           yarn install
-          yarn run test
+          yarn test
           yarn publish --non-interactive --tag beta
+
+#jsipfs config --json API.HTTPHeaders.Access-Control-Allow-Origin '["*"]'
         env:
           CI: true
           NPM_TOKEN: ${{secrets.NPM_TOKEN}}
