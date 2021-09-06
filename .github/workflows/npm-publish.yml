@@ -3,13 +3,11 @@ name: Publish to npm
 on:
   push:
     branches:
-      - master
+      - beta
 
 jobs:
   build:
-
     runs-on: ubuntu-20.04
-
     strategy:
       matrix:
         node-version: [14.x]
@@ -26,12 +24,18 @@ jobs:
         with:
           image-version: latest
           port: 27017
-      - name: publish to npm@latest
+      - name: publish to npm@beta
         run: |
           npm install -g yarn
+          npm install -g ipfs
+          jsipfs init
+          jsipfs config --json Addresses.API '["/ip4/127.0.0.1/tcp/5001"]'
+          jsipfs daemon &
           yarn install
-          yarn run test
+          yarn test
           yarn publish --non-interactive
+
+        #jsipfs config --json API.HTTPHeaders.Access-Control-Allow-Origin '["*"]'
         env:
           CI: true
           NPM_TOKEN: ${{secrets.NPM_TOKEN}}
