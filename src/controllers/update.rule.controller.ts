@@ -9,7 +9,7 @@ export class UpdateRuleController {
         updateRuleRequest: UpdateRuleRequestModel,
         databaseController: DatabaseController,
         transactionSession: any
-    }): Promise<any[]> {
+    }): Promise<any[] | string> {
         if (!data.updateRuleRequest?.update) {
             throw new Error('Please update field is required, which contains properties to update a document');
         }
@@ -18,40 +18,28 @@ export class UpdateRuleController {
             delete data.updateRuleRequest.filter;
             filter._id = data.updateRuleRequest.id;
             data.updateRuleRequest.filter = filter;
-            return await data.databaseController.update(data.domain, data.updateRuleRequest, data.rules?.context, {
-                bypassDomainVerification: data.rules?.context?.useMasterKey === true,
-                transaction: data.transactionSession
-            });
+            return data.databaseController.updateOne(
+                data.domain,
+                data.updateRuleRequest,
+                data.rules?.context,
+                {
+                    bypassDomainVerification: data.rules?.context?.useMasterKey === true,
+                    transaction: data.transactionSession
+                }
+            );
         } else if (data.updateRuleRequest?.filter) {
-            // return data.databaseController.updateMany(
-            //     data.domain,
-            //     data.updateRuleRequest,
-            //     data.rules.context,
-            //     {
-            //         bypassDomainVerification: data.rules?.context?.useMasterKey === true,
-            //     }
-            // );
             if (data.updateRuleRequest?.filter && Object.keys(data.updateRuleRequest?.filter).length === 0) {
                 throw new Error('Empty map is not supported in update rule');
             }
-            const query: any[] = await data.databaseController.query(data.domain, data.updateRuleRequest, data.rules.context, {
-                bypassDomainVerification: data.rules?.context?.useMasterKey === true,
-                transaction: data.transactionSession
-            });
-            const updateResults = [];
-            if (query && Array.isArray(query)) {
-                for (const value of query) {
-                    data.updateRuleRequest.filter = {
-                        _id: value.id
-                    };
-                    const result = await data.databaseController.update(data.domain, data.updateRuleRequest, data.rules?.context, {
-                        bypassDomainVerification: data.rules?.context?.useMasterKey === true,
-                        transaction: data.transactionSession
-                    });
-                    updateResults.push(result);
+            return data.databaseController.updateMany(
+                data.domain,
+                data.updateRuleRequest,
+                data.rules.context,
+                {
+                    bypassDomainVerification: data.rules?.context?.useMasterKey === true,
+                    transaction: data.transactionSession
                 }
-            }
-            return updateResults;
+            )
         } else {
             throw new Error('Bad data format in update rule, no filter nor id');
         }

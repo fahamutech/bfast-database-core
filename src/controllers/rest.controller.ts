@@ -4,51 +4,40 @@ import {RulesController} from './rules.controller';
 import {RuleResponse} from '../model/rules.model';
 import {StorageController} from './storage.controller';
 import {AuthController} from './auth.controller';
-import {UpdateRuleController} from './update.rule.controller';
-import {PassThrough} from 'stream';
 import {BFastDatabaseOptions} from '../bfast-database.option';
-
 import formidable from 'formidable';
-import {LogController} from './log.controller';
-
-let restSecurity: SecurityController;
-let restAuthController: AuthController;
-let restStorageController: StorageController;
-let restConfig: BFastDatabaseOptions;
+import {readFile} from 'fs';
+import {promisify} from "util";
+import mime from 'mime'
 
 export class RestController {
-    constructor(_restSecurity: SecurityController,
-                _restAuthController: AuthController,
-                _restStorageController: StorageController,
-                _restConfig: BFastDatabaseOptions) {
-        restSecurity = _restSecurity;
-        restAuthController = _restAuthController;
-        restStorageController = _restStorageController;
-        restConfig = _restConfig;
+    constructor(private readonly securityController: SecurityController,
+                private readonly authController: AuthController,
+                private readonly storageController: StorageController,
+                private readonly rulesController: RulesController,
+                private readonly config: BFastDatabaseOptions) {
     }
 
     getFile(request: any, response: any, _: any): void {
-        if (restStorageController.isS3() === true) {
-            restStorageController.handleGetFileBySignedUrl(request, response, !!request.query.thumbnail);
-            return;
+        if (request?.method?.toString()?.toLowerCase() === 'head') {
+            this.storageController.fileInfo(request, response);
+        } else if (this.storageController.isS3() === true) {
+            this.storageController.handleGetFileBySignedUrl(request, response, false);
         } else {
-            restStorageController.getFileData(request, response, false);
-            return;
+            this.storageController.handleGetFileRequest(request, response, false);
         }
     }
 
     getThumbnail(request: any, response: any, _: any): void {
-        if (restStorageController.isS3() === true) {
-            restStorageController.handleGetFileBySignedUrl(request, response, true);
-            return;
+        if (this.storageController.isS3() === true) {
+            this.storageController.handleGetFileBySignedUrl(request, response, true);
         } else {
-            restStorageController.getFileData(request, response, true);
-            return;
+            this.storageController.handleGetFileRequest(request, response, true);
         }
     }
 
     getAllFiles(request: any, response: any, _: any): void {
-        restStorageController.listFiles({
+        this.storageController.listFiles({
             skip: request.query.skip ? request.query.skip as number : 0,
             after: request.query.after,
             size: request.query.size ? request.query.size as number : 20,
@@ -61,60 +50,72 @@ export class RestController {
     }
 
     multipartForm(request: any, response: any, _: any): void {
+        const contentType = request.get('content-type').split(';')[0].toString().trim();
+        if (contentType !== 'multipart/form-data'.trim()) {
+            response.status(StatusCodes.BAD_REQUEST).json({message: 'Accept only multipart request'});
+            return;
+        }
         const form = formidable({
             multiples: true,
             maxFileSize: 10 * 1024 * 1024 * 1024,
             keepExtensions: true
         });
-        const passThrough = new PassThrough();
-        const fileMeta: { name: string, type: string } = {name: undefined, type: undefined};
-        form.onPart = part => {
-            if (!part.filename) {
-                form.handlePart(part);
-                return;
-            }
-            const regx = /[^0-9a-z.]/gi;
-            fileMeta.name = part.filename
-                .toString()
-                .replace(regx, '');
-            fileMeta.type = part.mime;
-            part.on('data', (buffer) => {
-                passThrough.write(buffer);
-            });
-            part.on('end', () => {
-                passThrough.end();
-            });
-        };
-        form.parse(request, async (err, _0, _1) => {
+        form.parse(request, async (err, fields, files) => {
             try {
                 if (err) {
                     response.status(StatusCodes.BAD_REQUEST).send(err.toString());
                     return;
                 }
+                // console.log(fields, '--------> parsed fields');
+                // console.log(files, '--------> parsed files');
                 const urls = [];
-                if (request && request.query && request.query.pn && request.query.pn.toString() === 'true') {
+                if (request && request.query && request.query.pn && request.query.pn.trim().toLowerCase() === 'true') {
                     request.body.context.storage = {preserveName: true};
                 } else {
                     request.body.context.storage = {preserveName: false};
                 }
-                const result = await restStorageController.saveFromBuffer({
-                    data: passThrough as any,
-                    type: fileMeta.type,
-                    filename: fileMeta.name
-                }, request.body.context);
-                urls.push(result);
+                for (const file of Object.values<any>(files)) {
+                    const fileMeta: { name: string, type: string } = {name: undefined, type: undefined};
+                    const regx = /[^0-9a-z.]/gi;
+                    fileMeta.name = file.name ? file.name : 'noname'
+                        .toString()
+                        .replace(regx, '');
+                    fileMeta.type = file.type;
+                    const result = await this.storageController.saveFromBuffer({
+                        data: await promisify(readFile)(file.path),
+                        type: fileMeta.type,
+                        size: file.size,
+                        name: fileMeta.name
+                    }, request.body.context);
+                    urls.push(result);
+                }
+                for (const f_key of Object.keys(fields)) {
+                    const fileMeta: { name: string, type: string } = {name: undefined, type: undefined};
+                    const regx = /[^0-9a-z.]/gi;
+                    fileMeta.name = f_key
+                        .toString()
+                        .replace(regx, '');
+
+                    fileMeta.type = mime.getType(f_key);
+                    const result = await this.storageController.saveFromBuffer({
+                        data: Buffer.from(fields[f_key]),
+                        type: fileMeta.type,
+                        size: fields[f_key]?.length,
+                        name: fileMeta.name
+                    }, request.body.context);
+                    urls.push(result);
+                }
                 response.status(StatusCodes.OK).json({urls});
             } catch (e) {
                 console.log(e);
                 response.status(StatusCodes.BAD_REQUEST).end(e.toString());
             }
         });
-        return;
     }
 
     verifyApplicationId(request: any, response: any, next: any): void {
         const applicationId = request.body.applicationId;
-        if (applicationId === restConfig.applicationId) {
+        if (applicationId === this.config.applicationId) {
             request.body.context = {
                 applicationId
             };
@@ -125,7 +126,7 @@ export class RestController {
     }
 
     filePolicy(request: any, response: any, next: any): void {
-        restAuthController.hasPermission(request.body.ruleId, request.body.context).then(value => {
+        this.authController.hasPermission(request.body.ruleId, request.body.context).then(value => {
             if (value === true) {
                 next();
             } else {
@@ -141,7 +142,7 @@ export class RestController {
         const headerToken = request.headers['x-bfast-token'];
         const masterKey = request.body.masterKey;
 
-        if (masterKey === restConfig.masterKey) {
+        if (masterKey === this.config.masterKey) {
             request.body.context.auth = true;
             request.body.context.uid = "masterKey";
             request.body.context.masterKey = masterKey;
@@ -151,8 +152,8 @@ export class RestController {
         }
 
         request.body.context.useMasterKey = false;
-        if(token && token !== ''){
-            restSecurity.verifyToken(token).then(value => {
+        const vToken = () => {
+            this.securityController.verifyToken(token).then(value => {
                 request.body.context.auth = true;
                 request.body.context.uid = value.uid;
                 next();
@@ -162,18 +163,12 @@ export class RestController {
                 next();
                 // response.status(httpStatus.UNAUTHORIZED).json({message: 'bad token', code: -1});
             });
-        }else if(headerToken && headerToken!==''){
-            restSecurity.verifyToken(headerToken).then(value => {
-                request.body.context.auth = true;
-                request.body.context.uid = value.uid;
-                next();
-            }).catch(_ => {
-                request.body.context.auth = false;
-                request.body.context.uid = null;
-                next();
-                // response.status(httpStatus.UNAUTHORIZED).json({message: 'bad token', code: -1});
-            });
-        }else {
+        }
+        if (token && token !== '') {
+            vToken();
+        } else if (headerToken && headerToken !== '') {
+            vToken();
+        } else {
             request.body.context.auth = false;
             request.body.context.uid = null;
             next();
@@ -203,25 +198,20 @@ export class RestController {
     handleRuleBlocks(request: any, response: any, _: any): void {
         const body = request.body;
         const results: RuleResponse = {errors: {}};
-        const rulesController = new RulesController(new UpdateRuleController(), new LogController(restConfig), restConfig);
-        rulesController.handleIndexesRule(body, results).then(__ => {
-            return rulesController.handleAuthenticationRule(body, results);
-        }).then(_1 => {
-            return rulesController.handleAuthorizationRule(body, results);
+        this.rulesController.handleAuthenticationRule(body, results).then(_1 => {
+            return this.rulesController.handleAuthorizationRule(body, results);
         }).then(_2 => {
-            return rulesController.handleCreateRules(body, results);
+            return this.rulesController.handleCreateRules(body, results);
         }).then(_3 => {
-            return rulesController.handleUpdateRules(body, results);
+            return this.rulesController.handleUpdateRules(body, results);
         }).then(_4 => {
-            return rulesController.handleDeleteRules(body, results);
+            return this.rulesController.handleDeleteRules(body, results);
         }).then(_5 => {
-            return rulesController.handleQueryRules(body, results);
+            return this.rulesController.handleQueryRules(body, results);
         }).then(_6 => {
-            return rulesController.handleTransactionRule(body, results);
-        }).then(_7 => {
-            return rulesController.handleAggregationRules(body, results);
+            return this.rulesController.handleBulkRule(body, results);
         }).then(_8 => {
-            return rulesController.handleStorageRule(body, results);
+            return this.rulesController.handleStorageRule(body, results);
         }).then(_9 => {
             if (!(results.errors && Object.keys(results.errors).length > 0)) {
                 delete results.errors;
@@ -230,6 +220,9 @@ export class RestController {
         }).catch(reason => {
             response.status(httpStatus.EXPECTATION_FAILED).json({message: reason.message ? reason.message : reason.toString()});
         });
+        //     .then(_7 => {
+        //     return this.rulesController.handleAggregationRules(body, results);
+        // })
     }
 
 }

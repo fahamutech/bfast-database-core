@@ -1,80 +1,77 @@
-import {BFast} from 'bfastnode';
+import {functions} from 'bfast';
 import {RestController} from '../controllers/rest.controller';
 import {FunctionsModel} from '../model/functions.model';
 
 
-let restController: RestController;
-
 export class StorageWebservice {
-    constructor(rest: RestController) {
-        restController = rest;
+    constructor(private readonly restController: RestController) {
     }
 
-    private static handleGetFile(): any[] {
+    private handleGetFile(): any[] {
         return [
             (request, _, next) => {
                 request.body.applicationId = request.params.appId;
                 request.body.ruleId = 'files.read';
                 next();
             },
-            restController.verifyApplicationId,
-            restController.verifyToken,
-            restController.filePolicy,
-            restController.getFile
+            (rq, rs, n) => this.restController.verifyApplicationId(rq, rs, n),
+            (rq, rs, n) => this.restController.verifyToken(rq, rs, n),
+            (rq, rs, n) => this.restController.filePolicy(rq, rs, n),
+            (rq, rs, n) => this.restController.getFile(rq, rs, n)
         ];
     }
 
-    private static handleUploadFile(): any[] {
+    private handleUploadFile(): any[] {
         return [
             (request, response, next) => {
                 request.body.applicationId = request.params.appId;
                 request.body.ruleId = 'files.save';
                 next();
             },
-            restController.verifyApplicationId,
-            restController.verifyToken,
-            restController.filePolicy,
-            restController.multipartForm
+            (rq, rs, n) => this.restController.verifyApplicationId(rq, rs, n),
+            (rq, rs, n) => this.restController.verifyToken(rq, rs, n),
+            (rq, rs, n) => this.restController.filePolicy(rq, rs, n),
+            (rq, rs, n) => this.restController.multipartForm(rq, rs, n)
         ];
     }
 
-    private static handleGetThumbnail(): any[] {
+    private handleGetThumbnail(): any[] {
         return [
             (request, _, next) => {
                 request.body.applicationId = request.params.appId;
                 request.body.ruleId = 'files.read';
                 next();
             },
-            restController.verifyApplicationId,
-            restController.verifyToken,
-            restController.filePolicy,
-            restController.getThumbnail
+            (rq, rs, n) => this.restController.verifyApplicationId(rq, rs, n),
+            (rq, rs, n) => this.restController.verifyToken(rq, rs, n),
+            (rq, rs, n) => this.restController.filePolicy(rq, rs, n),
+            (rq, rs, n) => this.restController.getThumbnail(rq, rs, n)
         ];
     }
 
-    private static handleListFiles(): any[] {
+    private handleListFiles(): any[] {
         return [
             (request, _, next) => {
                 request.body.applicationId = request.params.appId;
                 request.body.ruleId = 'files.list';
                 next();
             },
-            restController.verifyApplicationId,
-            restController.verifyToken,
-            restController.filePolicy,
-            restController.getAllFiles
+            (rq, rs, n) => this.restController.verifyApplicationId(rq, rs, n),
+            (rq, rs, n) => this.restController.verifyToken(rq, rs, n),
+            (rq, rs, n) => this.restController.filePolicy(rq, rs, n),
+            (rq, rs, n) => this.restController.getAllFiles(rq, rs, n)
         ];
     }
 
     getUploadFileV2(prefix = '/'): FunctionsModel {
-        return BFast.functions().onGetHttpRequest(`${prefix}storage/:appId`,
+        return functions().onGetHttpRequest(`${prefix}storage/:appId`,
             (request, response: any) => {
                 // show a file upload form
                 response.writeHead(200, {'content-type': 'text/html'});
                 response.end(`
                     <h2>With Node.js <code>"http"</code> module</h2>
                     <form action="${prefix}storage/${request.params.appId}" enctype="multipart/form-data" method="post">
-                      <div>Text field title: <input type="text" name="file" /></div>
+<!--                      <div>Text field title: <input type="text" name="file" /></div>-->
                       <div>File: <input type="file" name="multipleFiles" multiple="multiple" /></div>
                       <input type="submit" value="Upload" />
                     </form>
@@ -83,38 +80,39 @@ export class StorageWebservice {
     }
 
     getFileStorageV1(prefix = '/'): FunctionsModel {
-        return BFast.functions().onGetHttpRequest(`${prefix}files/:appId/:filename`, StorageWebservice.handleGetFile());
+        return functions().onHttpRequest(`${prefix}files/:appId/:filename`, this.handleGetFile());
     }
 
+
     getFileFromStorage(prefix = '/'): FunctionsModel {
-        return BFast.functions().onGetHttpRequest(`${prefix}storage/:appId/file/:filename`, StorageWebservice.handleGetFile());
+        return functions().onHttpRequest(`${prefix}storage/:appId/file/:filename`, this.handleGetFile());
     }
 
     getFileFromStorageV2(prefix = '/'): FunctionsModel {
-        return BFast.functions().onGetHttpRequest(`${prefix}v2/storage/:appId/file/:filename`, StorageWebservice.handleGetFile());
+        return functions().onHttpRequest(`${prefix}v2/storage/:appId/file/:filename`, this.handleGetFile());
     }
 
     geThumbnailFromStorage(prefix = '/'): FunctionsModel {
-        return BFast.functions().onGetHttpRequest(`${prefix}storage/:appId/file/:filename/thumbnail`, StorageWebservice.handleGetThumbnail());
+        return functions().onGetHttpRequest(`${prefix}storage/:appId/file/:filename/thumbnail`, this.handleGetThumbnail());
     }
 
     geThumbnailFromStorageV2(prefix = '/'): FunctionsModel {
-        return BFast.functions().onGetHttpRequest(`${prefix}v2/storage/:appId/file/:filename/thumbnail`, StorageWebservice.handleGetThumbnail());
+        return functions().onGetHttpRequest(`${prefix}v2/storage/:appId/file/:filename/thumbnail`, this.handleGetThumbnail());
     }
 
     uploadMultiPartFile(prefix = '/'): FunctionsModel {
-        return BFast.functions().onPostHttpRequest(`${prefix}storage/:appId`, StorageWebservice.handleUploadFile());
+        return functions().onPostHttpRequest(`${prefix}storage/:appId`, this.handleUploadFile());
     }
 
     uploadMultiPartFileV2(prefix = '/'): FunctionsModel {
-        return BFast.functions().onPostHttpRequest(`${prefix}v2/storage/:appId`, StorageWebservice.handleUploadFile());
+        return functions().onPostHttpRequest(`${prefix}v2/storage/:appId`, this.handleUploadFile());
     }
 
     getFilesFromStorage(prefix = '/'): FunctionsModel {
-        return BFast.functions().onGetHttpRequest(`${prefix}storage/:appId/list`, StorageWebservice.handleListFiles());
+        return functions().onGetHttpRequest(`${prefix}storage/:appId/list`, this.handleListFiles());
     }
 
     getFilesFromStorageV2(prefix = '/'): FunctionsModel {
-        return BFast.functions().onGetHttpRequest(`${prefix}v2/storage/:appId/list`, StorageWebservice.handleListFiles());
+        return functions().onGetHttpRequest(`${prefix}v2/storage/:appId/list`, this.handleListFiles());
     }
 }

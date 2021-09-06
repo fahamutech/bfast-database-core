@@ -13,6 +13,9 @@ import {QueryModel} from '../model/query-model';
 import {SecurityController} from './security.controller';
 import {ChangesModel} from '../model/changes.model';
 import {ChangeStream} from 'mongodb';
+import {ChangesDocModel} from "../model/changes-doc.model";
+import {AppEventsFactory} from "../factory/app-events.factory";
+import {ConstUtil} from "../utils/const.util";
 
 export class DatabaseController {
 
@@ -44,34 +47,35 @@ export class DatabaseController {
         return this.database.init();
     }
 
-    /**
-     * create a user defined indexes for specified domain
-     * @param domain -
-     * @param indexes -
-     */
-    async addIndexes(domain: string, indexes: any[]): Promise<any> {
-        if (indexes && Array.isArray(indexes)) {
-            return this.database.createIndexes(domain, indexes);
-        } else {
-            throw new Error('Must supply array of indexes to be added');
-        }
-    }
-
-    /**
-     * remove all user defined indexes of the domain
-     * @param domain - resource name
-     */
-    async removeIndexes(domain: string): Promise<boolean> {
-        return this.database.dropIndexes(domain);
-    }
-
-    /**
-     * list all indexes of a domain
-     * @param domain - resource name
-     */
-    async listIndexes(domain: string): Promise<any[]> {
-        return this.database.listIndexes(domain);
-    }
+    //
+    // /**
+    //  * create a user defined indexes for specified domain
+    //  * @param domain -
+    //  * @param indexes -
+    //  */
+    // async addIndexes(domain: string, indexes: any[]): Promise<any> {
+    //     if (indexes && Array.isArray(indexes)) {
+    //         return this.database.createIndexes(domain, indexes);
+    //     } else {
+    //         throw new Error('Must supply array of indexes to be added');
+    //     }
+    // }
+    //
+    // /**
+    //  * remove all user defined indexes of the domain
+    //  * @param domain - resource name
+    //  */
+    // async removeIndexes(domain: string): Promise<boolean> {
+    //     return this.database.dropIndexes(domain);
+    // }
+    //
+    // /**
+    //  * list all indexes of a domain
+    //  * @param domain - resource name
+    //  */
+    // async listIndexes(domain: string): Promise<any[]> {
+    //     return this.database.listIndexes(domain);
+    // }
 
     /**
      * perform a single write operation in a database
@@ -80,16 +84,55 @@ export class DatabaseController {
      * @param context current operation context
      * @param options database write operation options
      */
-    async writeOne<T extends BasicAttributesModel>(domain: string, data: T, context: ContextBlock,
-                                                   options: DatabaseWriteOptions = {bypassDomainVerification: false}): Promise<T> {
+    async writeOne<T extends BasicAttributesModel>(
+        domain: string,
+        data: T,
+        context: ContextBlock,
+        options: DatabaseWriteOptions = {bypassDomainVerification: false}
+    ): Promise<T> {
         if (options && options.bypassDomainVerification === false) {
             await this.handleDomainValidation(domain);
         }
         const returnFields = this.getReturnFields<T>(data);
-        const sanitizedData = this.sanitize4Db(data);
-        const sanitizedDataWithCreateMetadata = this.addCreateMetadata(sanitizedData, context);
-        sanitizedDataWithCreateMetadata._id = await this.database.writeOne<T>(domain, sanitizedDataWithCreateMetadata, context, options);
-        return this.sanitize4User<T>(sanitizedDataWithCreateMetadata, returnFields, []) as T;
+        const sanitizedDataWithCreateMetadata = this.addCreateMetadata(data, context);
+        const sanitizedData = this.sanitize4Db(sanitizedDataWithCreateMetadata);
+        const doc = await this.database.writeOne<T>(domain, sanitizedData, context, options);
+        const cleanDoc = this.sanitize4User<T>(doc, returnFields, []) as T;
+        this.publishChanges(domain, {
+            _id: doc?._id,
+            fullDocument: doc,
+            documentKey: doc?._id,
+            operationType: "create"
+        });
+        return cleanDoc;
+    }
+
+    async writeMany<T extends BasicAttributesModel>(
+        domain: string,
+        data: T[],
+        context: ContextBlock,
+        options: DatabaseWriteOptions = {bypassDomainVerification: false}
+    ): Promise<any[]> {
+        if (options && options.bypassDomainVerification === false) {
+            await this.handleDomainValidation(domain);
+        }
+        const freshData = data.map(value => this.addCreateMetadata(value, context));
+        const returnFieldsMap = freshData.reduce((a, b) => {
+            a[b._id] = b.return;
+            return a;
+        }, {});
+        const sanitizedData = freshData.map(value => this.sanitize4Db(value));
+        const docs = await this.database.writeMany<any>(domain, sanitizedData, context, options);
+        return docs.map(x1 => {
+            const cleanDoc = this.sanitize4User(x1, returnFieldsMap[x1._id], []);
+            this.publishChanges(domain, {
+                _id: x1?._id,
+                fullDocument: x1,
+                documentKey: x1?._id,
+                operationType: "create"
+            });
+            return cleanDoc;
+        });
     }
 
     /**
@@ -99,61 +142,84 @@ export class DatabaseController {
      * @param context - current operation context
      * @param options - bfast::database update options
      */
-    async update(domain: string, updateModel: UpdateRuleRequestModel, context: ContextBlock,
-                 options: DatabaseUpdateOptions = {bypassDomainVerification: false}): Promise<any> {
+    async updateOne(
+        domain: string,
+        updateModel: UpdateRuleRequestModel,
+        context: ContextBlock,
+        options: DatabaseUpdateOptions = {bypassDomainVerification: false}
+    ): Promise<any> {
         if (options && options.bypassDomainVerification === false) {
             await this.handleDomainValidation(domain);
         }
+        if (updateModel.upsert === true) {
+            if (!updateModel.update.hasOwnProperty('$set')) {
+                updateModel.update.$set = {id: this.security.generateUUID()}
+            }
+        }
         const returnFields = this.getReturnFields(updateModel as any);
+        updateModel = this.altUpdateModel(updateModel, context);
+        options.dbOptions = updateModel && updateModel.options ? updateModel.options : {};
+        const updatedDoc = await this.database.updateOne<any, any>(domain, updateModel, context, options);
+        const cleanDoc = this.sanitize4User(updatedDoc, returnFields, []);
+        this.publishChanges(domain, {
+            _id: updatedDoc?._id,
+            fullDocument: updatedDoc,
+            documentKey: updatedDoc?._id,
+            operationType: "update"
+        });
+        return cleanDoc;
+    }
+
+    private altUpdateModel(updateModel: UpdateRuleRequestModel, context: ContextBlock) {
         updateModel.update = this.sanitizeWithOperator4Db(updateModel?.update as any);
         updateModel.filter = this.sanitizeWithOperator4Db(updateModel?.filter as any);
         updateModel.update = this.addUpdateMetadata(updateModel?.update as any, context);
-        options.dbOptions = updateModel && updateModel.options ? updateModel.options : {};
-        const updatedDoc = await this.database.update<any, any>(domain, updateModel, context, options);
-        return this.sanitize4User(updatedDoc, returnFields, []);
+        return updateModel;
     }
 
-    // async updateMany(domain: string, updateModel: UpdateRuleRequestModel, context: ContextBlock,
-    //                  options: DatabaseUpdateOptions = {bypassDomainVerification: false}) {
-    //     if (updateModel.filter && typeof updateModel.filter === 'object' && Object.keys(updateModel.filter).length > 0) {
-    //         if (options && options.bypassDomainVerification === false) {
-    //             await this.handleDomainValidation(domain);
-    //         }
-    //         const returnFields = this.getReturnFields(updateModel as any);
-    //         updateModel.update = this.sanitizeWithOperator4Db(updateModel?.update as any);
-    //         updateModel.filter = this.sanitizeWithOperator4Db(updateModel?.filter as any);
-    //         updateModel.update = this.addUpdateMetadata(updateModel?.update as any, context);
-    //         options.dbOptions = updateModel && updateModel.options ? updateModel.options : {};
-    //         const updatedDoc = await this.transaction(async session => {
-    //             const queryResults: any[] = await this.query(domain, {
-    //                 filter: updateModel.filter,
-    //                 return: updateModel.return,
-    //                 count: false
-    //             }, context, {
-    //                 bypassDomainVerification: context?.useMasterKey === true,
-    //                 transaction: session
-    //             });
-    //             const updateResults = [];
-    //             if (queryResults && Array.isArray(queryResults)) {
-    //                 for (const value of queryResults) {
-    //                     updateModel.id = value.id;
-    //                     updateModel.filter = {
-    //                         _id: value.id
-    //                     };
-    //                     const result = await this.update(domain, updateModel, context, {
-    //                         bypassDomainVerification: context?.useMasterKey === true,
-    //                         transaction: session
-    //                     });
-    //                     updateResults.push(result);
-    //                 }
-    //             }
-    //             return updateResults;
-    //         });
-    //         // const updatedDoc = await this.database.update<any, any>(domain, updateModel, context, options);
-    //         return this.sanitize4User(updatedDoc, returnFields);
-    //     }
-    //     throw {message: 'you must supply filter object in update model'};
-    // }
+    async updateMany(
+        domain: string,
+        updateModel: UpdateRuleRequestModel,
+        context: ContextBlock,
+        options: DatabaseUpdateOptions = {bypassDomainVerification: false}
+    ): Promise<any[]> {
+        if (
+            updateModel.filter &&
+            typeof updateModel.filter === 'object' &&
+            Object.keys(updateModel.filter).length > 0
+        ) {
+            if (options && options.bypassDomainVerification === false) {
+                await this.handleDomainValidation(domain);
+            }
+            if (updateModel.upsert === true) {
+                if (!updateModel.update.hasOwnProperty('$set')) {
+                    updateModel.update.$set = {}
+                }
+                if (!updateModel.update.$set.hasOwnProperty('_id')) {
+                    updateModel.update.$set._id = this.security.generateUUID();
+                }
+            }
+            updateModel = this.altUpdateModel(updateModel, context);
+            options.dbOptions = updateModel && updateModel.options ? updateModel.options : {};
+            const docs = await this.database.updateMany(
+                domain,
+                updateModel,
+                context,
+                options
+            );
+            return docs.map(_t1 => {
+                const cleanDoc = this.sanitize4User(_t1, updateModel.return, []);
+                this.publishChanges(domain, {
+                    _id: _t1?._id,
+                    fullDocument: _t1,
+                    documentKey: _t1?._id,
+                    operationType: "update"
+                });
+                return cleanDoc;
+            });
+        }
+        throw {message: 'you must supply filter object in update model'};
+    }
 
     /**
      * delete a record from bfast::database
@@ -162,44 +228,37 @@ export class DatabaseController {
      * @param context - current context
      * @param options - configurations
      */
-    async delete(domain: string, deleteModel: DeleteModel<any>, context: ContextBlock,
-                 options: DatabaseBasicOptions = {bypassDomainVerification: false}): Promise<any> {
+    async delete(
+        domain: string,
+        deleteModel: DeleteModel<any>,
+        context: ContextBlock,
+        options: DatabaseBasicOptions = {bypassDomainVerification: false}
+    ): Promise<any> {
         if (options && options.bypassDomainVerification === false) {
             await this.handleDomainValidation(domain);
         }
-        // const returnFields = deleteModel.return;
         deleteModel.filter = this.sanitizeWithOperator4Db(deleteModel?.filter as any);
-        const result = await this.database.deleteOne<any, any>(domain, deleteModel, context, options);
-        return this.sanitize4User(result, ['id'], []);
+        const result = await this.database.delete<any>(domain, deleteModel, context, options);
+        // console.log(result);
+        return result.map(t => {
+            const cleanDoc = this.sanitize4User(t, deleteModel.return, []);
+            this.publishChanges(domain, {
+                _id: t?._id,
+                fullDocument: t,
+                // @ts-ignore
+                documentKey: t?._id,
+                operationType: "delete"
+            });
+            return cleanDoc;
+        });
     }
 
     /**
      * perform a transaction to bfast::database
      * @param operations - callback to return operations to perform
      */
-    async transaction<S>(operations: (session: S) => Promise<any>): Promise<any> {
-        return this.database.transaction(operations);
-    }
-
-    /**
-     * perform aggregation operation to bfast::database
-     * @param domain - resource name
-     * @param pipelines - for now work with mongodb database only
-     * @param context - current operation context
-     * @param options - database write operation
-     */
-    async aggregate(
-        domain: string,
-        pipelines: any[],
-        hashes: string[],
-        context: ContextBlock,
-        options: DatabaseWriteOptions = {bypassDomainVerification: false},
-    ): Promise<any> {
-        if (options && options.bypassDomainVerification === false) {
-            await this.handleDomainValidation(domain);
-        }
-        const results = await this.database.aggregate(domain, pipelines, context, options);
-        return results.map(result => this.sanitize4User(result, [], hashes));
+    async bulk<S>(operations: (session: S) => Promise<any>): Promise<any> {
+        return this.database.bulk(operations);
     }
 
     /**
@@ -210,39 +269,45 @@ export class DatabaseController {
      * @param options - write operation options
      */
     async changes(
-        domain: string, pipeline: any[], listener: (doc: any) => void,
-        options: DatabaseChangesOptions = {bypassDomainVerification: false,resumeToken: undefined}
+        domain: string,
+        pipeline: any[],
+        listener: (doc: ChangesDocModel) => void,
+        options: DatabaseChangesOptions = {bypassDomainVerification: false, resumeToken: undefined}
     ): Promise<ChangeStream> {
         if (options && options.bypassDomainVerification === false) {
             await this.handleDomainValidation(domain);
         }
-        return this.database.changes(domain, pipeline, (doc: ChangesModel) => {
-            if (doc.operationType === 'insert') {
-                listener({
-                    name: 'create',
-                    resumeToken: doc._id,
-                    snapshot: this.sanitize4User(doc.fullDocument, [], [])
-                });
-            } else if (doc.operationType === 'replace') {
-                listener({
-                    name: 'create',
-                    resumeToken: doc._id,
-                    snapshot: this.sanitize4User(doc.fullDocument, [], [])
-                });
-            } else if (doc.operationType === 'update') {
-                listener({
-                    name: 'update',
-                    resumeToken: doc._id,
-                    snapshot: this.sanitize4User(doc.fullDocument, [], [])
-                });
-            } else if (doc.operationType === 'delete') {
-                listener({
-                    name: 'delete',
-                    resumeToken: doc._id,
-                    snapshot: this.sanitize4User(doc.documentKey, [], [])
-                });
-            }
-        }, options.resumeToken);
+        return this.database.changes(
+            domain,
+            pipeline,
+            (doc: ChangesModel) => {
+                switch (doc.operationType) {
+                    case 'create':
+                        listener({
+                            name: 'create',
+                            resumeToken: doc._id,
+                            snapshot: this.sanitize4User(doc.fullDocument, [], [])
+                        });
+                        return;
+                    case 'update':
+                        listener({
+                            name: 'update',
+                            resumeToken: doc._id,
+                            snapshot: this.sanitize4User(doc.fullDocument, [], [])
+                        });
+                        return;
+                    case 'delete':
+                        // console.log(doc,'--------> deleted doc');
+                        listener({
+                            name: 'delete',
+                            resumeToken: doc._id,
+                            snapshot: this.sanitize4User(doc.fullDocument, [], [])
+                        });
+                        return;
+                }
+            },
+            options.resumeToken
+        );
     }
 
     async query(
@@ -266,7 +331,7 @@ export class DatabaseController {
             queryModel = this.sanitizeWithOperator4Db(queryModel as any);
             queryModel.filter = this.sanitizeWithOperator4Db(queryModel?.filter as any);
             queryModel.return = returnFields4Db;
-            const result = await this.database.query(domain, queryModel, context, options);
+            const result = await this.database.findMany(domain, queryModel, context, options);
             if (result && Array.isArray(result)) {
                 return result.map(value => this.sanitize4User(value, returnFields, queryModel?.hashes));
             }
@@ -274,33 +339,23 @@ export class DatabaseController {
         }
     }
 
-    async writeMany<T extends BasicAttributesModel>(domain: string, data: T[], context: ContextBlock,
-                                                    options: DatabaseWriteOptions = {bypassDomainVerification: false}): Promise<any[]> {
-        if (options && options.bypassDomainVerification === false) {
-            await this.handleDomainValidation(domain);
-        }
-        const returnFieldsMap = {};
-        data.forEach((value, index) => {
-            returnFieldsMap[index] = value?.return;
-        });
-        const sanitizedData = data.map(value => this.sanitize4Db(value));
-        const freshData = sanitizedData.map(value => this.addCreateMetadata(value, context));
-        const insertedIds = await this.database.writeMany<any, object>(domain, freshData, context, options);
-        Object.keys(insertedIds).forEach(index => {
-            freshData[index]._id = insertedIds[index];
-            freshData[index] = this.sanitize4User(freshData[index], returnFieldsMap[index], []);
-        });
-        return freshData as any;
-    }
-
     /**
      * add update metadata to a model before update operation in bfast::database
-     * @param data -
-     * @param context -
+     * @param data
+     * @param context
      */
-    addUpdateMetadata<T extends BasicAttributesModel>(data: T, context?: ContextBlock): T {
+    addUpdateMetadata(
+        data: any,
+        context?: ContextBlock
+    ): any {
         if (data && typeof data !== 'boolean') {
-            data.$currentDate = {_updated_at: true};
+            // data.$currentDate = {_updated_at: true};
+            if (data.$set) {
+                data.$set._updated_at = data.$set._updated_at ? data.$set._updated_at : new Date();
+            } else if (data.$inc) {
+                data.$set = {};
+                data.$set._updated_at = new Date();
+            }
             return data;
         }
         return data;
@@ -321,13 +376,17 @@ export class DatabaseController {
      * @param data -
      * @param context -
      */
-    addCreateMetadata<T extends BasicAttributesModel>(data: T, context?: ContextBlock): T {
+    addCreateMetadata<T extends BasicAttributesModel>(
+        data: T,
+        context?: ContextBlock
+    ): T {
         data._created_by = context?.uid;
-        data._created_at = data && data._created_at?data._created_at: new Date();
-        data._updated_at = data && data._updated_at?data._updated_at:new Date();
-        if (data && (data._id === undefined || data._id === null) && typeof data !== 'boolean') {
-            data._id = this.security.generateUUID();
-        }
+        data._created_at = data && data.createdAt ? data.createdAt : new Date();
+        data._updated_at = data && data.updatedAt ? data.updatedAt : new Date();
+        data._id = data && data.id ? data.id : this.security.generateUUID();
+        // if (data && !data.hasOwnProperty('_id')) {
+        //     data._id = this.security.generateUUID();
+        // }
         return data;
     }
 
@@ -436,13 +495,14 @@ export class DatabaseController {
      * sanitize data to return to a request
      * @param data -
      * @param returnFields -
+     * @param hashes
      */
     sanitize4User<T extends BasicAttributesModel>(
         data: T,
         returnFields: string[],
         hashes: string[],
     ): T {
-        if (data === null || data ===undefined) {
+        if (data === null || data === undefined) {
             return null;
         }
         if (data && data.hasOwnProperty('_id')) {
@@ -476,13 +536,12 @@ export class DatabaseController {
         if (data && typeof data.hasOwnProperty('_acl')) {
             delete data._acl;
         }
-        if(!hashes){
+        if (!hashes) {
             hashes = [];
         }
         let returnedData: any = {};
         if (!returnFields && typeof returnFields !== 'boolean') {
             returnedData.id = data.id;
-            // returnedData;
         } else if (returnFields && Array.isArray(returnFields) && returnFields.length === 0) {
             returnedData = data;
         } else {
@@ -494,18 +553,22 @@ export class DatabaseController {
             returnedData.updatedAt = data.updatedAt;
         }
 
-        if(returnedData === null || returnedData === undefined){
+        if (returnedData === null || returnedData === undefined) {
             return null;
         }
         const dataHash = this.security.sha256OfObject(returnedData);
-        const exists = hashes.filter(h=>h===dataHash);
-        if(exists.length === 0){
+        const exists = hashes.filter(h => h === dataHash);
+        if (exists.length === 0) {
             return returnedData;
-        }else if(exists.length===1){
+        } else if (exists.length === 1) {
             return dataHash as any;
-        }else{
+        } else {
             return returnedData;
         }
+    }
+
+    publishChanges(domain: string, change: ChangesModel) {
+        AppEventsFactory.getInstance().pub(ConstUtil.DB_CHANGES_EVENT.concat(domain), change);
     }
 
 }

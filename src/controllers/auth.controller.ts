@@ -3,15 +3,10 @@ import {ContextBlock} from '../model/rules.model';
 import {BasicUserAttributesModel} from '../model/basic-user-attributes.model';
 import {DatabaseController} from './database.controller';
 
-let authAdapter: AuthAdapter;
-let databaseController: DatabaseController;
-
 export class AuthController {
 
-    constructor(auth: AuthAdapter,
-                database: DatabaseController) {
-        authAdapter = auth;
-        databaseController = database;
+    constructor(private readonly authAdapter: AuthAdapter,
+                private readonly databaseController: DatabaseController) {
     }
 
     private policyDomainName = '_Policy';
@@ -32,41 +27,52 @@ export class AuthController {
         }
     }
 
-    async addPolicyRule(ruleId: string, rule: string, context: ContextBlock): Promise<any> {
-        // const rules = await databaseController.query(this.policyDomainName, {
-        //     filter: {
-        //         ruleId
-        //     }
-        // }, context, {
-        //     bypassDomainVerification: context && context.useMasterKey === true
-        // });
-        // if (rules && rules.length > 0) {
-        return databaseController.update(this.policyDomainName, {
-            id: ruleId,
-            filter: {
-                id: ruleId
-            },
-            upsert: true,
-            return: [],
-            update: {
-                $set: {
-                    ruleId: ruleId,
-                    ruleBody: rule,
-                }
-            }
-        }, context, {
-            bypassDomainVerification: context && context.useMasterKey === true
+    private static sanitizePolicy(_p1) {
+        if (_p1.id) {
+            _p1.id = _p1.id.replace('%id', '').replace(new RegExp('[%]', 'ig'), '.');
         }
+        if (_p1.ruleId) {
+            _p1.ruleId = _p1.ruleId.replace(new RegExp('[%]', 'ig'), '.');
+        }
+        if (_p1.ruleBody) {
+            _p1.ruleBody = _p1.ruleBody.replace(new RegExp('[%]', 'ig'), '.');
+        }
+        return _p1;
+    }
+
+    async addPolicyRule(ruleId: string, rule: string, context: ContextBlock): Promise<any> {
+        const _p1 = await this.databaseController.writeOne(this.policyDomainName, {
+                id: ruleId.replace('.', '%').concat('%id'),
+                ruleId: ruleId.replace('.', '%'),
+                ruleBody: rule.replace('.', '%'),
+                return: []
+            }, context, {
+                bypassDomainVerification: context && context.useMasterKey === true
+            }
         );
-        // } else {
-        //     return databaseController.writeOne(this.policyDomainName, {
-        //         ruleId,
-        //         ruleBody: rule,
-        //         return: [],
-        //     }, context, {
-        //         bypassDomainVerification: context && context.useMasterKey === true
-        //     });
-        // }
+        return AuthController.sanitizePolicy(_p1);
+    }
+
+    async listPolicyRule(context: ContextBlock) {
+        const _j1 = await this.databaseController.query('_Policy', {
+            filter: {},
+            return: []
+        }, context, {
+            bypassDomainVerification: true
+        });
+        return _j1.map(x => AuthController.sanitizePolicy(x));
+    }
+
+    async removePolicyRule(ruleId: string, context: ContextBlock) {
+        const _y89 = await this.databaseController.delete('_Policy', {
+            filter: {
+                ruleId: ruleId.replace('.', '%'),
+            },
+            return: ['id'],
+        }, context, {
+            bypassDomainVerification: true
+        });
+        return _y89.map(z => AuthController.sanitizePolicy(z));
     }
 
     /**
@@ -80,24 +86,23 @@ export class AuthController {
         if (context && context?.useMasterKey === true) {
             return true;
         }
-        const filter = {
-            $or: []
-        };
+        const filter = [];
         const originalRule = ruleId;
         let globalRule;
         const ruleIdInArray = ruleId.split('.');
         if (ruleIdInArray.length >= 2) {
             ruleIdInArray[1] = '*';
             globalRule = ruleIdInArray.join('.');
-            filter.$or.push({ruleId: globalRule});
+            filter.push({ruleId: globalRule.replace('.', '%')});
         }
-        filter.$or.push({ruleId: originalRule});
-        const query: any[] = await databaseController.query(this.policyDomainName, {
+        filter.push({ruleId: originalRule.replace('.', '%')});
+        let query: any[] = await this.databaseController.query(this.policyDomainName, {
             return: [],
             filter,
         }, context, {
             bypassDomainVerification: true
         });
+        query = query.map(x => AuthController.sanitizePolicy(x));
         if (query.length === 0) {
             return true;
         }
@@ -122,27 +127,42 @@ export class AuthController {
         if (!email) {
             throw {message: 'email required'};
         }
-        return authAdapter.resetPassword(email, context);
+        return this.authAdapter.resetPassword(email, context);
     }
 
     async sendVerificationEmail(email: string, context?: ContextBlock): Promise<any> {
         if (!email) {
             throw {message: 'email required'};
         }
-        return authAdapter.sendVerificationEmail(email, context);
+        return this.authAdapter.sendVerificationEmail(email, context);
     }
 
     async signIn<T extends BasicUserAttributesModel>(userModel: T, context?: ContextBlock): Promise<T> {
         AuthController.validateData(userModel, true);
         userModel.return = [];
-        return authAdapter.signIn(userModel, context);
+        return this.authAdapter.signIn(userModel, context);
     }
 
     async signUp<T extends BasicUserAttributesModel>(userModel: T, context?: ContextBlock): Promise<T> {
         AuthController.validateData(userModel);
         userModel.return = [];
         userModel.emailVerified = false;
-        return authAdapter.signUp(userModel, context);
+        const oldUser = await this.databaseController.query(
+            '_User',
+            {
+                filter: [
+                    {username: userModel.username},
+                    {email: userModel.email},
+                ],
+                return: []
+            },
+            context,
+            {bypassDomainVerification: true}
+        );
+        if (Array.isArray(oldUser) && oldUser.length > 0) {
+            throw {message: 'User already exist'};
+        }
+        return await this.authAdapter.signUp(userModel, context);
     }
 
     async update<T extends BasicUserAttributesModel>(userModel: T, context?: ContextBlock): Promise<T> {
@@ -151,7 +171,7 @@ export class AuthController {
             delete userModel.password;
             delete userModel._hashed_password;
             delete userModel.emailVerified;
-            return authAdapter.update(userModel, context);
+            return this.authAdapter.update(userModel, context);
         } else {
             return Promise.reject({message: 'please authenticate yourself'});
         }
@@ -159,7 +179,7 @@ export class AuthController {
 
     async updatePassword(password: string, context?: ContextBlock): Promise<any> {
         if (context.uid && typeof context.uid === 'string') {
-            return authAdapter.updatePassword(password, context);
+            return this.authAdapter.updatePassword(password, context);
         } else {
             return Promise.reject({message: 'Fails to updated password of unknown user id'});
         }

@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "experimentalDecorators": true,
     "declaration": true,
     /* Basic Options */
     // "incremental": true,                   /* Enable incremental compilation */
@@ -62,6 +63,12 @@
     // "emitDecoratorMetadata": true,         /* Enables experimental support for emitting type metadata for decorators. */
     //    "include":["./src/compose", "./src/public"],
     ,
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "lib": [
+      "dom",
+      "es5",
+      "scripthost",
+      "es2015.collection"
+    ]
   }
 }

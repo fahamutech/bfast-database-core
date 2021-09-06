@@ -4,232 +4,515 @@ import {
     DatabaseUpdateOptions,
     DatabaseWriteOptions
 } from '../adapters/database.adapter';
-import { Db, FindOneAndUpdateOptions, ModifyResult, MongoClient } from 'mongodb';
-import { BasicAttributesModel } from '../model/basic-attributes.model';
-import { ContextBlock } from '../model/rules.model';
-import { QueryModel } from '../model/query-model';
-import { UpdateRuleRequestModel } from '../model/update-rule-request.model';
-import { DeleteModel } from '../model/delete-model';
-import { BFastDatabaseOptions } from '../bfast-database.option';
-import { AppEventsFactory } from "./app-events.factory";
-import { ConstUtil } from "../utils/const.util";
+import {Db, MongoClient} from 'mongodb';
+import {BasicAttributesModel} from '../model/basic-attributes.model';
+import {ContextBlock} from '../model/rules.model';
+import {QueryModel} from '../model/query-model';
+import {UpdateRuleRequestModel} from '../model/update-rule-request.model';
+import {DeleteModel} from '../model/delete-model';
+import {BFastDatabaseOptions} from '../bfast-database.option';
+import {TreeController} from 'bfast-database-tree';
+import {File as web3File, Web3Storage,} from 'web3.storage';
+import {CID, create, IPFSHTTPClient} from "ipfs-http-client";
+import itToStream from 'it-to-stream';
+import {Buffer} from "buffer";
+import {v4} from 'uuid';
+import {ChangesModel} from "../model/changes.model";
+import {ConstUtil} from "../utils/const.util";
+import {AppEventsFactory} from "./app-events.factory";
+import {devLog} from "../utils/debug.util";
 
-const mongoUrlParse = require('mongo-url-parser');
-
-let config: BFastDatabaseOptions;
+let web3Storage: Web3Storage;
+const treeController = new TreeController();
 
 export class DatabaseFactory implements DatabaseAdapter {
 
-    private static mongoClient;
+    static ipfs: IPFSHTTPClient;
+    private static mongoClient: MongoClient;
 
-    constructor(configAdapter: BFastDatabaseOptions) {
-        config = configAdapter;
+    constructor(private readonly config: BFastDatabaseOptions) {
+        web3Storage = new Web3Storage({
+            token: config.web3Token
+        });
     }
 
-    async writeMany<T extends BasicAttributesModel, V>(domain: string, data: T[], context: ContextBlock, options?: DatabaseWriteOptions)
-        : Promise<V> {
-        const db = await this.mDb();
-        const response = await db
-            .collection(domain)
-            .insertMany(data as any, {});
-        return response.insertedIds as any;
+    async ensureIpfs() {
+        if (!DatabaseFactory.ipfs) {
+            DatabaseFactory.ipfs = await create({
+                host: this.config.useLocalIpfs===true?'localhost':'ipfsnode'
+            });
+        }
     }
 
-    async writeOne<T extends BasicAttributesModel>(domain: string, data: T, context: ContextBlock, options?: DatabaseWriteOptions)
-        : Promise<any> {
+    async generateCidFromData(
+        data: { [k: string]: any },
+        buffer: Buffer,
+        domain: string
+    ): Promise<{ cid: string, size: number }> {
+        if (this.config.useLocalIpfs) {
+            devLog('use local ipfs');
+            return this.generateCidFromLocalIpfsNode(buffer);
+        } else {
+            devLog('use web3 ipfs');
+            return this.generateCidFromWeb3IpfsNode(buffer, domain, data);
+        }
+    }
+
+    async generateDataFromCid(
+        cid: string,
+        options: { json?: boolean, start?: number, end?: number, stream?: boolean } = {
+            json: true,
+            stream: false,
+            start: undefined,
+            end: undefined
+        }
+    ): Promise<object | ReadableStream | Buffer> {
+        if ((await this.checkIfWeHaveCidInWeb3(cid)) === false) {
+            return null;
+        }
+        devLog('____start fetch cid content with jsipfs_______');
+        const results = await DatabaseFactory.ipfs.cat(cid, {
+            offset: (options && options.json === false && options.start) ? options.start : undefined,
+            length: (options && options.json === false && options.end) ? options.end : undefined,
+            timeout: 1000 * 60 * 5,
+        });
+        DatabaseFactory.ipfs.pin.add(CID.parse(cid)).catch(console.log);
+        devLog('____cid content found with jsipfs______');
+        if (options?.json === true) {
+            let data = '';
+            for await (const chunk of results) {
+                data += chunk.toString();
+            }
+            return JSON.parse(data);
+        }
+        if (options?.json === false) {
+            if (options?.stream === true) {
+                return itToStream.readable(results);
+            } else {
+                let buffer = Buffer.alloc(0);
+                for await (const chunk of results) {
+                    buffer = Buffer.concat([buffer, chunk]);
+                }
+                return buffer;
+            }
+        }
+    }
+
+    private whenWantToSaveADataNodeToATree(cid: string) {
+        return {
+            nodeHandler: async ({path, node}) => {
+                for (const key of Object.keys(node)) {
+                    let $setMap = {};
+                    if (typeof node[key] === "object") {
+                        $setMap = Object.keys(node[key]).reduce((a, b) => {
+                            a[`value.${b}`] = node[key][b];
+                            return a;
+                        }, {});
+                    } else {
+                        $setMap = {
+                            value: node[key]
+                        }
+                    }
+                    devLog('start save a node', key);
+                    const db = await this.mDb();
+                    await db.collection(DatabaseFactory.nodeTable(path.toString())).updateOne({
+                        _id: isNaN(Number(key)) ? key.trim() : Number(key),
+                    }, {
+                        $set: $setMap
+                    }, {
+                        upsert: true,
+                    });
+                    devLog('done save a node', key);
+                }
+            },
+            nodeIdHandler: async function () {
+                return cid.toString();
+            }
+        }
+    }
+
+    private async nodeSearchResult(
+        nodeTable: string,
+        targetNodeId: any,
+        db: Db
+    ): Promise<{ value: any, _id: string }> {
+        if (typeof targetNodeId === "object" && targetNodeId?.hasOwnProperty('$fn')) {
+            devLog('handle query by expression', targetNodeId.$fn);
+            const cursor = db.collection(nodeTable).find({});
+            const docs = [];
+            while (await cursor.hasNext()) {
+                const next = await cursor.next();
+                const fn = new Function('it', targetNodeId.$fn);
+                fn(next._id) === true ? docs.push(next) : null
+            }
+            devLog('query has found items', docs.length);
+            return docs.reduce((a, b) => {
+                if (typeof b?.value === 'string') {
+                    a.value = Object.assign(a.value, {[b._id ? b._id : b.id]: b.value});
+                } else {
+                    a.value = Object.assign(a.value, b.value);
+                }
+                return a;
+            }, {value: {}});
+        } else {
+            devLog('handle query by node_id', targetNodeId);
+            return await db.collection(nodeTable).findOne({_id: targetNodeId}) as any;
+        }
+    }
+
+    private async handleQueryObjectTree(
+        mapOfNodesToQuery: { [key: string]: any },
+        domain: string,
+        queryModel: QueryModel<any>
+    ): Promise<any[] | number> {
+        const nodesPathList = Object.keys(mapOfNodesToQuery);
         const db = await this.mDb();
-        const response = await db.collection(domain).insertOne(data as any, {});
-        return response.insertedId;
+        if (nodesPathList.length === 0) {
+            devLog('try to get all data on this node', `${domain}__id`);
+            return this.getAllContentsFromTreeTable(
+                db,
+                domain,
+                queryModel
+            );
+        }
+        let cids = await this.processTreeSearchResultToCidList(
+            mapOfNodesToQuery,
+            nodesPathList,
+            domain,
+            db
+        );
+        if (queryModel?.size && queryModel?.size > 0) {
+            const skip = (queryModel.skip && queryModel.skip >= 0) ? queryModel.skip : 0;
+            cids = cids.slice(skip, (queryModel.size + skip));
+        }
+        if (queryModel?.count === true) {
+            return cids.length;
+        }
+        devLog('total cids to fetch data from', cids.length);
+        const _all_p = cids.map(x => {
+            return this.generateDataFromCid(x, {
+                json: true
+            });
+        });
+        const _all = await Promise.all(_all_p);
+        return _all.filter(t => t !== null);
+    }
+
+    private static nodeTable(nodePath) {
+        return nodePath?.replace(new RegExp('/', 'ig'), '_').trim();
+    }
+
+    private static async pruneNode(
+        nodeValue: { value: any, _id: string },
+        nodeTable: string,
+        domain: string,
+        db: Db
+    ): Promise<{ value: any, _id: string }> {
+        for (const k of Object.keys(nodeValue.value)) {
+            const _r1 = await db.collection(`${domain}__id`).findOne({
+                _id: k
+            });
+            if (!_r1) {
+                delete nodeValue.value[k];
+                db.collection(nodeTable).updateOne({
+                    [`value.${k}`]: {
+                        $exists: true
+                    }
+                }, {
+                    $unset: {
+                        [`value.${k}`]: 1
+                    }
+                }).catch(console.log);
+            }
+        }
+        return nodeValue;
+    }
+
+    private static async pruneNodeWithStringValue(
+        targetNodeId: string,
+        nodeValue: { value: any, _id: string },
+        nodeTable: string,
+        domain: string,
+        db: Db
+    ): Promise<any> {
+        const _r1 = await db.collection(`${domain}__id`).findOne({
+            _id: nodeValue._id
+        });
+        if (!_r1) {
+            nodeValue.value = null;
+            db.collection(nodeTable).updateOne({
+                _id: targetNodeId
+            }, {
+                $unset: {
+                    value: 1
+                }
+            }).catch(console.log);
+        }
+        return nodeValue;
+    }
+
+    private async handleDeleteObjectTree(
+        deleteTree: { [key: string]: any },
+        domain: string
+    ): Promise<{ _id: string }[]> {
+        const keys = Object.keys(deleteTree);
+        const db = await this.mDb();
+        let cids = [];
+        const cidMap = {};
+        if (keys.length === 0) {
+            return [];
+        }
+        for (const key of keys) {
+            const nodeTable = DatabaseFactory.nodeTable(key);
+            const id = deleteTree[key];
+            let result = await this.nodeSearchResult(
+                nodeTable,
+                id,
+                db
+            );
+            if (result && result.value) {
+                if (typeof result.value === "object") {
+                    result = await DatabaseFactory.pruneNode(
+                        result,
+                        nodeTable,
+                        domain,
+                        db
+                    );
+                    for (const v of Object.keys(result.value)) {
+                        cids.push(v);
+                        if (cidMap[v]) {
+                            cidMap[v] += 1;
+                        } else {
+                            cidMap[v] = 1;
+                        }
+                    }
+                } else if (typeof result.value === 'string') {
+                    result = await DatabaseFactory.pruneNodeWithStringValue(
+                        id,
+                        result,
+                        nodeTable,
+                        domain,
+                        db
+                    );
+                    if (result && result._id) {
+                        cids.push(result._id);
+                        if (cidMap[result._id]) {
+                            cidMap[result._id] += 1;
+                        } else {
+                            cidMap[result._id] = 1;
+                        }
+                    }
+                }
+            }
+        }
+        cids = cids
+            .filter(x => cidMap[x] === keys.length)
+            .reduce((a, b) => a.add(b), new Set());
+        cids = Array.from(cids);
+        for (const x of cids) {
+            await db.collection(`${domain}__id`).deleteOne({
+                _id: x
+            }, {});
+        }
+        return cids.map(y => {
+            return {
+                _id: y
+            }
+        });
+    }
+
+    async writeMany<T extends BasicAttributesModel>(
+        domain: string,
+        data: T[],
+        context: ContextBlock,
+        options?: DatabaseWriteOptions
+    ): Promise<any[]> {
+        for (const _data of data) {
+            await this.writeOne(
+                domain,
+                _data,
+                context,
+                options
+            );
+        }
+        return data;
+    }
+
+    async writeOne<T extends BasicAttributesModel>(
+        domain: string,
+        data: T,
+        context: ContextBlock,
+        options?: DatabaseWriteOptions
+    ): Promise<any> {
+        const buffer = Buffer.from(JSON.stringify(data));
+        const {cid} = await this.generateCidFromData(data, buffer, domain);
+        await treeController.objectToTree(data, domain, this.whenWantToSaveADataNodeToATree(cid.toString()));
+        return data;
     }
 
     private async mDb(): Promise<Db> {
         if (!DatabaseFactory.mongoClient) {
-            DatabaseFactory.mongoClient = await new MongoClient(config.mongoDbUri).connect();
+            DatabaseFactory.mongoClient = await new MongoClient(this.config.mongoDbUri).connect();
             return DatabaseFactory.mongoClient.db();
         }
         return DatabaseFactory.mongoClient.db();
     }
 
-    // private async connection(): Promise<MongoClient> {
-    //     let mongoUri;
-    //     const parsed = mongoUrlParse(config.mongoDbUri);
-    //     if (parsed.auth) {
-    //         mongoUri = `mongodb://${parsed.auth.user}:${parsed.auth.password}@2.mongo.fahamutech.com:27017/${parsed.dbName}?authSource=admin`
-    //     } else {
-    //         mongoUri = `mongodb://localhost:27017/${parsed.dbName}`
-    //     }
-    //     // console.log(mongoUri);
-    //     return new MongoClient(mongoUri).connect();
-    // }
-
     async init(): Promise<any> {
-        try {
-            await this.dropIndexes('_User');
-        } catch (_) {
-        }
-        return await this.createIndexes('_User', [
-            {
-                field: 'email',
-                unique: true,
-                collation: {
-                    locale: 'en',
-                    strength: 2
-                }
-            },
-            {
-                field: 'username',
-                unique: true,
-                collation: {
-                    locale: 'en',
-                    strength: 2
-                }
-            }
-        ]);
-    }
-
-    async createIndexes(domain: string, indexes: any[]): Promise<any> {
-        if (indexes && Array.isArray(indexes)) {
-            const db = await this.mDb();
-            for (const value of indexes) {
-                const indexOptions: any = {};
-                Object.assign(indexOptions, value);
-                delete indexOptions.field;
-                await db.collection(domain).createIndex({ [value.field]: 1 }, indexOptions);
-            }
-            return 'Indexes added';
-        } else {
-            throw new Error('Must supply array of indexes to be added');
-        }
-    }
-
-    async dropIndexes(domain: string): Promise<boolean> {
-        const db = await this.mDb();
-        await db.collection(domain).dropIndexes();
-        return true;
-    }
-
-    async listIndexes(domain: string): Promise<any[]> {
-        const db = await this.mDb();
-        const indexes = await db.collection(domain).listIndexes().toArray();
-        return indexes;
+        await this.ensureIpfs();
     }
 
     async findOne<T extends BasicAttributesModel>(
-        domain: string, queryModel: QueryModel<T>,
-        context: ContextBlock, options?: DatabaseWriteOptions): Promise<any> {
-        const db = await this.mDb();
-        const fieldsToReturn = {
-            '_created_at': 1,
-            '_updated_at': 1,
-        };
-        if (queryModel?.return && Array.isArray(queryModel?.return) && queryModel.return.length > 0) {
-            queryModel.return.forEach(x => {
-                fieldsToReturn[x] = 1;
-            });
-        }
-        const result = await db.collection(domain).findOne(
-            { _id: queryModel._id },
-            {
-
-                // projection: fieldsToReturn
-            }
-        );
-        return result;
-    }
-
-    async query<T extends BasicAttributesModel>(domain: string, queryModel: QueryModel<T>,
-        context: ContextBlock, options?: DatabaseWriteOptions): Promise<any> {
-        const db = await this.mDb();
-        const query = db.collection(domain).find(queryModel.filter, {
-
-            // allowDiskUse: true
+        domain: string,
+        queryModel: QueryModel<T>,
+        context: ContextBlock,
+        options?: DatabaseWriteOptions
+    ): Promise<any> {
+        const queryTree = await treeController.query(domain, {
+            _id: queryModel._id
         });
-        // query.allowDiskUse();
-        if (queryModel.skip) {
-            query.skip(queryModel.skip);
-        } else {
-            query.skip(0);
+        const table = DatabaseFactory.nodeTable(Object.keys(queryTree)[0]);
+        const id = Object.values(queryTree)[0];
+        const db = await this.mDb();
+        const result = await db.collection(table).findOne(
+            {_id: id},
+            {}
+        );
+        if (!result) {
+            return null;
         }
-        if (queryModel.size && queryModel.size !== -1 && queryModel.size !== 100) {
-            query.limit(queryModel.size);
-            console.log(queryModel.size);
-        } else if (!queryModel.count) {
-            query.limit(50);
-        }
-        if (queryModel.orderBy && Array.isArray(queryModel.orderBy) && queryModel.orderBy?.length > 0) {
-            queryModel.orderBy.forEach(value => {
-                query.sort(value);
-            });
-        }
-        if (queryModel.return && Array.isArray(queryModel.return) && queryModel.return.length > 0) {
-            const fieldsToReturn = {
-                '_created_at': 1,
-                '_updated_at': 1,
-            };
-            queryModel.return.forEach(x => {
-                fieldsToReturn[x] = 1;
-            });
-            // query.project(fieldsToReturn);
-        }
-        let result;
-        // quwquery.();
-        if (queryModel?.count === true) {
-            result = await query.count();
-        } else {
-            result = await query.toArray();
-        }
-        return result;
+        const cid = result.value;
+        return this.generateDataFromCid(cid, {
+            json: true
+        });
     }
 
-    async update<T extends BasicAttributesModel, V>(domain: string, updateModel: UpdateRuleRequestModel,
-        context: ContextBlock, options?: DatabaseUpdateOptions): Promise<V> {
-        const db = await this.mDb();
-        let updateOptions: FindOneAndUpdateOptions = {
-            upsert: typeof updateModel.upsert === 'boolean' ? updateModel.upsert : false,
-            // @ts-ignore
-            returnOriginal: false,
-            // new: true,
-            returnDocument: 'after',
+    async findMany<T extends BasicAttributesModel>(
+        domain: string,
+        queryModel: QueryModel<T>,
+        context: ContextBlock,
+        options?: DatabaseWriteOptions
+    ): Promise<any> {
+        let nodesToQueryData;
+        try {
+            nodesToQueryData = await treeController.query(domain, queryModel.filter);
+        } catch (e) {
+            console.log(e);
+            return [];
+        }
+        if (Array.isArray(nodesToQueryData)) {
+            const resultMap = {}
+            for (const _tree of nodesToQueryData) {
+                const r = await this.handleQueryObjectTree(_tree, domain, queryModel);
+                Array.isArray(r) ?
+                    (r.forEach(_r1 => {
+                        resultMap[_r1._id] = _r1
+                    }))
+                    : resultMap[v4()] = r;
+            }
+            const _result1: any[] = Object.values(resultMap);
+            return queryModel?.count ? _result1.reduce((a, b) => a + b, 0) : _result1;
+        } else {
+            return await this.handleQueryObjectTree(nodesToQueryData, domain, queryModel);
+        }
+    }
 
-        };
-        updateOptions = Object.assign(updateOptions, options && options.dbOptions ? options.dbOptions : {});
-        const response: ModifyResult<any> = await db.collection(domain)
-            .findOneAndUpdate(
-                updateModel.filter,
-                updateModel.update,
-                updateOptions
+    async updateOne<T extends BasicAttributesModel, V>(
+        domain: string,
+        updateModel: UpdateRuleRequestModel,
+        context: ContextBlock, options?: DatabaseUpdateOptions
+    ): Promise<any> {
+        let oldDoc = await this.findOne(
+            domain,
+            {
+                _id: updateModel.id,
+                return: []
+            },
+            context,
+            options
+        );
+        if (!oldDoc && updateModel.upsert === true) {
+            oldDoc = {_id: updateModel.id};
+        }
+        if (!oldDoc) {
+            return null;
+        }
+        const updateParts = updateModel.update.$set;
+        const incrementParts = updateModel.update.$inc;
+        let newDoc = Object.assign(oldDoc, updateParts);
+        newDoc = this.incrementFields(newDoc, incrementParts);
+        return this.writeOne(domain, newDoc, context, options);
+    }
+
+    async updateMany<T extends BasicAttributesModel>(
+        domain: string,
+        updateModel: UpdateRuleRequestModel,
+        context: ContextBlock,
+        options?: DatabaseUpdateOptions
+    ): Promise<any[]> {
+        const oldDocs: any[] = await this.findMany(domain, updateModel, context, options);
+        if (Array.isArray(oldDocs) && oldDocs.length === 0 && updateModel.upsert === true) {
+            let nDoc = Object.assign(updateModel.update.$set, updateModel.filter);
+            const incrementParts = updateModel.update.$inc;
+            nDoc = this.incrementFields(nDoc, incrementParts);
+            oldDocs.push(nDoc);
+            return this.writeMany(domain, oldDocs, context, options);
+        }
+        for (const x of oldDocs) {
+            oldDocs[oldDocs.indexOf(x)] = await this.updateOne(
+                domain,
+                {
+                    update: updateModel.update,
+                    upsert: updateModel.upsert,
+                    id: x._id,
+                    return: []
+                },
+                context,
+                options
             );
-        if (response.ok === 1) {
-            return response.value as any;
+        }
+        return oldDocs;
+    }
+
+    async delete<T extends BasicAttributesModel>(
+        domain: string,
+        deleteModel: DeleteModel<T>,
+        context: ContextBlock, options?: DatabaseBasicOptions
+    ): Promise<{ _id: string }[]> {
+        let deleteTree;
+        try {
+            deleteTree = await treeController.query(
+                domain,
+                deleteModel.id ? {_id: deleteModel.id} : deleteModel.filter
+            );
+        } catch (e) {
+            console.log(e);
+            return null;
+        }
+        if (Array.isArray(deleteTree)) {
+            const result = [];
+            for (const _tree of deleteTree) {
+                const r = await this.handleDeleteObjectTree(_tree, domain);
+                Array.isArray(r) ? result.push(...r) : result.push(r);
+            }
+            return result;
         } else {
-            throw "Failt to updae";
+            return this.handleDeleteObjectTree(deleteTree, domain);
         }
     }
 
-    async deleteOne<T extends BasicAttributesModel, V>(domain: string, deleteModel: DeleteModel<T>,
-        context: ContextBlock, options?: DatabaseBasicOptions): Promise<V> {
-        const db = await this.mDb();
-        const response = await db.collection(domain).findOneAndDelete(deleteModel.filter, {});
-        return response.value as any;
-    }
-
-    async transaction<V>(operations: (session: any) => Promise<any>): Promise<any> {
+    /**
+     * need an improvement to have a behaviour like transaction but not transaction
+     * @param operations
+     */
+    async bulk<V>(operations: (session: any) => Promise<any>): Promise<any> {
         return await operations(null);
-    }
-
-    async aggregate(domain: string, pipelines: any[], context: ContextBlock, options?: DatabaseWriteOptions): Promise<any> {
-        const db = await this.mDb();
-        const aggOps = {
-            allowDiskUse: true,
-
-        };
-        const result = await db.collection(domain).aggregate(pipelines, aggOps).toArray();
-        return result;
     }
 
     async changes(
         domain: string, pipeline: any[],
-        listener: (doc: any) => void, resumeToken = undefined
+        listener: (doc: ChangesModel) => void,
+        resumeToken = undefined
     ): Promise<{ close: () => void }> {
         const appEventInst = AppEventsFactory.getInstance();
         appEventInst.sub(ConstUtil.DB_CHANGES_EVENT.concat(domain), listener);
@@ -238,5 +521,163 @@ export class DatabaseFactory implements DatabaseAdapter {
                 appEventInst.unSub(ConstUtil.DB_CHANGES_EVENT.concat(domain), listener);
             }
         }
+    }
+
+    private incrementFields(newDoc: any, ip: { [p: string]: any }) {
+        if (!newDoc) {
+            newDoc = {};
+        }
+        if (!ip) {
+            return newDoc;
+        } else {
+            for (const key of Object.keys(ip)) {
+                if (typeof ip[key] === "number") {
+                    if (newDoc.hasOwnProperty(key) && !isNaN(newDoc[key])) {
+                        newDoc[key] += ip[key];
+                    } else if (!newDoc.hasOwnProperty(key)) {
+                        newDoc[key] = ip[key];
+                    }
+                } else if (typeof ip[key] === "object" && JSON.stringify(ip[key]).startsWith('{')) {
+                    newDoc[key] = this.incrementFields(newDoc[key], ip[key]);
+                }
+            }
+            return newDoc;
+        }
+    }
+
+    async generateCidFromLocalIpfsNode(buffer: Buffer) {
+        const r = await DatabaseFactory.ipfs.add(buffer, {
+            wrapWithDirectory: false
+        });
+        devLog('done save file to local ipfs with cid', r.cid.toString());
+        DatabaseFactory.ipfs.pin.add(r.cid).catch(console.log);
+        return {
+            cid: r.cid.toString(),
+            size: r.size
+        }
+    }
+
+    async generateCidFromWeb3IpfsNode(buffer: Buffer, domain: string, data: { [k: string]: any }) {
+        // try {
+        const file = new web3File([buffer], `${domain}_${data._id}`);
+        const r = await web3Storage.put(
+            [file],
+            {
+                wrapWithDirectory: false,
+                // name: data?._id ? `${domain}_${data?._id}` : undefined,
+            }
+        );
+        devLog('done save file to web3 ipfs with cid', r);
+        return {
+            cid: r,
+            size: 0
+        }
+        // } catch (e) {
+        //     devLog('error save file to web3', e);
+        //     throw e;
+        // }
+    }
+
+    async checkIfWeHaveCidInWeb3(cid: string) {
+        if (/* when testing */this.config.useLocalIpfs === true) {
+            return true;
+        } else {
+            devLog('check cid in web3 ipfs');
+            // try {
+            const data = await web3Storage.get(cid);
+            if (data.ok && await data.files) {
+                devLog('cid exists in web3 ipfs');
+                return true;
+            } else {
+                devLog('cid not exists in web3 ipfs', await data.text());
+                return false;
+            }
+            // } catch (e) {
+            //     devLog('cid not exists in web3 ipfs', e);
+            //     return false;
+            // }
+        }
+    }
+
+    async getAllContentsFromTreeTable(
+        db: Db,
+        domain: string,
+        queryModel: QueryModel<any>,
+    ): Promise<any[] | number> {
+        let result = await db.collection(`${domain}__id`).find({}).toArray();
+        if (result && Array.isArray(result)) {
+            if (queryModel?.size && queryModel?.size > 0) {
+                const skip = (queryModel.skip && queryModel.skip >= 1) ? queryModel.skip : 0;
+                result = result.slice(skip, (queryModel.size + skip));
+            }
+            if (queryModel?.count === true) {
+                return result.length;
+            }
+            devLog('total cids to fetch data from', result.length);
+            const _all_p = result.map(x => {
+                return this.generateDataFromCid(x?.value, {
+                    json: true
+                });
+            });
+            const _all = await Promise.all(_all_p);
+            return _all.filter(b => b !== null);
+        } else {
+            return [];
+        }
+    }
+
+    async processTreeSearchResultToCidList(
+        mapOfNodesToQuery,
+        nodesPathList,
+        domain: string,
+        db: Db): Promise<string[]> {
+        let cids = [];
+        const cidMap = {};
+        for (const nodePath of nodesPathList) {
+            const nodeTable = DatabaseFactory.nodeTable(nodePath);
+            const targetNodeId = mapOfNodesToQuery[nodePath];
+            let result = await this.nodeSearchResult(
+                nodeTable,
+                targetNodeId,
+                db
+            );
+            if (result && result.value) {
+                if (typeof result.value === "object") {
+                    result = await DatabaseFactory.pruneNode(
+                        result,
+                        nodeTable,
+                        domain,
+                        db
+                    );
+                    for (const v of Object.values<string>(result.value)) {
+                        cids.push(v);
+                        if (cidMap[v]) {
+                            cidMap[v] += 1;
+                        } else {
+                            cidMap[v] = 1;
+                        }
+                    }
+                } else if (typeof result.value === 'string') {
+                    result = await DatabaseFactory.pruneNodeWithStringValue(
+                        targetNodeId,
+                        result,
+                        nodeTable,
+                        domain,
+                        db
+                    );
+                    if (result && result.value) {
+                        cids.push(result.value);
+                        if (cidMap[result.value]) {
+                            cidMap[result.value] += 1;
+                        } else {
+                            cidMap[result.value] = 1;
+                        }
+                    }
+                }
+            }
+        }
+        cids = cids.filter(x => cidMap[x] === nodesPathList.length).reduce((a, b) => a.add(b), new Set());
+        cids = Array.from(cids);
+        return cids;
     }
 }

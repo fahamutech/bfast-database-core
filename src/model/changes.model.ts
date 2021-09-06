@@ -1,6 +1,6 @@
 export interface ChangesModel {
     _id?: string;
-    operationType?: 'insert' | 'update' | 'delete' | 'replace';
+    operationType?: 'create' | 'update' | 'delete';
     fullDocument?: { [key: string]: any };
     documentKey?: { _id?: string }
 }

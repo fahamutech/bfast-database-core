@@ -1,12 +1,12 @@
 {
   "name": "bfast-database-core",
-  "version": "0.1.1-alpha.21",
+  "version": "1.0.0-beta.37",
   "main": "dist/index.js",
   "license": "MIT",
   "author": {
     "name": "FahamuTech",
     "email": "mama27j@gmail.com",
-    "url": "http://fahamutech.com"
+    "url": "https://fahamutech.com"
   },
   "maintainers": [
     "joshuamshana(https://github.com/joshuamshana)",
@@ -15,11 +15,11 @@
   "scripts": {
     "build": "gulp build",
     "build:docker": "gulp buildDocker",
-    "test:web-services": "yarn run build && mocha --exit specs/rest/all.specs.js",
-    "test:controllers": "yarn run build && npx mocha --exit specs/controllers/* ",
-    "test:rules": "yarn run build && npx mocha --exit specs/rules/* ",
-    "test:rest": "yarn run build && npx mocha --exit specs/rest/* ",
-    "test": "yarn run build && npx mocha --exit specs/utils/* specs/rules/* specs/controllers/*",
+    "test:web-services": "yarn run build && mocha specs/src/web-services/all.specs.js",
+    "test:controllers": "yarn run build && npx mocha specs/src/controllers/* ",
+    "test:rules": "yarn run build && npx mocha specs/src/rules/* ",
+    "test:rest": "yarn run build && npx mocha specs/src/web-services/* ",
+    "test": "yarn run build && npx mocha  specs/src/*",
     "prestart": "yarn run build",
     "prepublishOnly": "npm run build",
     "publish:beta": "yarn publish --tag beta"
@@ -27,20 +27,21 @@
   "dependencies": {
     "base64url": "~3.0.1",
     "bcryptjs": "~2.4.3",
-    "bfast-function": "~1.13.0",
-    "bfastnode": "~4.5.3",
+    "bfast": "~5.0.0-beta.0",
+    "bfast-database-tree": "~1.0.0-aplha.3",
     "formidable": "~1.2.2",
-    "glob-parent": "~6.0.0",
     "http-status-codes": "~2.1.4",
+    "ipfs-http-client": "^52.0.3",
+    "it-to-stream": "~1.0.0",
     "jsonwebtoken": "~8.5.1",
     "mime": "~2.5.2",
     "minio": "~7.0.18",
-    "mongo-url-parser": "^1.0.1",
-    "mongodb": "~4.0.0",
+    "mongodb": "~4.0.1",
     "njwt": "~1.1.0",
     "node-jwk": "~0.1.0",
-    "sharp": "~0.28.3",
-    "uuid": "~8.3.2"
+    "sharp": "~0.29.0",
+    "uuid": "~8.3.2",
+    "web3.storage": "^3.3.0"
   },
   "devDependencies": {
     "@types/minio": "~7.0.8",
@@ -48,10 +49,15 @@
     "@types/node": "~14.14.10",
     "@types/sharp": "~0.28.4",
     "axios": "~0.21.1",
+    "bfast-function": "~1.13.0",
+    "chai": "^4.3.4",
     "del": "~6.0.0",
+    "engine.io-client": "~5.1.2",
+    "form-data": "^4.0.0",
     "glob": "~7.1.7",
+    "glob-parent": "~6.0.1",
     "gulp": "~4.0.2",
-    "mocha": "~9.0.2",
+    "mocha": "~9.0.3",
     "typescript": "~4.3.5"
   }
 }

@@ -2,7 +2,17 @@ const {LogController} = require("../dist/controllers/log.controller");
 const {BfastDatabaseCore} = require("../dist/bfast-database-core");
 const {RulesController} = require('../dist/controllers/rules.controller');
 const {UpdateRuleController} = require('../dist/controllers/update.rule.controller');
+const {EnvUtil} = require('../dist/index')
 const mongodb = require('mongodb');
+const {DatabaseController} = require("../dist/controllers/database.controller");
+const {DatabaseFactory} = require("../dist/factory/database.factory");
+const {SecurityController} = require("../dist/controllers/security.controller");
+const {AuthController} = require("../dist/controllers/auth.controller");
+const {AuthFactory} = require("../dist/factory/auth.factory");
+const {StorageController} = require("../dist/controllers/storage.controller");
+const {IpfsStorageFactory} = require("../dist/factory/ipfs-storage.factory");
+const axios = require("axios");
+const {expect} = require('chai');
 
 const mongoMemoryReplSet = () => {
     return {
@@ -11,10 +21,11 @@ const mongoMemoryReplSet = () => {
         },
         start: async function () {
             const conn = await mongodb.MongoClient.connect(this.getUri());
-            // const db = await conn.db();
-            await conn.db().dropDatabase();
+            await conn.db('_test').dropDatabase();
         },
         waitUntilRunning: async function () {
+            const conn = await mongodb.MongoClient.connect(this.getUri());
+            await conn.db('_test').dropDatabase();
         },
         stop: async function () {
         }
@@ -28,18 +39,21 @@ const daas = async () => {
     return new BfastDatabaseCore();
 }
 
-exports.serverUrl = 'http://localhost:3111/';
-// exports.mongoServer = mongoServer;
+exports.serverUrl = 'http://localhost:3111/v2';
 exports.mongoRepSet = mongoMemoryReplSet;
 exports.daas = daas;
 exports.config = {
-    applicationId: 'daas',
-    port: 3111,
+    applicationId: 'bfast_test',
+    projectId: 'bfast_test',
+    port: '3111',
     logs: false,
-    adapters: {},
-    mountPath: '/',
-    masterKey: 'daas',
-    mongoDbUri: 'mongodb://localhost/test',
+    web3Token: new EnvUtil().getEnv(process.env['WEB_3_TOKEN']),
+    adapters: {
+        s3Storage: undefined
+    },
+    masterKey: 'bfast_test',
+    taarifaToken: undefined,
+    mongoDbUri: 'mongodb://localhost/_test',
     rsaKeyPairInJson: {
         "p": "_09LOKJdsMbbJBD-NckTpyer4Hh2D5tz7RJwDsbHAt2zjmQWeAfIA2DVZY-ftwWMA3C77yf0huM5xVfU6DsJL72WtdCCCPggyfKkMuMYfch-MFV6imt6-Fwm9gAH_-BuuToabwjBHGehV_I-Jy0D_wWdIc5hTIGZtDj5rg0cQ8k",
         "kty": "RSA",
@@ -73,13 +87,30 @@ exports.config = {
  * @return {Promise<RulesController>}
  */
 exports.getRulesController = async function (memoryReplSet) {
-    try {
-        process.setMaxListeners(0);
-        await memoryReplSet.start();
-        await memoryReplSet.waitUntilRunning();
-        exports.config.mongoDbUri = await memoryReplSet.getUri();
-        return new RulesController(new UpdateRuleController(), new LogController(exports.config), exports.config);
-    } catch (e) {
-        console.log(e);
-    }
+    process.setMaxListeners(0);
+    await memoryReplSet.start();
+    await memoryReplSet.waitUntilRunning();
+    exports.config.mongoDbUri = await memoryReplSet.getUri();
+    const updateRuleController = new UpdateRuleController();
+    const databaseFactory = new DatabaseFactory(exports.config);
+    const securityController = new SecurityController(exports.config);
+    const databaseController = new DatabaseController(databaseFactory, securityController);
+    const authFactory = new AuthFactory(databaseController, securityController);
+    const authController = new AuthController(authFactory, databaseController);
+    const ipfsStorageFactory = new IpfsStorageFactory(exports.config, databaseFactory, exports.config.mongoDbUri);
+    const storageController = new StorageController(ipfsStorageFactory, securityController, exports.config)
+    return new RulesController(
+        updateRuleController,
+        new LogController(exports.config),
+        databaseController,
+        authController,
+        storageController,
+        exports.config
+    );
+}
+
+exports.sendRuleRequest = async function sendRequest(data, code = 200) {
+    const response = await axios.post(exports.serverUrl, data);
+    expect(response.status).equal(code);
+    return response.data;
 }
