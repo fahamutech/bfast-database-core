@@ -39,7 +39,7 @@ export class DatabaseFactory implements DatabaseAdapter {
     async ensureIpfs() {
         if (!DatabaseFactory.ipfs) {
             DatabaseFactory.ipfs = await create({
-                host: this.config.useLocalIpfs===true?'localhost':'ipfsnode'
+                host: this.config.useLocalIpfs === true ? 'localhost' : 'ipfsnode'
             });
         }
     }
@@ -189,6 +189,9 @@ export class DatabaseFactory implements DatabaseAdapter {
             return cids.length;
         }
         devLog('total cids to fetch data from', cids.length);
+        if (queryModel.cids === true) {
+            return cids.filter(c => c !== null);
+        }
         const _all_p = cids.map(x => {
             return this.generateDataFromCid(x, {
                 json: true
@@ -382,6 +385,9 @@ export class DatabaseFactory implements DatabaseAdapter {
             return null;
         }
         const cid = result.value;
+        if (queryModel.cids === true){
+            return cid;
+        }
         return this.generateDataFromCid(cid, {
             json: true
         });
@@ -614,6 +620,9 @@ export class DatabaseFactory implements DatabaseAdapter {
                 return result.length;
             }
             devLog('total cids to fetch data from', result.length);
+            if (queryModel.cids === true){
+                return result.map(x=>x?.value).filter(y=>y!==null);
+            }
             const _all_p = result.map(x => {
                 return this.generateDataFromCid(x?.value, {
                     json: true

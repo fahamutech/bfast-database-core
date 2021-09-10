@@ -4,5 +4,6 @@ export interface UpdateRuleRequestModel {
   filter?: any;
   update?: { $set?: {[K: string]: any }, $inc?: {[k: string]: number}};
   return?: string[];
+  cids?: boolean;
   options?: {[key: string]: any}
 }

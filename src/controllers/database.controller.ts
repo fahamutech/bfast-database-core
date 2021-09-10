@@ -16,6 +16,7 @@ import {ChangeStream} from 'mongodb';
 import {ChangesDocModel} from "../model/changes-doc.model";
 import {AppEventsFactory} from "../factory/app-events.factory";
 import {ConstUtil} from "../utils/const.util";
+import {ifError} from "assert";
 
 export class DatabaseController {
 
@@ -47,36 +48,6 @@ export class DatabaseController {
         return this.database.init();
     }
 
-    //
-    // /**
-    //  * create a user defined indexes for specified domain
-    //  * @param domain -
-    //  * @param indexes -
-    //  */
-    // async addIndexes(domain: string, indexes: any[]): Promise<any> {
-    //     if (indexes && Array.isArray(indexes)) {
-    //         return this.database.createIndexes(domain, indexes);
-    //     } else {
-    //         throw new Error('Must supply array of indexes to be added');
-    //     }
-    // }
-    //
-    // /**
-    //  * remove all user defined indexes of the domain
-    //  * @param domain - resource name
-    //  */
-    // async removeIndexes(domain: string): Promise<boolean> {
-    //     return this.database.dropIndexes(domain);
-    // }
-    //
-    // /**
-    //  * list all indexes of a domain
-    //  * @param domain - resource name
-    //  */
-    // async listIndexes(domain: string): Promise<any[]> {
-    //     return this.database.listIndexes(domain);
-    // }
-
     /**
      * perform a single write operation in a database
      * @param domain domain/collection/table to write data to
@@ -97,7 +68,7 @@ export class DatabaseController {
         const sanitizedDataWithCreateMetadata = this.addCreateMetadata(data, context);
         const sanitizedData = this.sanitize4Db(sanitizedDataWithCreateMetadata);
         const doc = await this.database.writeOne<T>(domain, sanitizedData, context, options);
-        const cleanDoc = this.sanitize4User<T>(doc, returnFields, []) as T;
+        const cleanDoc = this.sanitize4User<T>(doc, returnFields, [], false) as T;
         this.publishChanges(domain, {
             _id: doc?._id,
             fullDocument: doc,
@@ -124,7 +95,7 @@ export class DatabaseController {
         const sanitizedData = freshData.map(value => this.sanitize4Db(value));
         const docs = await this.database.writeMany<any>(domain, sanitizedData, context, options);
         return docs.map(x1 => {
-            const cleanDoc = this.sanitize4User(x1, returnFieldsMap[x1._id], []);
+            const cleanDoc = this.sanitize4User(x1, returnFieldsMap[x1._id], [], false);
             this.publishChanges(domain, {
                 _id: x1?._id,
                 fullDocument: x1,
@@ -160,7 +131,7 @@ export class DatabaseController {
         updateModel = this.altUpdateModel(updateModel, context);
         options.dbOptions = updateModel && updateModel.options ? updateModel.options : {};
         const updatedDoc = await this.database.updateOne<any, any>(domain, updateModel, context, options);
-        const cleanDoc = this.sanitize4User(updatedDoc, returnFields, []);
+        const cleanDoc = this.sanitize4User(updatedDoc, returnFields, [], updateModel.cids);
         this.publishChanges(domain, {
             _id: updatedDoc?._id,
             fullDocument: updatedDoc,
@@ -208,7 +179,7 @@ export class DatabaseController {
                 options
             );
             return docs.map(_t1 => {
-                const cleanDoc = this.sanitize4User(_t1, updateModel.return, []);
+                const cleanDoc = this.sanitize4User(_t1, updateModel.return, [], updateModel.cids);
                 this.publishChanges(domain, {
                     _id: _t1?._id,
                     fullDocument: _t1,
@@ -239,9 +210,8 @@ export class DatabaseController {
         }
         deleteModel.filter = this.sanitizeWithOperator4Db(deleteModel?.filter as any);
         const result = await this.database.delete<any>(domain, deleteModel, context, options);
-        // console.log(result);
         return result.map(t => {
-            const cleanDoc = this.sanitize4User(t, deleteModel.return, []);
+            const cleanDoc = this.sanitize4User(t, deleteModel.return, [], false);
             this.publishChanges(domain, {
                 _id: t?._id,
                 fullDocument: t,
@@ -286,22 +256,21 @@ export class DatabaseController {
                         listener({
                             name: 'create',
                             resumeToken: doc._id,
-                            snapshot: this.sanitize4User(doc.fullDocument, [], [])
+                            snapshot: this.sanitize4User(doc.fullDocument, [], [], false)
                         });
                         return;
                     case 'update':
                         listener({
                             name: 'update',
                             resumeToken: doc._id,
-                            snapshot: this.sanitize4User(doc.fullDocument, [], [])
+                            snapshot: this.sanitize4User(doc.fullDocument, [], [], false)
                         });
                         return;
                     case 'delete':
-                        // console.log(doc,'--------> deleted doc');
                         listener({
                             name: 'delete',
                             resumeToken: doc._id,
-                            snapshot: this.sanitize4User(doc.fullDocument, [], [])
+                            snapshot: this.sanitize4User(doc.fullDocument, [], [], false)
                         });
                         return;
                 }
@@ -326,14 +295,14 @@ export class DatabaseController {
             queryModel.filter = this.sanitizeWithOperator4Db(queryModel?.filter as any);
             queryModel.return = returnFields4Db;
             const result = await this.database.findOne(domain, queryModel, context, options);
-            return this.sanitize4User(result, returnFields, queryModel?.hashes);
+            return this.sanitize4User(result, returnFields, queryModel?.hashes, queryModel.cids);
         } else {
             queryModel = this.sanitizeWithOperator4Db(queryModel as any);
             queryModel.filter = this.sanitizeWithOperator4Db(queryModel?.filter as any);
             queryModel.return = returnFields4Db;
             const result = await this.database.findMany(domain, queryModel, context, options);
             if (result && Array.isArray(result)) {
-                return result.map(value => this.sanitize4User(value, returnFields, queryModel?.hashes));
+                return result.map(value => this.sanitize4User(value, returnFields, queryModel?.hashes, queryModel.cids));
             }
             return result;
         }
@@ -349,12 +318,11 @@ export class DatabaseController {
         context?: ContextBlock
     ): any {
         if (data && typeof data !== 'boolean') {
-            // data.$currentDate = {_updated_at: true};
             if (data.$set) {
-                data.$set._updated_at = data.$set._updated_at ? data.$set._updated_at : new Date();
+                data.$set.updatedAt = data.$set.updatedAt ? data.$set.updatedAt : new Date();
             } else if (data.$inc) {
                 data.$set = {};
-                data.$set._updated_at = new Date();
+                data.$set.updatedAt = new Date();
             }
             return data;
         }
@@ -380,13 +348,14 @@ export class DatabaseController {
         data: T,
         context?: ContextBlock
     ): T {
-        data._created_by = context?.uid;
-        data._created_at = data && data.createdAt ? data.createdAt : new Date();
-        data._updated_at = data && data.updatedAt ? data.updatedAt : new Date();
+        data.createdBy = context?.uid;
+        data.createdAt = data && data.createdAt ? data.createdAt : new Date();
+        data.updatedAt = data && data.updatedAt ? data.updatedAt : new Date();
+        if (data._id) {
+            return data;
+        }
         data._id = data && data.id ? data.id : this.security.generateUUID();
-        // if (data && !data.hasOwnProperty('_id')) {
-        //     data._id = this.security.generateUUID();
-        // }
+        delete data.id;
         return data;
     }
 
@@ -449,12 +418,12 @@ export class DatabaseController {
         if (data === null || data === undefined) {
             return null;
         }
-        Object.keys(data).forEach(key => {
-            if (key.startsWith('$')) {
-                // @ts-ignore
-                data[key] = this.sanitize4Db(data[key]);
-            }
-        });
+        // Object.keys(data).forEach(key => {
+        //     if (key.startsWith('$')) {
+        //         // @ts-ignore
+        //         data[key] = this.sanitize4Db(data[key]);
+        //     }
+        // });
         return data;
     }
 
@@ -474,19 +443,19 @@ export class DatabaseController {
             delete data.id;
         }
 
-        if (data && data.hasOwnProperty('createdAt')) {
-            data._created_at = data.createdAt;
-            delete data.createdAt;
+        if (data && data.hasOwnProperty('_created_at')) {
+            data.createdAt = data._created_at;
+            delete data._created_at;
         }
 
-        if (data && data.hasOwnProperty('updatedAt')) {
-            data._updated_at = data.updatedAt;
-            delete data.updatedAt;
+        if (data && data.hasOwnProperty('_updated_at')) {
+            data.updatedAt = data._updated_at;
+            delete data._updated_at;
         }
 
-        if (data && data.hasOwnProperty('createdBy')) {
-            data._created_by = data.createdBy;
-            delete data.createdBy;
+        if (data && data.hasOwnProperty('_created_by')) {
+            data.createdBy = data._created_by;
+            delete data._created_by;
         }
         return data;
     }
@@ -496,11 +465,13 @@ export class DatabaseController {
      * @param data -
      * @param returnFields -
      * @param hashes
+     * @param onlyCids
      */
     sanitize4User<T extends BasicAttributesModel>(
         data: T,
         returnFields: string[],
         hashes: string[],
+        onlyCids: boolean
     ): T {
         if (data === null || data === undefined) {
             return null;
@@ -555,6 +526,9 @@ export class DatabaseController {
 
         if (returnedData === null || returnedData === undefined) {
             return null;
+        }
+        if (onlyCids === true) {
+            return returnedData;
         }
         const dataHash = this.security.sha256OfObject(returnedData);
         const exists = hashes.filter(h => h === dataHash);
