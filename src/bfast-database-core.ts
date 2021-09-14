@@ -31,12 +31,6 @@ function defaultDatabaseFactory(options: BFastDatabaseOptions) {
 
 export class BfastDatabaseCore {
 
-    /**
-     * check if all required options is valid
-     * @param options {BFastDatabaseOptions} - bfast database configurations
-     * @param serverMode {boolean} - if true will check for port option is is set
-     * @private
-     */
     private static validateOptions(
         options: BFastDatabaseOptions,
         serverMode = true
@@ -77,11 +71,6 @@ export class BfastDatabaseCore {
         }
     }
 
-    /**
-     *
-     * @param options {BFastDatabaseOptions}
-     * @private
-     */
     private static async _setUpDatabase(options: BFastDatabaseOptions): Promise<any> {
         const database: DatabaseController = new DatabaseController(
             (options && options.adapters && options.adapters.database)
@@ -92,11 +81,6 @@ export class BfastDatabaseCore {
         await database.init();
     }
 
-    /**
-     *
-     * @param options {BFastDatabaseOptions}
-     * @private
-     */
     private _initiateServices(options: BFastDatabaseOptions): void {
         const ipfsFactory = new IpfsStorageFactory(
             options,
@@ -152,12 +136,6 @@ export class BfastDatabaseCore {
         Provider.service(Provider.names.IPFS_STORAGE_FACTORY, _ => ipfsFactory);
     }
 
-    /**
-     * initiate bfast::database engine without a built in server
-     * @param options {BFastDatabaseOptions} - configurations
-     * @param serveMode {boolean}
-     * @return Promise<WebServices>
-     */
     init(options: BFastDatabaseOptions, serveMode = false): WebServices {
         if (BfastDatabaseCore.validateOptions(options, serveMode).valid) {
             if (options && options.rsaKeyPairInJson && typeof options.rsaKeyPairInJson === "object") {
@@ -185,4 +163,5 @@ export class BfastDatabaseCore {
             throw new Error(BfastDatabaseCore.validateOptions(options, serveMode).message);
         }
     }
+
 }

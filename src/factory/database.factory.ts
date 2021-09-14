@@ -556,7 +556,7 @@ export class DatabaseFactory implements DatabaseAdapter {
             wrapWithDirectory: false
         });
         devLog('done save file to local ipfs with cid', r.cid.toString());
-        DatabaseFactory.ipfs.pin.add(r.cid).catch(console.log);
+        // DatabaseFactory.ipfs.pin.add(r.cid).catch(console.log);
         return {
             cid: r.cid.toString(),
             size: r.size
@@ -570,7 +570,7 @@ export class DatabaseFactory implements DatabaseAdapter {
             [file],
             {
                 wrapWithDirectory: false,
-                // name: data?._id ? `${domain}_${data?._id}` : undefined,
+                name: `${domain}_${v4()}`,
             }
         );
         devLog('done save file to web3 ipfs with cid', r);

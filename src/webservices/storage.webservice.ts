@@ -83,7 +83,6 @@ export class StorageWebservice {
         return functions().onHttpRequest(`${prefix}files/:appId/:filename`, this.handleGetFile());
     }
 
-
     getFileFromStorage(prefix = '/'): FunctionsModel {
         return functions().onHttpRequest(`${prefix}storage/:appId/file/:filename`, this.handleGetFile());
     }
