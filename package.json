@@ -1,6 +1,6 @@
 {
   "name": "bfast-database-core",
-  "version": "1.0.3",
+  "version": "1.1.0",
   "main": "dist/index.js",
   "license": "MIT",
   "author": {
@@ -47,6 +47,7 @@
     "@types/minio": "~7.0.8",
     "@types/mongodb": "~3.6.20",
     "@types/node": "~14.14.10",
+    "@types/express": "~4.17.13",
     "@types/sharp": "~0.28.4",
     "axios": "~0.21.4",
     "bfast-function": "~1.13.0",

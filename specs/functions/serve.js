@@ -5,7 +5,7 @@ const envUtil = new EnvUtil();
 let myConfig = envUtil.loadEnv();
 myConfig = Object.assign(config, myConfig)
 const bfd = new BfastDatabaseCore();
-const webService = bfd.init(myConfig, true);
+const webService = bfd.init(myConfig);
 
 bfast.init({
     applicationId: myConfig.applicationId,

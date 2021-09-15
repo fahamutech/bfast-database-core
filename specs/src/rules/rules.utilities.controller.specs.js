@@ -1,14 +1,15 @@
-const {getRulesController, mongoRepSet} = require('../../mock.config');
+const {mongoRepSet} = require('../../mock.config');
 const {before, after} = require('mocha');
-const assert = require('assert');
+const {assert} = require('chai');
+const {RulesController} = require("../../../dist");
 
 describe('RulesController::Utilities Unit Test', function () {
 
-    let _rulesController;
+    let _rulesController = new RulesController();
     let mongoMemoryReplSet
     before(async function () {
         mongoMemoryReplSet = mongoRepSet();
-        _rulesController = await getRulesController(mongoMemoryReplSet);
+        await mongoMemoryReplSet.start();
     });
     after(async function () {
         await mongoMemoryReplSet.stop();

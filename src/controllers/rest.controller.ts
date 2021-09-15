@@ -1,55 +1,120 @@
 import httpStatus, {StatusCodes} from 'http-status-codes';
-import {SecurityController} from './security.controller';
-import {RulesController} from './rules.controller';
 import {RuleResponse} from '../model/rules.model';
-import {StorageController} from './storage.controller';
-import {AuthController} from './auth.controller';
-import {BFastDatabaseOptions} from '../bfast-database.option';
 import formidable from 'formidable';
 import {readFile} from 'fs';
 import {promisify} from "util";
 import mime from 'mime'
+import {DatabaseController} from "./database.controller";
+import {StorageController} from "./storage.controller";
+import {BFastDatabaseOptions} from "../bfast-database.option";
+import {AuthController} from "./auth.controller";
+import {NextFunction, Request, Response} from 'express'
+import {SecurityController} from "./security.controller";
+import {RulesController} from "./rules.controller";
+import {DatabaseAdapter} from "../adapters/database.adapter";
+import {AuthAdapter} from "../adapters/auth.adapter";
+import {UpdateRuleController} from "./update.rule.controller";
+import {FilesAdapter} from "../adapters/files.adapter";
 
 export class RestController {
-    constructor(private readonly securityController: SecurityController,
-                private readonly authController: AuthController,
-                private readonly storageController: StorageController,
-                private readonly rulesController: RulesController,
-                private readonly config: BFastDatabaseOptions) {
+    constructor() {
     }
 
-    getFile(request: any, response: any, _: any): void {
+    getFile(
+        request: Request,
+        response: Response,
+        _: NextFunction,
+        storageController: StorageController,
+        databaseAdapter: DatabaseAdapter,
+        filesAdapter: FilesAdapter,
+        options
+    ): void {
         if (request?.method?.toString()?.toLowerCase() === 'head') {
-            this.storageController.fileInfo(request, response);
-        } else if (this.storageController.isS3() === true) {
-            this.storageController.handleGetFileBySignedUrl(request, response, false);
+            storageController.fileInfo(request, response, databaseAdapter, filesAdapter, options);
+        } else if (storageController.isS3(filesAdapter) === true) {
+            storageController.handleGetFileBySignedUrl(
+                request,
+                response,
+                false,
+                databaseAdapter,
+                filesAdapter,
+                options
+            );
         } else {
-            this.storageController.handleGetFileRequest(request, response, false);
+            storageController.handleGetFileRequest(
+                request,
+                response,
+                false,
+                databaseAdapter,
+                filesAdapter,
+                options
+            );
         }
     }
 
-    getThumbnail(request: any, response: any, _: any): void {
-        if (this.storageController.isS3() === true) {
-            this.storageController.handleGetFileBySignedUrl(request, response, true);
+    getThumbnail(
+        request: Request,
+        response: Response,
+        _: NextFunction,
+        storageController: StorageController,
+        databaseAdapter: DatabaseAdapter,
+        filesAdapter: FilesAdapter,
+        options: BFastDatabaseOptions
+    ): void {
+        if (storageController.isS3(filesAdapter) === true) {
+            storageController.handleGetFileBySignedUrl(
+                request,
+                response,
+                true,
+                databaseAdapter,
+                filesAdapter,
+                options);
         } else {
-            this.storageController.handleGetFileRequest(request, response, true);
+            storageController.handleGetFileRequest(
+                request,
+                response,
+                true,
+                databaseAdapter,
+                filesAdapter,
+                options
+            );
         }
     }
 
-    getAllFiles(request: any, response: any, _: any): void {
-        this.storageController.listFiles({
-            skip: request.query.skip ? request.query.skip as number : 0,
-            after: request.query.after,
-            size: request.query.size ? request.query.size as number : 20,
-            prefix: request.query.prefix ? request.query.prefix : '',
-        }).then(value => {
+    getAllFiles(
+        request: Request,
+        response: Response,
+        _: NextFunction,
+        storageController: StorageController,
+        databaseAdapter: DatabaseAdapter,
+        filesAdapter: FilesAdapter,
+        options: BFastDatabaseOptions
+    ): void {
+        storageController.listFiles({
+                skip: request.query.skip ? parseInt(request.query.skip.toString()) : 0,
+                after: request.query.after.toString(),
+                size: request.query.size ? parseInt(request.query.size.toString()) : 20,
+                prefix: request.query.prefix ? request.query.prefix.toString() : '',
+            },
+            databaseAdapter,
+            filesAdapter,
+            options).then(value => {
             response.json(value);
         }).catch(reason => {
             response.status(StatusCodes.EXPECTATION_FAILED).send({message: reason.toString()});
         });
     }
 
-    multipartForm(request: any, response: any, _: any): void {
+    multipartForm(
+        request: Request,
+        response: Response,
+        _: NextFunction,
+        storageController: StorageController,
+        securityController: SecurityController,
+        databaseAdapter: DatabaseAdapter,
+        filesAdapter: FilesAdapter,
+        options: BFastDatabaseOptions
+    ): void {
         const contentType = request.get('content-type').split(';')[0].toString().trim();
         if (contentType !== 'multipart/form-data'.trim()) {
             response.status(StatusCodes.BAD_REQUEST).json({message: 'Accept only multipart request'});
@@ -66,10 +131,12 @@ export class RestController {
                     response.status(StatusCodes.BAD_REQUEST).send(err.toString());
                     return;
                 }
-                // console.log(fields, '--------> parsed fields');
-                // console.log(files, '--------> parsed files');
                 const urls = [];
-                if (request && request.query && request.query.pn && request.query.pn.trim().toLowerCase() === 'true') {
+                if (request
+                    && request.query
+                    && request.query.pn
+                    && request.query.pn.toString().trim().toLowerCase() === 'true'
+                ) {
                     request.body.context.storage = {preserveName: true};
                 } else {
                     request.body.context.storage = {preserveName: false};
@@ -81,12 +148,16 @@ export class RestController {
                         .toString()
                         .replace(regx, '');
                     fileMeta.type = file.type;
-                    const result = await this.storageController.saveFromBuffer({
-                        data: await promisify(readFile)(file.path),
-                        type: fileMeta.type,
-                        size: file.size,
-                        name: fileMeta.name
-                    }, request.body.context);
+                    const result = await storageController.saveFromBuffer({
+                            data: await promisify(readFile)(file.path),
+                            type: fileMeta.type,
+                            size: file.size,
+                            name: fileMeta.name
+                        }, request.body.context,
+                        databaseAdapter,
+                        filesAdapter,
+                        securityController,
+                        options);
                     urls.push(result);
                 }
                 for (const f_key of Object.keys(fields)) {
@@ -95,14 +166,20 @@ export class RestController {
                     fileMeta.name = f_key
                         .toString()
                         .replace(regx, '');
-
+                    // @ts-ignore
                     fileMeta.type = mime.getType(f_key);
-                    const result = await this.storageController.saveFromBuffer({
-                        data: Buffer.from(fields[f_key]),
-                        type: fileMeta.type,
-                        size: fields[f_key]?.length,
-                        name: fileMeta.name
-                    }, request.body.context);
+                    const result = await storageController.saveFromBuffer({
+                            data: Buffer.from(fields[f_key]),
+                            type: fileMeta.type,
+                            size: fields[f_key]?.length,
+                            name: fileMeta.name
+                        },
+                        request.body.context,
+                        databaseAdapter,
+                        filesAdapter,
+                        securityController,
+                        options
+                    );
                     urls.push(result);
                 }
                 response.status(StatusCodes.OK).json({urls});
@@ -113,9 +190,14 @@ export class RestController {
         });
     }
 
-    verifyApplicationId(request: any, response: any, next: any): void {
+    verifyApplicationId(
+        request: any,
+        response: any,
+        next: any,
+        options: BFastDatabaseOptions
+    ): void {
         const applicationId = request.body.applicationId;
-        if (applicationId === this.config.applicationId) {
+        if (applicationId === options.applicationId) {
             request.body.context = {
                 applicationId
             };
@@ -125,8 +207,24 @@ export class RestController {
         }
     }
 
-    filePolicy(request: any, response: any, next: any): void {
-        this.authController.hasPermission(request.body.ruleId, request.body.context).then(value => {
+    filePolicy(
+        request: Request,
+        response: Response,
+        next: NextFunction,
+        databaseController: DatabaseController,
+        securityController: SecurityController,
+        databaseAdapter: DatabaseAdapter,
+        authController: AuthController,
+        options: BFastDatabaseOptions
+    ): void {
+        authController.hasPermission(
+            request.body.ruleId,
+            databaseController,
+            securityController,
+            databaseAdapter,
+            request.body.context,
+            options
+        ).then(value => {
             if (value === true) {
                 next();
             } else {
@@ -137,12 +235,18 @@ export class RestController {
         });
     }
 
-    verifyToken(request: any, response: any, next: any): void {
+    verifyToken(
+        request: Request,
+        response: Response,
+        next: NextFunction,
+        securityController: SecurityController,
+        options: BFastDatabaseOptions
+    ): void {
         const token = request.body.token;
         const headerToken = request.headers['x-bfast-token'];
         const masterKey = request.body.masterKey;
 
-        if (masterKey === this.config.masterKey) {
+        if (masterKey === options.masterKey) {
             request.body.context.auth = true;
             request.body.context.uid = "masterKey";
             request.body.context.masterKey = masterKey;
@@ -153,7 +257,7 @@ export class RestController {
 
         request.body.context.useMasterKey = false;
         const vToken = () => {
-            this.securityController.verifyToken(token).then(value => {
+            securityController.verifyToken(token, options).then(value => {
                 request.body.context.auth = true;
                 request.body.context.uid = value.uid;
                 next();
@@ -195,23 +299,111 @@ export class RestController {
         }
     }
 
-    handleRuleBlocks(request: any, response: any, _: any): void {
+    handleRuleBlocks(
+        request: Request,
+        response: Response,
+        _: NextFunction,
+        rulesController: RulesController,
+        authController: AuthController,
+        updateRuleController: UpdateRuleController,
+        databaseController: DatabaseController,
+        securityController: SecurityController,
+        storageController: StorageController,
+        authAdapter: AuthAdapter,
+        databaseAdapter: DatabaseAdapter,
+        filesAdapter: FilesAdapter,
+        options: BFastDatabaseOptions,
+    ): void {
         const body = request.body;
         const results: RuleResponse = {errors: {}};
-        this.rulesController.handleAuthenticationRule(body, results).then(_1 => {
-            return this.rulesController.handleAuthorizationRule(body, results);
+        rulesController.handleAuthenticationRule(
+            body,
+            results,
+            authController,
+            databaseController,
+            securityController,
+            authAdapter,
+            databaseAdapter,
+            options
+        ).then(_1 => {
+            return rulesController.handleAuthorizationRule(
+                body,
+                results,
+                authController,
+                databaseController,
+                securityController,
+                databaseAdapter,
+                options
+            );
         }).then(_2 => {
-            return this.rulesController.handleCreateRules(body, results);
+            return rulesController.handleCreateRules(
+                body,
+                results,
+                authController,
+                databaseController,
+                securityController,
+                databaseAdapter,
+                options,
+                null
+            );
         }).then(_3 => {
-            return this.rulesController.handleUpdateRules(body, results);
+            return rulesController.handleUpdateRules(
+                body,
+                results,
+                updateRuleController,
+                authController,
+                databaseController,
+                securityController,
+                databaseAdapter,
+                options,
+                null
+            );
         }).then(_4 => {
-            return this.rulesController.handleDeleteRules(body, results);
+            return rulesController.handleDeleteRules(
+                body,
+                results,
+                authController,
+                databaseController,
+                securityController,
+                databaseAdapter,
+                options,
+                null
+            );
         }).then(_5 => {
-            return this.rulesController.handleQueryRules(body, results);
+            return rulesController.handleQueryRules(
+                body,
+                results,
+                authController,
+                databaseController,
+                securityController,
+                databaseAdapter,
+                options,
+                null
+            );
         }).then(_6 => {
-            return this.rulesController.handleBulkRule(body, results);
+            return rulesController.handleBulkRule(
+                body,
+                results,
+                updateRuleController,
+                authController,
+                databaseController,
+                securityController,
+                databaseAdapter,
+                options
+            );
         }).then(_8 => {
-            return this.rulesController.handleStorageRule(body, results);
+            return rulesController.handleStorageRule(
+                body,
+                results,
+                storageController,
+                authController,
+                databaseController,
+                securityController,
+                authAdapter,
+                databaseAdapter,
+                filesAdapter,
+                options
+            );
         }).then(_9 => {
             if (!(results.errors && Object.keys(results.errors).length > 0)) {
                 delete results.errors;
@@ -220,9 +412,6 @@ export class RestController {
         }).catch(reason => {
             response.status(httpStatus.EXPECTATION_FAILED).json({message: reason.message ? reason.message : reason.toString()});
         });
-        //     .then(_7 => {
-        //     return this.rulesController.handleAggregationRules(body, results);
-        // })
     }
 
 }

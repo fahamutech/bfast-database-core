@@ -1,65 +1,214 @@
 import {functions} from 'bfast';
-import {RestController} from '../controllers/rest.controller';
 import {FunctionsModel} from '../model/functions.model';
+import {RestController} from "../controllers/rest.controller";
+import {BFastDatabaseOptions} from "../bfast-database.option";
+import {SecurityController} from "../controllers/security.controller";
+import {DatabaseController} from "../controllers/database.controller";
+import {DatabaseAdapter} from "../adapters/database.adapter";
+import {AuthController} from "../controllers/auth.controller";
+import {StorageController} from "../controllers/storage.controller";
+import {FilesAdapter} from "../adapters/files.adapter";
 
 
 export class StorageWebservice {
-    constructor(private readonly restController: RestController) {
+    constructor() {
     }
 
-    private handleGetFile(): any[] {
+    private handleGetFile(
+        securityController: SecurityController,
+        restController: RestController,
+        databaseController: DatabaseController,
+        storageController: StorageController,
+        authController: AuthController,
+        databaseAdapter: DatabaseAdapter,
+        filesAdapter: FilesAdapter,
+        options: BFastDatabaseOptions
+    ): any[] {
         return [
             (request, _, next) => {
                 request.body.applicationId = request.params.appId;
                 request.body.ruleId = 'files.read';
                 next();
             },
-            (rq, rs, n) => this.restController.verifyApplicationId(rq, rs, n),
-            (rq, rs, n) => this.restController.verifyToken(rq, rs, n),
-            (rq, rs, n) => this.restController.filePolicy(rq, rs, n),
-            (rq, rs, n) => this.restController.getFile(rq, rs, n)
+            (rq, rs, n) => restController
+                .verifyApplicationId(
+                    rq,
+                    rs,
+                    n,
+                    options
+                ),
+            (rq, rs, n) => restController
+                .verifyToken(
+                    rq,
+                    rs,
+                    n,
+                    securityController,
+                    options
+                ),
+            (rq, rs, n) => restController
+                .filePolicy(
+                    rq,
+                    rs,
+                    n,
+                    databaseController,
+                    securityController,
+                    databaseAdapter,
+                    authController,
+                    options
+                ),
+            (rq, rs, n) => restController
+                .getFile(
+                    rq,
+                    rs,
+                    n,
+                    storageController,
+                    databaseAdapter,
+                    filesAdapter,
+                    options
+                )
         ];
     }
 
-    private handleUploadFile(): any[] {
+    private handleUploadFile(
+        restController: RestController,
+        securityController: SecurityController,
+        databaseController: DatabaseController,
+        authController: AuthController,
+        storageController: StorageController,
+        databaseAdapter: DatabaseAdapter,
+        filesAdapter: FilesAdapter,
+        options: BFastDatabaseOptions
+    ): any[] {
         return [
             (request, response, next) => {
                 request.body.applicationId = request.params.appId;
                 request.body.ruleId = 'files.save';
                 next();
             },
-            (rq, rs, n) => this.restController.verifyApplicationId(rq, rs, n),
-            (rq, rs, n) => this.restController.verifyToken(rq, rs, n),
-            (rq, rs, n) => this.restController.filePolicy(rq, rs, n),
-            (rq, rs, n) => this.restController.multipartForm(rq, rs, n)
+            (rq, rs, n) => restController
+                .verifyApplicationId(
+                    rq,
+                    rs,
+                    n,
+                    options
+                ),
+            (rq, rs, n) => restController
+                .verifyToken(
+                    rq,
+                    rs,
+                    n,
+                    securityController,
+                    options
+                ),
+            (rq, rs, n) => restController
+                .filePolicy(
+                    rq,
+                    rs,
+                    n,
+                    databaseController,
+                    securityController,
+                    databaseAdapter,
+                    authController,
+                    options
+                ),
+            (rq, rs, n) => restController
+                .multipartForm(
+                    rq,
+                    rs,
+                    n,
+                    storageController,
+                    securityController,
+                    databaseAdapter,
+                    filesAdapter,
+                    options
+                )
         ];
     }
 
-    private handleGetThumbnail(): any[] {
+    private handleGetThumbnail(
+        restController: RestController,
+        securityController: SecurityController,
+        databaseController: DatabaseController,
+        authController: AuthController,
+        storageController: StorageController,
+        databaseAdapter: DatabaseAdapter,
+        filesAdapter: FilesAdapter,
+        options: BFastDatabaseOptions
+    ): any[] {
         return [
             (request, _, next) => {
                 request.body.applicationId = request.params.appId;
                 request.body.ruleId = 'files.read';
                 next();
             },
-            (rq, rs, n) => this.restController.verifyApplicationId(rq, rs, n),
-            (rq, rs, n) => this.restController.verifyToken(rq, rs, n),
-            (rq, rs, n) => this.restController.filePolicy(rq, rs, n),
-            (rq, rs, n) => this.restController.getThumbnail(rq, rs, n)
+            (rq, rs, n) => restController.verifyApplicationId(rq, rs, n, options),
+            (rq, rs, n) => restController.verifyToken(rq, rs, n,securityController,options),
+            (rq, rs, n) => restController
+                .filePolicy(
+                    rq,
+                    rs,
+                    n,
+                    databaseController,
+                    securityController,
+                    databaseAdapter,
+                    authController,
+                    options
+                ),
+            (rq, rs, n) => restController.getThumbnail(
+                rq,
+                rs,
+                n,
+                storageController,
+                databaseAdapter,
+                filesAdapter,
+                options
+            )
         ];
     }
 
-    private handleListFiles(): any[] {
+    private handleListFiles(
+        restController: RestController,
+        securityController: SecurityController,
+        databaseController: DatabaseController,
+        authController: AuthController,
+        storageController: StorageController,
+        databaseAdapter: DatabaseAdapter,
+        filesAdapter: FilesAdapter,
+        options: BFastDatabaseOptions
+    ): any[] {
         return [
             (request, _, next) => {
                 request.body.applicationId = request.params.appId;
                 request.body.ruleId = 'files.list';
                 next();
             },
-            (rq, rs, n) => this.restController.verifyApplicationId(rq, rs, n),
-            (rq, rs, n) => this.restController.verifyToken(rq, rs, n),
-            (rq, rs, n) => this.restController.filePolicy(rq, rs, n),
-            (rq, rs, n) => this.restController.getAllFiles(rq, rs, n)
+            (rq, rs, n) => restController.verifyApplicationId(
+                rq,
+                rs,
+                n,
+                options
+            ),
+            (rq, rs, n) => restController.verifyToken(rq, rs, n, securityController, options),
+            (rq, rs, n) => restController
+                .filePolicy(
+                    rq,
+                    rs,
+                    n,
+                    databaseController,
+                    securityController,
+                    databaseAdapter,
+                    authController,
+                    options
+                ),
+            (rq, rs, n) => restController.getAllFiles(
+                rq,
+                rs,
+                n,
+                storageController,
+                databaseAdapter,
+                filesAdapter,
+                options
+            )
         ];
     }
 
@@ -79,39 +228,210 @@ export class StorageWebservice {
             });
     }
 
-    getFileStorageV1(prefix = '/'): FunctionsModel {
-        return functions().onHttpRequest(`${prefix}files/:appId/:filename`, this.handleGetFile());
+    getFileStorageV1(
+        prefix = '/',
+        restController: RestController,
+        securityController: SecurityController,
+        databaseController: DatabaseController,
+        authController: AuthController,
+        storageController: StorageController,
+        databaseAdapter: DatabaseAdapter,
+        filesAdapter: FilesAdapter,
+        options: BFastDatabaseOptions
+    ): FunctionsModel {
+        return functions().onHttpRequest(`${prefix}files/:appId/:filename`, this.handleGetFile(
+            securityController,
+            restController,
+            databaseController,
+            storageController,
+            authController,
+            databaseAdapter,
+            filesAdapter,
+            options
+        ));
     }
 
-    getFileFromStorage(prefix = '/'): FunctionsModel {
-        return functions().onHttpRequest(`${prefix}storage/:appId/file/:filename`, this.handleGetFile());
+    getFileFromStorage(
+        prefix = '/',
+        restController: RestController,
+        securityController: SecurityController,
+        databaseController: DatabaseController,
+        authController: AuthController,
+        storageController: StorageController,
+        databaseAdapter: DatabaseAdapter,
+        filesAdapter: FilesAdapter,
+        options: BFastDatabaseOptions
+    ): FunctionsModel {
+        return functions().onHttpRequest(`${prefix}storage/:appId/file/:filename`, this.handleGetFile(
+            securityController,
+            restController,
+            databaseController,
+            storageController,
+            authController,
+            databaseAdapter,
+            filesAdapter,
+            options
+        ));
     }
 
-    getFileFromStorageV2(prefix = '/'): FunctionsModel {
-        return functions().onHttpRequest(`${prefix}v2/storage/:appId/file/:filename`, this.handleGetFile());
+    getFileFromStorageV2(
+        prefix = '/',
+        restController: RestController,
+        securityController: SecurityController,
+        databaseController: DatabaseController,
+        authController: AuthController,
+        storageController: StorageController,
+        databaseAdapter: DatabaseAdapter,
+        filesAdapter: FilesAdapter,
+        options: BFastDatabaseOptions
+    ): FunctionsModel {
+        return functions().onHttpRequest(`${prefix}v2/storage/:appId/file/:filename`, this.handleGetFile(
+            securityController,
+            restController,
+            databaseController,
+            storageController,
+            authController,
+            databaseAdapter,
+            filesAdapter,
+            options
+        ));
     }
 
-    geThumbnailFromStorage(prefix = '/'): FunctionsModel {
-        return functions().onGetHttpRequest(`${prefix}storage/:appId/file/:filename/thumbnail`, this.handleGetThumbnail());
+    geThumbnailFromStorage(
+        prefix = '/',
+        restController: RestController,
+        securityController: SecurityController,
+        databaseController: DatabaseController,
+        authController: AuthController,
+        storageController: StorageController,
+        databaseAdapter: DatabaseAdapter,
+        filesAdapter: FilesAdapter,
+        options: BFastDatabaseOptions
+    ): FunctionsModel {
+        return functions().onGetHttpRequest(`${prefix}storage/:appId/file/:filename/thumbnail`, this.handleGetThumbnail(
+            restController,
+            securityController,
+            databaseController,
+            authController,
+            storageController,
+            databaseAdapter,
+            filesAdapter,
+            options
+        ));
     }
 
-    geThumbnailFromStorageV2(prefix = '/'): FunctionsModel {
-        return functions().onGetHttpRequest(`${prefix}v2/storage/:appId/file/:filename/thumbnail`, this.handleGetThumbnail());
+    geThumbnailFromStorageV2(
+        prefix = '/',
+        restController: RestController,
+        securityController: SecurityController,
+        databaseController: DatabaseController,
+        authController: AuthController,
+        storageController: StorageController,
+        databaseAdapter: DatabaseAdapter,
+        filesAdapter: FilesAdapter,
+        options: BFastDatabaseOptions
+    ): FunctionsModel {
+        return functions().onGetHttpRequest(`${prefix}v2/storage/:appId/file/:filename/thumbnail`, this.handleGetThumbnail(
+            restController,
+            securityController,
+            databaseController,
+            authController,
+            storageController,
+            databaseAdapter,
+            filesAdapter,
+            options
+        ));
     }
 
-    uploadMultiPartFile(prefix = '/'): FunctionsModel {
-        return functions().onPostHttpRequest(`${prefix}storage/:appId`, this.handleUploadFile());
+    uploadMultiPartFile(
+        prefix = '/',
+        restController: RestController,
+        securityController: SecurityController,
+        databaseController: DatabaseController,
+        authController: AuthController,
+        storageController: StorageController,
+        databaseAdapter: DatabaseAdapter,
+        filesAdapter: FilesAdapter,
+        options: BFastDatabaseOptions
+    ): FunctionsModel {
+        return functions().onPostHttpRequest(`${prefix}storage/:appId`, this.handleUploadFile(
+            restController,
+            securityController,
+            databaseController,
+            authController,
+            storageController,
+            databaseAdapter,
+            filesAdapter,
+            options
+        ));
     }
 
-    uploadMultiPartFileV2(prefix = '/'): FunctionsModel {
-        return functions().onPostHttpRequest(`${prefix}v2/storage/:appId`, this.handleUploadFile());
+    uploadMultiPartFileV2(
+        prefix = '/',
+        restController: RestController,
+        securityController: SecurityController,
+        databaseController: DatabaseController,
+        authController: AuthController,
+        storageController: StorageController,
+        databaseAdapter: DatabaseAdapter,
+        filesAdapter: FilesAdapter,
+        options: BFastDatabaseOptions
+    ): FunctionsModel {
+        return functions().onPostHttpRequest(`${prefix}v2/storage/:appId`, this.handleUploadFile(
+            restController,
+            securityController,
+            databaseController,
+            authController,
+            storageController,
+            databaseAdapter,
+            filesAdapter,
+            options
+        ));
     }
 
-    getFilesFromStorage(prefix = '/'): FunctionsModel {
-        return functions().onGetHttpRequest(`${prefix}storage/:appId/list`, this.handleListFiles());
+    getFilesFromStorage(
+        prefix = '/',
+        restController: RestController,
+        securityController: SecurityController,
+        databaseController: DatabaseController,
+        authController: AuthController,
+        storageController: StorageController,
+        databaseAdapter: DatabaseAdapter,
+        filesAdapter: FilesAdapter,
+        options: BFastDatabaseOptions
+    ): FunctionsModel {
+        return functions().onGetHttpRequest(`${prefix}storage/:appId/list`, this.handleListFiles(
+            restController,
+            securityController,
+            databaseController,
+            authController,
+            storageController,
+            databaseAdapter,
+            filesAdapter,
+            options
+        ));
     }
 
-    getFilesFromStorageV2(prefix = '/'): FunctionsModel {
-        return functions().onGetHttpRequest(`${prefix}v2/storage/:appId/list`, this.handleListFiles());
+    getFilesFromStorageV2(
+        prefix = '/',
+        restController: RestController,
+        securityController: SecurityController,
+        databaseController: DatabaseController,
+        authController: AuthController,
+        storageController: StorageController,
+        databaseAdapter: DatabaseAdapter,
+        filesAdapter: FilesAdapter,
+        options: BFastDatabaseOptions
+    ): FunctionsModel {
+        return functions().onGetHttpRequest(`${prefix}v2/storage/:appId/list`, this.handleListFiles(
+            restController,
+            securityController,
+            databaseController,
+            authController,
+            storageController,
+            databaseAdapter,
+            filesAdapter,
+            options
+        ));
     }
 }

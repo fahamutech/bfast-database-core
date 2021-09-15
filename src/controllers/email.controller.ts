@@ -2,10 +2,13 @@ import {EmailAdapter} from '../adapters/email.adapter';
 import {MailModel} from '../model/mail.model';
 
 export class EmailController {
-    constructor(private readonly emailAdapter: EmailAdapter) {
+    constructor() {
     }
 
-    sendMail(mailModel: MailModel): Promise<any> {
-        return this.emailAdapter.sendMail(mailModel);
+    sendMail(
+        mailModel: MailModel,
+        emailAdapter: EmailAdapter
+    ): Promise<any> {
+        return emailAdapter.sendMail(mailModel);
     }
 }

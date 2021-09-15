@@ -9,7 +9,7 @@ import { createHash } from 'crypto';
 
 export class SecurityController {
 
-    constructor(private readonly options: BFastDatabaseOptions) {
+    constructor() {
     }
 
     sha256OfObject(data: {[key: string]: any}){
@@ -41,14 +41,12 @@ export class SecurityController {
         return uuid.v4();
     }
 
-    /**
-     * generate new token and whitelist it
-     * @param data {{[key: string]: any}}
-     * @param host {string}
-     * @param expire {string} - days for token to expire
-     * @return {*}
-     */
-    async getToken(data: { uid: string, [key: string]: any } = {uid: undefined}, expire = 30, host = 'https://api.bfast.fahamutech.com') {
+    async getToken(
+        data: { uid: string, [key: string]: any } = {uid: undefined},
+        options: BFastDatabaseOptions,
+        expire = 30,
+        host = 'https://api.bfast.fahamutech.com',
+    ) {
         const time = Math.floor(new Date().getTime() / 1000);
         let claims = {
             iss: host,
@@ -58,30 +56,19 @@ export class SecurityController {
             exp: new Date().getTime() + this.dayToMillSecond(expire)
         };
         claims = Object.assign(claims, data);
-        const jwk = this.getJwk(this.options.rsaKeyPairInJson);
+        const jwk = this.getJwk(options.rsaKeyPairInJson);
         const keyPEM = jwk.key.toPrivateKeyPEM();
         const jwt = njwt.create(claims, keyPEM, jwk.alg);
         jwt.setExpiration(new Date().getTime() + this.dayToMillSecond(expire));
         return jwt.compact();
     }
 
-    /**
-     * verify token and check for blacklist
-     * @param token {string}
-     * @return {JwtBody}
-     */
-    async verifyToken(token) {
-        const jwk = this.getJwk(this.options.rsaPublicKeyInJson);
+    async verifyToken(token, options: BFastDatabaseOptions) {
+        const jwk = this.getJwk(options.rsaPublicKeyInJson);
         const jwt = njwt.verify(token, jwk.key.toPublicKeyPEM(), jwk.alg);
         return jwt.body.toJSON();
     }
 
-    /**
-     * get jwk to give external service
-     * for verifying the token
-     * @param keyPair {*}
-     * @return {JWK}
-     */
     private getJwk(keyPair) {
         const jwk = nodeJwk.JWK.fromObject(keyPair);
         if (!jwk) {

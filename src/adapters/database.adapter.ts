@@ -3,90 +3,59 @@ import {ContextBlock} from '../model/rules.model';
 import {QueryModel} from '../model/query-model';
 import {UpdateRuleRequestModel} from '../model/update-rule-request.model';
 import {DeleteModel} from '../model/delete-model';
+import {BFastDatabaseOptions} from "../bfast-database.option";
 
 export abstract class DatabaseAdapter {
 
-    /**
-     * initialize some database pre operation like indexes
-     */
-    abstract init(): Promise<any>;
+    abstract init(options: BFastDatabaseOptions): Promise<any>;
 
-    /**
-     * return promise which resolve to string which is id of a created document
-     * @param domain - {string} a domain/table/collection to work with
-     * @param data - {Object} a map of the data to write to bfast::database
-     * @param context - {ContextBlock} current operation context
-     * @param options - {DatabaseWriteOptions} bfast::database write operation
-     * @return Promise resolve with an id of the record created in bfast::database
-     */
     abstract writeOne<T extends BasicAttributesModel>(
         domain: string,
         data: T,
         context: ContextBlock,
-        options?: DatabaseWriteOptions
+        options: BFastDatabaseOptions
     ): Promise<any>;
 
-    /**
-     * return promise which resolve to object of ids of a created documents
-     * @param domain - {string}
-     * @param data - {Array<any>}
-     * @param context - {ContextBlock}
-     * @param options - {Data}
-     */
     abstract writeMany<T extends BasicAttributesModel>(
         domain: string,
         data: T[],
         context: ContextBlock,
-        options?: DatabaseWriteOptions
+        options: BFastDatabaseOptions
     ): Promise<any[]>;
 
     abstract updateOne<T extends BasicAttributesModel, V>(
         domain: string,
         updateModel: UpdateRuleRequestModel,
         context: ContextBlock,
-        options?: DatabaseUpdateOptions
+        options: BFastDatabaseOptions
     ): Promise<V>;
 
     abstract updateMany<T extends BasicAttributesModel>(
         domain: string,
         updateModel: UpdateRuleRequestModel,
         context: ContextBlock,
-        options?: DatabaseUpdateOptions
+        options: BFastDatabaseOptions
     ): Promise<any[]>;
 
     abstract delete<T extends BasicAttributesModel>(
         domain: string,
         deleteModel: DeleteModel<T>,
         context: ContextBlock,
-        options?: DatabaseBasicOptions
+        options: BFastDatabaseOptions
     ): Promise<{ _id: string }[]>;
 
-    /**
-     * find a single record from a bfast::database
-     * @param domain - {string} a domain/table/collection to work with
-     * @param queryModel - {QueryModel}  a map which represent a desired data to return
-     * @param context - {ContextBlock} current operation context
-     * @param options - {DatabaseWriteOptions} bfast::database write operation
-     */
     abstract findOne<T extends BasicAttributesModel>(
         domain: string,
         queryModel: QueryModel<T>,
         context: ContextBlock,
-        options?: DatabaseWriteOptions
+        options: BFastDatabaseOptions
     ): Promise<any>;
 
-    /**
-     * Query a database to find a result depend on the queryModel supplied
-     * @param domain - {string} a domain/table/collection to work with
-     * @param queryModel - {QueryModel} a map which represent a required data from bfast::database
-     * @param context - {ContextBlock} current operation context
-     * @param options - {DatabaseWriteOptions} bfast::database write options
-     */
     abstract findMany<T extends BasicAttributesModel>(
         domain: string,
         queryModel: QueryModel<T>,
         context: ContextBlock,
-        options?: DatabaseWriteOptions
+        options: BFastDatabaseOptions
     ): Promise<any>;
 
     abstract changes(domain: string, pipeline: object[], listener: (doc: any) => void, resumeToken: string): Promise<any>;

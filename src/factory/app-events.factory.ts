@@ -19,7 +19,6 @@ export class AppEventsFactory {
 
     public sub(eventName: string, handler: (doc: ChangesModel) => void) {
         this.eventEmitter.on(eventName, handler);
-        // console.log(this.eventEmitter.listenerCount(eventName),'----> max listener');
     }
 
     public unSub(evenName: string, handler: (doc: ChangesModel) => void) {

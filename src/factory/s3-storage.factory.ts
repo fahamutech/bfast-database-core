@@ -3,13 +3,13 @@ import {BFastDatabaseOptions} from '../bfast-database.option';
 import * as Minio from 'minio';
 import {Client} from 'minio';
 import {Buffer} from "buffer";
+import {DatabaseAdapter} from "../adapters/database.adapter";
 
 const url = require('url');
 
 export class S3StorageFactory implements FilesAdapter {
 
-    constructor(private readonly config: BFastDatabaseOptions) {
-        this.init(config);
+    constructor() {
     }
 
     s3: Client;
@@ -17,23 +17,42 @@ export class S3StorageFactory implements FilesAdapter {
     canHandleFileStream = false;
     isS3 = true;
 
-    async createFile(filename: string, size: number, data: Buffer, contentType: string, options: any): Promise<string> {
-        const bucket = this.config.adapters.s3Storage.bucket;
-        await this.createBucket(bucket);
+    async createFile(
+        filename: string,
+        size: number,
+        data: Buffer,
+        contentType: string,
+        databaseAdapter: DatabaseAdapter,
+        options: BFastDatabaseOptions
+    ): Promise<string> {
+        const bucket = options?.adapters?.s3Storage?.bucket;
+        await this.createBucket(bucket, options);
         await this.validateFilename(filename);
-        // const newFilename = security.generateUUID() + '-' + filename;
-        return this.saveFile(filename, data, bucket, this.config.adapters.s3Storage.endPoint, this.config.adapters.s3Storage.region);
+        return this.saveFile(
+            filename,
+            data,
+            bucket,
+            options
+        );
     }
 
-    async deleteFile(filename: string): Promise<any> {
-        const bucket = this.config.adapters.s3Storage.bucket;
-        await this.createBucket(bucket);
+    async deleteFile(
+        filename: string,
+        databaseAdapter: DatabaseAdapter,
+        options: BFastDatabaseOptions
+    ): Promise<any> {
+        const bucket = options?.adapters?.s3Storage?.bucket;
+        await this.createBucket(bucket, options);
         return this.s3.removeObject(bucket, filename);
     }
 
-    async fileInfo(filename: string): Promise<{ name: string; size: number }> {
-        const bucket = this.config.adapters.s3Storage.bucket;
-        await this.createBucket(bucket);
+    async fileInfo(
+        filename: string,
+        databaseAdapter: DatabaseAdapter,
+        options: BFastDatabaseOptions
+    ): Promise<{ name: string; size: number }> {
+        const bucket = options?.adapters?.s3Storage?.bucket;
+        await this.createBucket(bucket, options);
         const stats = await this.s3.statObject(bucket, filename);
         return {
             size: stats.size,
@@ -41,9 +60,14 @@ export class S3StorageFactory implements FilesAdapter {
         }
     }
 
-    async getFileData(filename: string, asStream = false): Promise<any> {
-        const bucket = this.config.adapters.s3Storage.bucket;
-        await this.createBucket(bucket);
+    async getFileData(
+        filename: string,
+        asStream: boolean,
+        databaseAdapter: DatabaseAdapter,
+        options: BFastDatabaseOptions
+    ): Promise<any> {
+        const bucket = options?.adapters?.s3Storage?.bucket;
+        await this.createBucket(bucket, options);
         return this.s3.getObject(bucket, filename);
     }
 
@@ -63,23 +87,34 @@ export class S3StorageFactory implements FilesAdapter {
         return null;
     }
 
-    handleFileStream(filename: any, request: any, response: any, contentType: any): any {
-        return this.signedUrl(filename);
+    handleFileStream(
+        filename: any,
+        request: any,
+        response: any,
+        contentType: any,
+        databaseAdapter: DatabaseAdapter,
+        options: BFastDatabaseOptions
+    ): any {
+        return this.signedUrl(filename, options);
     }
 
-    async signedUrl(filename: string): Promise<string> {
-        const bucket = this.config.adapters.s3Storage.bucket;
-        await this.createBucket(bucket);
+    async signedUrl(filename: string, options: BFastDatabaseOptions): Promise<string> {
+        const bucket = options?.adapters?.s3Storage?.bucket;
+        await this.createBucket(bucket, options);
         return this.s3.presignedGetObject(bucket, filename, 2 * 60 * 60);
     }
 
-    async listFiles(query: { prefix: string, size: number, after: string } = {
-        prefix: '',
-        after: undefined,
-        size: 20
-    }): Promise<any> {
-        const bucket = this.config.adapters.s3Storage.bucket;
-        await this.createBucket(bucket);
+    async listFiles(
+        query: { prefix: string, size: number, after: string } = {
+            prefix: '',
+            after: undefined,
+            size: 20
+        },
+        databaseAdapter: DatabaseAdapter,
+        options: BFastDatabaseOptions
+    ): Promise<any> {
+        const bucket = options?.adapters?.s3Storage?.bucket;
+        await this.createBucket(bucket, options);
         const listStream = this.s3.listObjectsV2(bucket, query.prefix, true, query.after);
         const files = [];
         return new Promise((resolve, _) => {
@@ -114,18 +149,18 @@ export class S3StorageFactory implements FilesAdapter {
         });
     }
 
-    private init(configAdapter: BFastDatabaseOptions): void {
-        const endPoint = configAdapter.adapters.s3Storage.endPoint;
-        const accessKey = configAdapter.adapters.s3Storage.accessKey;
-        const secretKey = configAdapter.adapters.s3Storage.secretKey;
-        const bucket = configAdapter.adapters.s3Storage.bucket;
+    async init(options: BFastDatabaseOptions): Promise<void> {
+        const endPoint = options.adapters.s3Storage.endPoint;
+        const accessKey = options.adapters.s3Storage.accessKey;
+        const secretKey = options.adapters.s3Storage.secretKey;
+        const bucket = options.adapters.s3Storage.bucket;
         // Needs the required() check for `endPoint` to have run
         const ep = new url.URL(endPoint);
-        const {useSSL = ep.protocol === 'https:'} = this.config.adapters.s3Storage;
+        const {useSSL = ep.protocol === 'https:'} = options.adapters.s3Storage;
 
         // Needs `useSSL`, whether it's provided or defaulted
-        const {port = ep.port ? +ep.port : (useSSL ? 443 : 80)} = this.config.adapters.s3Storage;
-        const region = S3StorageFactory.getRegion(endPoint, configAdapter.adapters.s3Storage.region).trim();
+        const {port = ep.port ? +ep.port : (useSSL ? 443 : 80)} = options.adapters.s3Storage;
+        const region = S3StorageFactory.getRegion(endPoint, options.adapters.s3Storage.region).trim();
         Object.assign(this, {endPoint, region: `${region}`});
         Object.assign(this, {
             bucket: typeof bucket === 'function'
@@ -139,27 +174,14 @@ export class S3StorageFactory implements FilesAdapter {
         });
     }
 
-    // async createThumbnail(filename: string, data: Buffer, contentType: string, options: Object): Promise<string> {
-    //     const bucket = config.adapters.s3Storage.bucket + '-thumb';
-    //     const thumbnailBuffer = await sharp(data)
-    //         .jpeg({
-    //             quality: 50,
-    //         })
-    //         .resize({width: 100})
-    //         .toBuffer();
-    //     return this.saveFile(filename, thumbnailBuffer, bucket, config.adapters.s3Storage.endPoint);
-    // }
-
-    private async saveFile(filename: string, data: Buffer, bucket: string, endpoint: string, region = null): Promise<string> {
-        await this.createBucket(bucket);
-        // if (bucketExist === true) {
-        //     await this.s3.putObject(bucket, filename, data);
-        //     return filename;
-        // } else {
-        //     await this.s3.makeBucket(bucket, S3StorageFactory.getRegion(endpoint, region).trim());
+    private async saveFile(
+        filename: string, data: Buffer,
+        bucket: string,
+        options: BFastDatabaseOptions
+    ): Promise<string> {
+        await this.createBucket(bucket, options);
         await this.s3.putObject(bucket, filename, data);
         return filename;
-        //   }
     }
 
     private static getRegion(endpoint, region = null) {
@@ -178,9 +200,9 @@ export class S3StorageFactory implements FilesAdapter {
         }
     }
 
-    private async createBucket(bucket) {
-        const endpoint = this.config.adapters.s3Storage.endPoint;
-        const region = this.config.adapters.s3Storage.region;
+    private async createBucket(bucket, options: BFastDatabaseOptions) {
+        const endpoint = options.adapters.s3Storage.endPoint;
+        const region = options.adapters.s3Storage.region;
         const bucketExist = await this.s3.bucketExists(bucket);
         if (bucketExist === true) {
         } else {

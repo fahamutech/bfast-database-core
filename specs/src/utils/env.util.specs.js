@@ -1,4 +1,4 @@
-const {EnvUtil} = require("../../../dist/utils/env.util");
+const {EnvUtil} = require("../../../dist");
 
 const {assert, expect, should} = require('chai');
 const {config} = require("../../mock.config");

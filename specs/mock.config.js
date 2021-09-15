@@ -1,16 +1,6 @@
-const {LogController} = require("../dist/controllers/log.controller");
-const {BfastDatabaseCore} = require("../dist/bfast-database-core");
-const {RulesController} = require('../dist/controllers/rules.controller');
-const {UpdateRuleController} = require('../dist/controllers/update.rule.controller');
+const {BfastDatabaseCore} = require("../dist/index");
 const {EnvUtil} = require('../dist/index')
 const mongodb = require('mongodb');
-const {DatabaseController} = require("../dist/controllers/database.controller");
-const {DatabaseFactory} = require("../dist/factory/database.factory");
-const {SecurityController} = require("../dist/controllers/security.controller");
-const {AuthController} = require("../dist/controllers/auth.controller");
-const {AuthFactory} = require("../dist/factory/auth.factory");
-const {StorageController} = require("../dist/controllers/storage.controller");
-const {IpfsStorageFactory} = require("../dist/factory/ipfs-storage.factory");
 const axios = require("axios");
 const {expect} = require('chai');
 
@@ -20,10 +10,6 @@ const mongoMemoryReplSet = () => {
             return 'mongodb://localhost/_test';
         },
         start: async function () {
-            const conn = await mongodb.MongoClient.connect(this.getUri());
-            await conn.db('_test').dropDatabase();
-        },
-        waitUntilRunning: async function () {
             const conn = await mongodb.MongoClient.connect(this.getUri());
             await conn.db('_test').dropDatabase();
         },
@@ -76,37 +62,6 @@ exports.config = {
         "alg": "RS256",
         "n": "uyJnJwRfX6tobS4swk_KIpS-KOM0QL0L8-yVWiBz7d8hWpwBqzxRX3-6AKslhZL1aC6zGT7Z6y4jqpvdfSrXVbpgJeYtqaW32P5zpN_Rziyg6jG73E3NH3St5y6p6CujMqEfilSgoZbdsIhA_Eu_XGhlACeDUz-D3vJlhHFdY-jymaV6uTW_ojC-oQBpHuTOnUZPlgw9AeL39vuACNsX2ci94T7c8j42Wborr-jVEsxPOQoYOCBOHFNkpRlvie4oqb3o6w5Nvz3rayazRQ2NNv5kLEpw59Fl2sBWP-TInQ_gC8Kkwi_bNShjycgpNQuoHyQSH5Dz9IyIylokghiQ0Q"
     }
-}
-
-/**
- * @params memoryReplSet {{
- * start: Function,
- * waitUntilRunning: Function,
- * getUri: Function
- * }}
- * @return {Promise<RulesController>}
- */
-exports.getRulesController = async function (memoryReplSet) {
-    process.setMaxListeners(0);
-    await memoryReplSet.start();
-    await memoryReplSet.waitUntilRunning();
-    exports.config.mongoDbUri = await memoryReplSet.getUri();
-    const updateRuleController = new UpdateRuleController();
-    const databaseFactory = new DatabaseFactory(exports.config);
-    const securityController = new SecurityController(exports.config);
-    const databaseController = new DatabaseController(databaseFactory, securityController);
-    const authFactory = new AuthFactory(databaseController, securityController);
-    const authController = new AuthController(authFactory, databaseController);
-    const ipfsStorageFactory = new IpfsStorageFactory(exports.config, databaseFactory, exports.config.mongoDbUri);
-    const storageController = new StorageController(ipfsStorageFactory, securityController, exports.config)
-    return new RulesController(
-        updateRuleController,
-        new LogController(exports.config),
-        databaseController,
-        authController,
-        storageController,
-        exports.config
-    );
 }
 
 exports.sendRuleRequest = async function sendRequest(data, code = 200) {

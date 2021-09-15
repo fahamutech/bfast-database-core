@@ -1,45 +1,57 @@
 import {DatabaseController} from './database.controller';
 import {RulesModel} from '../model/rules.model';
 import {UpdateRuleRequestModel} from '../model/update-rule-request.model';
+import {BFastDatabaseOptions} from "../bfast-database.option";
+import {DatabaseAdapter} from "../adapters/database.adapter";
+import {SecurityController} from "./security.controller";
 
 export class UpdateRuleController {
-    async update(data: {
+    async update(
         rules: RulesModel,
         domain: string,
+        databaseAdapter: DatabaseAdapter,
         updateRuleRequest: UpdateRuleRequestModel,
         databaseController: DatabaseController,
-        transactionSession: any
-    }): Promise<any[] | string> {
-        if (!data.updateRuleRequest?.update) {
+        securityController: SecurityController,
+        transactionSession: any,
+        options: BFastDatabaseOptions
+    ): Promise<any[] | string> {
+        if (!updateRuleRequest?.update) {
             throw new Error('Please update field is required, which contains properties to update a document');
         }
-        if (data.updateRuleRequest?.id) {
+        if (updateRuleRequest?.id) {
             const filter: any = {};
-            delete data.updateRuleRequest.filter;
-            filter._id = data.updateRuleRequest.id;
-            data.updateRuleRequest.filter = filter;
-            return data.databaseController.updateOne(
-                data.domain,
-                data.updateRuleRequest,
-                data.rules?.context,
+            delete updateRuleRequest.filter;
+            filter._id = updateRuleRequest.id;
+            updateRuleRequest.filter = filter;
+            return databaseController.updateOne(
+                domain,
+                updateRuleRequest,
+                databaseAdapter,
+                securityController,
+                rules?.context,
                 {
-                    bypassDomainVerification: data.rules?.context?.useMasterKey === true,
-                    transaction: data.transactionSession
-                }
+                    bypassDomainVerification: rules?.context?.useMasterKey === true,
+                    transaction: transactionSession
+                },
+                options
             );
-        } else if (data.updateRuleRequest?.filter) {
-            if (data.updateRuleRequest?.filter && Object.keys(data.updateRuleRequest?.filter).length === 0) {
+        } else if (updateRuleRequest?.filter) {
+            if (updateRuleRequest?.filter && Object.keys(updateRuleRequest?.filter).length === 0) {
                 throw new Error('Empty map is not supported in update rule');
             }
-            return data.databaseController.updateMany(
-                data.domain,
-                data.updateRuleRequest,
-                data.rules.context,
+            return databaseController.updateMany(
+                domain,
+                updateRuleRequest,
+                databaseAdapter,
+                securityController,
+                rules.context,
                 {
-                    bypassDomainVerification: data.rules?.context?.useMasterKey === true,
-                    transaction: data.transactionSession
-                }
-            )
+                    bypassDomainVerification: rules?.context?.useMasterKey === true,
+                    transaction: transactionSession
+                },
+                options
+            );
         } else {
             throw new Error('Bad data format in update rule, no filter nor id');
         }

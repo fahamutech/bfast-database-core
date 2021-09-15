@@ -1,39 +1,42 @@
 import {DatabaseFactory} from './factory/database.factory';
 import {DatabaseController} from './controllers/database.controller';
-import {SecurityController} from './controllers/security.controller';
 import {BFastDatabaseOptions} from './bfast-database.option';
-import {Provider} from './provider';
-import {ChangesWebservice} from './webservices/changes.webservice';
-import {AuthController} from './controllers/auth.controller';
-import {AuthFactory} from './factory/auth.factory';
-import {StorageController} from './controllers/storage.controller';
-import {S3StorageFactory} from './factory/s3-storage.factory';
-import {FilesAdapter} from './adapters/files.adapter';
-import {RestController} from './controllers/rest.controller';
-import {RestWebservice} from './webservices/rest.webservice';
-import {StorageWebservice} from './webservices/storage.webservice';
-import {AuthAdapter} from './adapters/auth.adapter';
 import {WebServices} from './webservices/index.webservice';
-import {IpfsStorageFactory} from "./factory/ipfs-storage.factory";
 import {RulesController} from "./controllers/rules.controller";
-import {LogController} from "./controllers/log.controller";
+import {RestController} from "./controllers/rest.controller";
 import {UpdateRuleController} from "./controllers/update.rule.controller";
+import {AuthController} from "./controllers/auth.controller";
+import {DatabaseAdapter} from "./adapters/database.adapter";
+import {StorageController} from "./controllers/storage.controller";
+import {SecurityController} from "./controllers/security.controller";
+import {AuthFactory} from "./factory/auth.factory";
+import {AuthAdapter} from "./adapters/auth.adapter";
+import {FilesAdapter} from "./adapters/files.adapter";
+import {S3StorageFactory} from "./factory/s3-storage.factory";
+import {IpfsStorageFactory} from "./factory/ipfs-storage.factory";
 
-let _dFactory;
+function getDatabaseFactory(options: BFastDatabaseOptions): DatabaseAdapter{
+    return (options && options.adapters && options.adapters.database)
+        ? options.adapters.database(options)
+        : new DatabaseFactory()
+}
 
-function defaultDatabaseFactory(options: BFastDatabaseOptions) {
-    if (_dFactory) {
-        return _dFactory;
-    }
-    _dFactory = new DatabaseFactory(options);
-    return _dFactory;
+function getAuthFactory(options: BFastDatabaseOptions): AuthAdapter{
+    return (options && options.adapters && options.adapters.auth)
+        ? options.adapters.auth(options)
+        : new AuthFactory()
+}
+
+function getFilesFactory(options: BFastDatabaseOptions): FilesAdapter{
+    return (options && options.adapters && options.adapters.s3Storage && typeof options.adapters.s3Storage === "object")
+        ? new S3StorageFactory()
+        : new IpfsStorageFactory()
 }
 
 export class BfastDatabaseCore {
 
     private static validateOptions(
-        options: BFastDatabaseOptions,
-        serverMode = true
+        options: BFastDatabaseOptions
     ): { valid: boolean, message: string } {
         if (!options.rsaPublicKeyInJson) {
             return {
@@ -45,7 +48,7 @@ export class BfastDatabaseCore {
                 valid: false,
                 message: 'rsa key pair in json format required, for jwk'
             };
-        } else if (!options.port && serverMode === true) {
+        } else if (!options.port) {
             return {
                 valid: false,
                 message: 'Port option required'
@@ -72,72 +75,16 @@ export class BfastDatabaseCore {
     }
 
     private static async _setUpDatabase(options: BFastDatabaseOptions): Promise<any> {
-        const database: DatabaseController = new DatabaseController(
-            (options && options.adapters && options.adapters.database)
-                ? options.adapters.database(options)
-                : defaultDatabaseFactory(options),
-            new SecurityController(options)
-        );
-        await database.init();
+        const database: DatabaseController = new DatabaseController();
+        await database.init(getDatabaseFactory(options), options);
     }
 
     private _initiateServices(options: BFastDatabaseOptions): void {
-        const ipfsFactory = new IpfsStorageFactory(
-            options,
-            defaultDatabaseFactory(options),
-            options.mongoDbUri
-        );
-        const databaseFactory = options.adapters && options.adapters.database
-            ? options.adapters.database(options)
-            : defaultDatabaseFactory(options);
-        const fileFactory: FilesAdapter = options.adapters && options.adapters.s3Storage
-            ? new S3StorageFactory(options)
-            : ipfsFactory
-        const securityController = new SecurityController(options);
-        const logController = new LogController(options);
-        const databaseController = new DatabaseController(databaseFactory, securityController);
-        const realtimeController = new ChangesWebservice(databaseController);
-        const storageController = new StorageController(fileFactory, securityController, options);
-        const authFactory: AuthAdapter = options.adapters && options.adapters.auth
-            ? options.adapters.auth(options)
-            : new AuthFactory(databaseController, securityController);
-        const authController = new AuthController(authFactory, databaseController);
-        const updateRuleController = new UpdateRuleController();
-        const rulesController = new RulesController(
-            updateRuleController,
-            logController,
-            databaseController,
-            authController,
-            storageController,
-            options,
-        );
-        const restController = new RestController(
-            securityController,
-            authController,
-            storageController,
-            rulesController,
-            options
-        );
-        const realtimeWebServices = new ChangesWebservice(databaseController);
-        const restWebServices = new RestWebservice(restController, options);
-        const storageWebService = new StorageWebservice(restController);
 
-        Provider.service(Provider.names.SECURITY_CONTROLLER, _ => securityController);
-        Provider.service(Provider.names.LOG_CONTROLLER, _ => logController);
-        Provider.service(Provider.names.DATABASE_CONTROLLER, _ => databaseController);
-        Provider.service(Provider.names.REALTIME_CONTROLLER, _ => realtimeController);
-        Provider.service(Provider.names.AUTH_CONTROLLER, _ => authController);
-        Provider.service(Provider.names.STORAGE_CONTROLLER, _ => storageController);
-        Provider.service(Provider.names.REST_CONTROLLER, _ => restController);
-        Provider.service(Provider.names.REALTIME_WEB_SERVICE, _ => realtimeWebServices);
-        Provider.service(Provider.names.REST_WEB_SERVICE, _ => restWebServices);
-        Provider.service(Provider.names.STORAGE_WEB_SERVICE, _ => storageWebService);
-        Provider.service(Provider.names.DATABASE_FACTORY, _ => defaultDatabaseFactory(options));
-        Provider.service(Provider.names.IPFS_STORAGE_FACTORY, _ => ipfsFactory);
     }
 
-    init(options: BFastDatabaseOptions, serveMode = false): WebServices {
-        if (BfastDatabaseCore.validateOptions(options, serveMode).valid) {
+    init(options: BFastDatabaseOptions): WebServices {
+        if (BfastDatabaseCore.validateOptions(options).valid) {
             if (options && options.rsaKeyPairInJson && typeof options.rsaKeyPairInJson === "object") {
                 options.rsaKeyPairInJson.alg = 'RS256';
                 options.rsaKeyPairInJson.use = 'sig';
@@ -155,12 +102,20 @@ export class BfastDatabaseCore {
                 process.exit(-1);
             });
             return new WebServices(
-                Provider.get(Provider.names.REST_WEB_SERVICE),
-                Provider.get(Provider.names.REALTIME_WEB_SERVICE),
-                Provider.get(Provider.names.STORAGE_WEB_SERVICE)
+                new RestController(),
+                new RulesController(),
+                new UpdateRuleController(),
+                new SecurityController(),
+                new DatabaseController(),
+                new AuthController(),
+                new StorageController(),
+                getAuthFactory(options),
+                getDatabaseFactory(options),
+                getFilesFactory(options),
+                options
             );
         } else {
-            throw new Error(BfastDatabaseCore.validateOptions(options, serveMode).message);
+            throw new Error(BfastDatabaseCore.validateOptions(options).message);
         }
     }
 

@@ -1,8 +1,15 @@
-const {getRulesController, mongoRepSet, config} = require('../../mock.config');
+const {mongoRepSet, config} = require('../../mock.config');
 const {createHash} = require('crypto');
 const {expect, should, assert} = require('chai');
 const Hash = require('ipfs-only-hash');
 const {Buffer} = require("buffer");
+const {
+    RulesController,
+    DatabaseFactory,
+    AuthController,
+    DatabaseController,
+    SecurityController
+} = require("../../../dist");
 
 describe('RulesController', function () {
     const datas = [
@@ -19,11 +26,11 @@ describe('RulesController', function () {
         {id: 'wer_id', name: 'wer', price: 100, status: 'new', createdAt: 'test', updatedAt: 'test', createdBy: null},
         {id: 'poi_id', name: 'poi', price: 50, status: 'new', createdAt: 'test', updatedAt: 'test', createdBy: null},
     ];
-    let _rulesController;
+    let _rulesController = new RulesController();
     let mongoMemoryReplSet;
     before(async function () {
         mongoMemoryReplSet = mongoRepSet();
-        _rulesController = await getRulesController(mongoMemoryReplSet);
+        await mongoMemoryReplSet.start();
     });
     after(async function () {
         await mongoMemoryReplSet.stop();
@@ -31,8 +38,15 @@ describe('RulesController', function () {
     describe('Query', function () {
         before(async function () {
             await _rulesController.handleCreateRules({
-                createProduct: datas,
-            }, {errors: {}});
+                    createProduct: datas,
+                }, {errors: {}},
+                new AuthController(),
+                new DatabaseController(),
+                new SecurityController(),
+                new DatabaseFactory(),
+                config,
+                null
+            );
         });
         it('should return only cids when told', async function () {
             const _datas = JSON.parse(JSON.stringify(datas));
@@ -42,14 +56,21 @@ describe('RulesController', function () {
                 return Hash.of(Buffer.from(JSON.stringify(x)));
             }));
             const results = await _rulesController.handleQueryRules({
-                queryProduct: {
-                    filter: {
-                        status: 'new'
-                    },
-                    cids: true,
-                    return: []
-                }
-            }, {errors: {}});
+                    queryProduct: {
+                        filter: {
+                            status: 'new'
+                        },
+                        cids: true,
+                        return: []
+                    }
+                }, {errors: {}},
+                new AuthController(),
+                new DatabaseController(),
+                new SecurityController(),
+                new DatabaseFactory(),
+                config,
+                null
+            );
             expect(results.queryProduct).eql(cids);
         });
         it('should return only cids when told and ignore hashes', async function () {
@@ -68,11 +89,18 @@ describe('RulesController', function () {
                     cids: true,
                     return: []
                 }
-            }, {errors: {}});
+            }, {errors: {}},
+                new AuthController(),
+                new DatabaseController(),
+                new SecurityController(),
+                new DatabaseFactory(),
+                config,
+                null
+            );
             expect(results.queryProduct).eql(cids);
         });
         it('should return only cids when told and ignore hashes for single item', async function () {
-            const _datas = JSON.parse(JSON.stringify(datas.filter(x=>x.id==='xyzid')));
+            const _datas = JSON.parse(JSON.stringify(datas.filter(x => x.id === 'xyzid')));
             const cids = await Promise.all(_datas.map(async x => {
                 x._id = x.id;
                 delete x.id;
@@ -85,7 +113,14 @@ describe('RulesController', function () {
                     cids: true,
                     return: []
                 }
-            }, {errors: {}});
+            }, {errors: {}},
+                new AuthController(),
+                new DatabaseController(),
+                new SecurityController(),
+                new DatabaseFactory(),
+                config,
+                null
+            );
             expect(results.queryProduct).eql(cids[0]);
         });
         it('should perform match for AND operation', async function () {
@@ -98,7 +133,14 @@ describe('RulesController', function () {
                     },
                     return: []
                 }
-            }, {errors: {}});
+            }, {errors: {}},
+                new AuthController(),
+                new DatabaseController(),
+                new SecurityController(),
+                new DatabaseFactory(),
+                config,
+                null
+            );
             should().exist(results);
             should().exist(results.queryProduct);
             expect(results.queryProduct).length(1);
@@ -111,7 +153,14 @@ describe('RulesController', function () {
                     id: 'xyzid',
                     return: []
                 }
-            }, {errors: {}});
+            }, {errors: {}},
+                new AuthController(),
+                new DatabaseController(),
+                new SecurityController(),
+                new DatabaseFactory(),
+                config,
+                null
+            );
             assert(results.queryProduct !== undefined);
             assert(results.queryProduct.name === 'xyz');
             assert(results.queryProduct.id === 'xyzid');
@@ -124,7 +173,14 @@ describe('RulesController', function () {
                     id: 'xyz1234hint',
                     return: []
                 }
-            }, {errors: {}});
+            }, {errors: {}},
+                new AuthController(),
+                new DatabaseController(),
+                new SecurityController(),
+                new DatabaseFactory(),
+                config,
+                null
+            );
             assert(results.queryProduct === null);
         });
         it('should return query result based on filter', async function () {
@@ -135,7 +191,14 @@ describe('RulesController', function () {
                     },
                     return: []
                 }
-            }, {errors: {}});
+            }, {errors: {}},
+                new AuthController(),
+                new DatabaseController(),
+                new SecurityController(),
+                new DatabaseFactory(),
+                config,
+                null
+            );
             should().exist(results.queryProduct);
             expect(Array.isArray(results.queryProduct)).equal(true);
             should().exist(results.queryProduct[0]);
@@ -152,7 +215,14 @@ describe('RulesController', function () {
                     skip: 0,
                     return: []
                 }
-            }, {errors: {}});
+            }, {errors: {}},
+                new AuthController(),
+                new DatabaseController(),
+                new SecurityController(),
+                new DatabaseFactory(),
+                config,
+                null
+            );
             should().exist(results.queryProduct);
             expect(Array.isArray(results.queryProduct)).equal(true);
             expect(results.queryProduct).length(1);
@@ -169,7 +239,14 @@ describe('RulesController', function () {
                     skip: 0,
                     return: []
                 }
-            }, {errors: {}});
+            }, {errors: {}},
+                new AuthController(),
+                new DatabaseController(),
+                new SecurityController(),
+                new DatabaseFactory(),
+                config,
+                null
+            );
             should().exist(results.queryProduct);
             expect(Array.isArray(results.queryProduct)).equal(true);
             expect(results.queryProduct).length(2);
@@ -180,7 +257,14 @@ describe('RulesController', function () {
                     filter: {},
                     return: ['name', 'price']
                 }
-            }, {errors: {}});
+            }, {errors: {}},
+                new AuthController(),
+                new DatabaseController(),
+                new SecurityController(),
+                new DatabaseFactory(),
+                config,
+                null
+            );
             should().exist(results.queryProduct);
             expect(Array.isArray(results.queryProduct)).equal(true);
             expect(results.queryProduct.length).equal(3);
@@ -197,7 +281,14 @@ describe('RulesController', function () {
                     orderBy: [{'name': 1}],
                     return: ["name"]
                 }
-            }, {errors: {}});
+            }, {errors: {}},
+                new AuthController(),
+                new DatabaseController(),
+                new SecurityController(),
+                new DatabaseFactory(),
+                config,
+                null
+            );
             should().exist(results.queryProduct);
             expect(Array.isArray(results.queryProduct)).equal(true);
             expect(results.queryProduct.length).equal(3);
@@ -210,7 +301,14 @@ describe('RulesController', function () {
                     },
                     count: true,
                 }
-            }, {errors: {}});
+            }, {errors: {}},
+                new AuthController(),
+                new DatabaseController(),
+                new SecurityController(),
+                new DatabaseFactory(),
+                config,
+                null
+            );
             assert(results.queryProduct !== undefined);
             assert(typeof results.queryProduct === "number");
             assert(results.queryProduct === 1);
@@ -221,7 +319,14 @@ describe('RulesController', function () {
                     filter: {},
                     count: true,
                 }
-            }, {errors: {}});
+            }, {errors: {}},
+                new AuthController(),
+                new DatabaseController(),
+                new SecurityController(),
+                new DatabaseFactory(),
+                config,
+                null
+            );
             assert(results.queryProduct !== undefined);
             assert(typeof results.queryProduct === "number");
             assert(results.queryProduct === 3);
@@ -251,7 +356,14 @@ describe('RulesController', function () {
                     hashes: Object.keys(localData),
                     return: ['name', 'price']
                 }
-            }, {errors: {}});
+            }, {errors: {}},
+                new AuthController(),
+                new DatabaseController(),
+                new SecurityController(),
+                new DatabaseFactory(),
+                config,
+                null
+            );
             should().exist(results.queryProduct);
             expect(Array.isArray(results.queryProduct)).equal(true);
             expect(results.queryProduct.length).equal(3);
@@ -278,7 +390,14 @@ describe('RulesController', function () {
                     hashes: Object.keys(localData),
                     return: ['name', 'price']
                 }
-            }, {errors: {}});
+            }, {errors: {}},
+                new AuthController(),
+                new DatabaseController(),
+                new SecurityController(),
+                new DatabaseFactory(),
+                config,
+                null
+            );
             should().exist(results.queryProduct);
             expect(typeof results.queryProduct).equal('string');
             expect(results.queryProduct).equal(hash);
@@ -292,7 +411,14 @@ describe('RulesController', function () {
                     ],
                     return: []
                 }
-            }, {errors: {}});
+            }, {errors: {}},
+                new AuthController(),
+                new DatabaseController(),
+                new SecurityController(),
+                new DatabaseFactory(),
+                config,
+                null
+            );
             should().exist(results.queryProduct);
             expect(Array.isArray(results.queryProduct)).equal(true);
             expect(results.queryProduct.length).equal(2);
@@ -318,7 +444,14 @@ describe('RulesController', function () {
                     ],
                     return: []
                 }
-            }, {errors: {}});
+            }, {errors: {}},
+                new AuthController(),
+                new DatabaseController(),
+                new SecurityController(),
+                new DatabaseFactory(),
+                config,
+                null
+            );
             should().exist(results.queryProduct);
             expect(Array.isArray(results.queryProduct)).equal(true);
             expect(results.queryProduct.length).equal(1);
@@ -344,7 +477,14 @@ describe('RulesController', function () {
                     count: true,
                     return: []
                 }
-            }, {errors: {}});
+            }, {errors: {}},
+                new AuthController(),
+                new DatabaseController(),
+                new SecurityController(),
+                new DatabaseFactory(),
+                config,
+                null
+            );
             should().exist(results.queryProduct);
             expect(results.queryProduct).equal(2);
         });
@@ -354,7 +494,14 @@ describe('RulesController', function () {
                     filter: {name: 'xyz', tag: 'joshua'},
                     return: []
                 }
-            }, {errors: {}});
+            }, {errors: {}},
+                new AuthController(),
+                new DatabaseController(),
+                new SecurityController(),
+                new DatabaseFactory(),
+                config,
+                null
+            );
             should().exist(results.queryProduct);
             expect(Array.isArray(results.queryProduct)).equal(true);
             expect(results.queryProduct.length).equal(0);
@@ -373,7 +520,14 @@ describe('RulesController', function () {
                     },
                     return: []
                 }
-            }, {errors: {}});
+            }, {errors: {}},
+                new AuthController(),
+                new DatabaseController(),
+                new SecurityController(),
+                new DatabaseFactory(),
+                config,
+                null
+            );
             should().exist(results.queryProduct);
             expect(Array.isArray(results.queryProduct)).equal(true);
             expect(results.queryProduct.length).equal(1);
@@ -399,7 +553,14 @@ describe('RulesController', function () {
                     },
                     return: []
                 }
-            }, {errors: {}});
+            }, {errors: {}},
+                new AuthController(),
+                new DatabaseController(),
+                new SecurityController(),
+                new DatabaseFactory(),
+                config,
+                null
+            );
             // console.log(results.queryProduct);
             should().exist(results.queryProduct);
             expect(Array.isArray(results.queryProduct)).equal(true);
@@ -417,7 +578,14 @@ describe('RulesController', function () {
                     },
                     return: []
                 }
-            }, {errors: {}});
+            }, {errors: {}},
+                new AuthController(),
+                new DatabaseController(),
+                new SecurityController(),
+                new DatabaseFactory(),
+                config,
+                null
+            );
             should().exist(results.queryProduct);
             expect(Array.isArray(results.queryProduct)).equal(true);
             expect(results.queryProduct.length).equal(1);

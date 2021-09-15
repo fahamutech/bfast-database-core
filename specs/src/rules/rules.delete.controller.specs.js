@@ -1,13 +1,20 @@
-const {getRulesController, mongoRepSet} = require('../../mock.config');
+const {mongoRepSet, config} = require('../../mock.config');
 const {before, after} = require('mocha');
 const {assert, should, expect} = require('chai');
+const {
+    RulesController,
+    DatabaseFactory,
+    AuthController,
+    DatabaseController,
+    SecurityController
+} = require("../../../dist");
 
 describe('RulesController::Delete Unit Test', function () {
-    let _rulesController;
+    let _rulesController = new RulesController();
     let mongoMemoryReplSet;
     before(async function () {
         mongoMemoryReplSet = mongoRepSet();
-        _rulesController = await getRulesController(mongoMemoryReplSet);
+        await mongoMemoryReplSet.start();
     });
     after(async function () {
         await mongoMemoryReplSet.stop();
@@ -15,35 +22,56 @@ describe('RulesController::Delete Unit Test', function () {
     describe('RulesController::Delete::Anonymous', function () {
         before(async function () {
             await _rulesController.handleCreateRules({
-                createProduct: [
-                    {name: 'xyz', price: 50, status: 'new', id: 'xyz'},
-                    {name: 'wer', price: 100, status: 'new'},
-                    {name: 'poi', price: 30, status: 'new'},
-                    {id: '16b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b', name: '1'},
-                    {id: 'a', name: '2'},
-                    {id: 'b', name: '3'},
-                ]
-            }, {errors: {}});
+                    createProduct: [
+                        {name: 'xyz', price: 50, status: 'new', id: 'xyz'},
+                        {name: 'wer', price: 100, status: 'new'},
+                        {name: 'poi', price: 30, status: 'new'},
+                        {id: '16b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b', name: '1'},
+                        {id: 'a', name: '2'},
+                        {id: 'b', name: '3'},
+                    ]
+                }, {errors: {}},
+                new AuthController(),
+                new DatabaseController(),
+                new SecurityController(),
+                new DatabaseFactory(),
+                config,
+                null
+            );
         });
         it('should delete a document by id', async function () {
             const results = await _rulesController.handleDeleteRules({
-                deleteProduct: {
-                    id: 'xyz',
-                    return: []
-                }
-            }, {errors: {}});
+                    deleteProduct: {
+                        id: 'xyz',
+                        return: []
+                    }
+                }, {errors: {}},
+                new AuthController(),
+                new DatabaseController(),
+                new SecurityController(),
+                new DatabaseFactory(),
+                config,
+                null
+            );
             should().exist(results.deleteProduct);
             expect(results.deleteProduct[0].id).equal('xyz');
         });
         it('should delete a document by filter', async function () {
             const results = await _rulesController.handleDeleteRules({
-                deleteProduct: {
-                    filter: {
-                        name: 'poi'
-                    },
-                    return: []
-                }
-            }, {errors: {}});
+                    deleteProduct: {
+                        filter: {
+                            name: 'poi'
+                        },
+                        return: []
+                    }
+                }, {errors: {}},
+                new AuthController(),
+                new DatabaseController(),
+                new SecurityController(),
+                new DatabaseFactory(),
+                config,
+                null
+            );
             should().exist(results.deleteProduct);
             expect(Array.isArray(results.deleteProduct)).equal(true);
             expect(results.deleteProduct.length).equal(1);
@@ -51,15 +79,22 @@ describe('RulesController::Delete Unit Test', function () {
         });
         it('should delete documents given many ids in filter', async function () {
             const results = await _rulesController.handleDeleteRules({
-                deleteProduct: {
-                    filter: {
-                        id: {
-                            $fn: `return JSON.parse('${JSON.stringify(['16b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b','a','b'])}').includes(it);`
-                        }
-                    },
-                    return: []
-                }
-            }, {errors: {}});
+                    deleteProduct: {
+                        filter: {
+                            id: {
+                                $fn: `return JSON.parse('${JSON.stringify(['16b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b', 'a', 'b'])}').includes(it);`
+                            }
+                        },
+                        return: []
+                    }
+                }, {errors: {}},
+                new AuthController(),
+                new DatabaseController(),
+                new SecurityController(),
+                new DatabaseFactory(),
+                config,
+                null
+            );
             // console.log(results.deleteProduct);
             should().exist(results.deleteProduct);
             expect(Array.isArray(results.deleteProduct)).equal(true);
@@ -70,11 +105,18 @@ describe('RulesController::Delete Unit Test', function () {
         });
         it('should not delete objects by empty filter', async function () {
             const results = await _rulesController.handleDeleteRules({
-                deleteProduct: {
-                    filter: {},
-                    return: []
-                }
-            }, {errors: {}});
+                    deleteProduct: {
+                        filter: {},
+                        return: []
+                    }
+                }, {errors: {}},
+                new AuthController(),
+                new DatabaseController(),
+                new SecurityController(),
+                new DatabaseFactory(),
+                config,
+                null
+            );
             assert(results.deleteProduct === undefined);
             assert(results.errors !== undefined);
             assert(results.errors['delete.Product']['message'] === 'Empty filter map is not supported in delete rule');

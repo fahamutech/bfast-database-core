@@ -1,9 +1,4 @@
-import {
-    DatabaseAdapter,
-    DatabaseBasicOptions,
-    DatabaseUpdateOptions,
-    DatabaseWriteOptions
-} from '../adapters/database.adapter';
+import {DatabaseAdapter} from '../adapters/database.adapter';
 import {Db, MongoClient} from 'mongodb';
 import {BasicAttributesModel} from '../model/basic-attributes.model';
 import {ContextBlock} from '../model/rules.model';
@@ -12,93 +7,23 @@ import {UpdateRuleRequestModel} from '../model/update-rule-request.model';
 import {DeleteModel} from '../model/delete-model';
 import {BFastDatabaseOptions} from '../bfast-database.option';
 import {TreeController} from 'bfast-database-tree';
-import {File as web3File, Web3Storage,} from 'web3.storage';
-import {CID, create, IPFSHTTPClient} from "ipfs-http-client";
-import itToStream from 'it-to-stream';
 import {Buffer} from "buffer";
 import {v4} from 'uuid';
 import {ChangesModel} from "../model/changes.model";
 import {ConstUtil} from "../utils/const.util";
 import {AppEventsFactory} from "./app-events.factory";
 import {devLog} from "../utils/debug.util";
-
-let web3Storage: Web3Storage;
-const treeController = new TreeController();
+import {IpfsFactory} from "./ipfs.factory";
 
 export class DatabaseFactory implements DatabaseAdapter {
 
-    static ipfs: IPFSHTTPClient;
     private static mongoClient: MongoClient;
+    private readonly ipfsFactory = new IpfsFactory();
 
-    constructor(private readonly config: BFastDatabaseOptions) {
-        web3Storage = new Web3Storage({
-            token: config.web3Token
-        });
+    constructor() {
     }
 
-    async ensureIpfs() {
-        if (!DatabaseFactory.ipfs) {
-            DatabaseFactory.ipfs = await create({
-                host: this.config.useLocalIpfs === true ? 'localhost' : 'ipfsnode'
-            });
-        }
-    }
-
-    async generateCidFromData(
-        data: { [k: string]: any },
-        buffer: Buffer,
-        domain: string
-    ): Promise<{ cid: string, size: number }> {
-        if (this.config.useLocalIpfs) {
-            devLog('use local ipfs');
-            return this.generateCidFromLocalIpfsNode(buffer);
-        } else {
-            devLog('use web3 ipfs');
-            return this.generateCidFromWeb3IpfsNode(buffer, domain, data);
-        }
-    }
-
-    async generateDataFromCid(
-        cid: string,
-        options: { json?: boolean, start?: number, end?: number, stream?: boolean } = {
-            json: true,
-            stream: false,
-            start: undefined,
-            end: undefined
-        }
-    ): Promise<object | ReadableStream | Buffer> {
-        if ((await this.checkIfWeHaveCidInWeb3(cid)) === false) {
-            return null;
-        }
-        devLog('____start fetch cid content with jsipfs_______');
-        const results = await DatabaseFactory.ipfs.cat(cid, {
-            offset: (options && options.json === false && options.start) ? options.start : undefined,
-            length: (options && options.json === false && options.end) ? options.end : undefined,
-            timeout: 1000 * 60 * 5,
-        });
-        DatabaseFactory.ipfs.pin.add(CID.parse(cid)).catch(console.log);
-        devLog('____cid content found with jsipfs______');
-        if (options?.json === true) {
-            let data = '';
-            for await (const chunk of results) {
-                data += chunk.toString();
-            }
-            return JSON.parse(data);
-        }
-        if (options?.json === false) {
-            if (options?.stream === true) {
-                return itToStream.readable(results);
-            } else {
-                let buffer = Buffer.alloc(0);
-                for await (const chunk of results) {
-                    buffer = Buffer.concat([buffer, chunk]);
-                }
-                return buffer;
-            }
-        }
-    }
-
-    private whenWantToSaveADataNodeToATree(cid: string) {
+    private whenWantToSaveADataNodeToATree(cid: string, options: BFastDatabaseOptions) {
         return {
             nodeHandler: async ({path, node}) => {
                 for (const key of Object.keys(node)) {
@@ -114,7 +39,7 @@ export class DatabaseFactory implements DatabaseAdapter {
                         }
                     }
                     devLog('start save a node', key);
-                    const db = await this.mDb();
+                    const db = await this.mDb(options);
                     await db.collection(DatabaseFactory.nodeTable(path.toString())).updateOne({
                         _id: isNaN(Number(key)) ? key.trim() : Number(key),
                     }, {
@@ -163,16 +88,18 @@ export class DatabaseFactory implements DatabaseAdapter {
     private async handleQueryObjectTree(
         mapOfNodesToQuery: { [key: string]: any },
         domain: string,
-        queryModel: QueryModel<any>
+        queryModel: QueryModel<any>,
+        options: BFastDatabaseOptions
     ): Promise<any[] | number> {
         const nodesPathList = Object.keys(mapOfNodesToQuery);
-        const db = await this.mDb();
+        const db = await this.mDb(options);
         if (nodesPathList.length === 0) {
             devLog('try to get all data on this node', `${domain}__id`);
             return this.getAllContentsFromTreeTable(
                 db,
                 domain,
-                queryModel
+                queryModel,
+                options
             );
         }
         let cids = await this.processTreeSearchResultToCidList(
@@ -193,9 +120,9 @@ export class DatabaseFactory implements DatabaseAdapter {
             return cids.filter(c => c !== null);
         }
         const _all_p = cids.map(x => {
-            return this.generateDataFromCid(x, {
+            return this.ipfsFactory.generateDataFromCid(x, {
                 json: true
-            });
+            }, options);
         });
         const _all = await Promise.all(_all_p);
         return _all.filter(t => t !== null);
@@ -256,10 +183,11 @@ export class DatabaseFactory implements DatabaseAdapter {
 
     private async handleDeleteObjectTree(
         deleteTree: { [key: string]: any },
-        domain: string
+        domain: string,
+        options: BFastDatabaseOptions
     ): Promise<{ _id: string }[]> {
         const keys = Object.keys(deleteTree);
-        const db = await this.mDb();
+        const db = await this.mDb(options);
         let cids = [];
         const cidMap = {};
         if (keys.length === 0) {
@@ -328,7 +256,7 @@ export class DatabaseFactory implements DatabaseAdapter {
         domain: string,
         data: T[],
         context: ContextBlock,
-        options?: DatabaseWriteOptions
+        options: BFastDatabaseOptions
     ): Promise<any[]> {
         for (const _data of data) {
             await this.writeOne(
@@ -345,38 +273,45 @@ export class DatabaseFactory implements DatabaseAdapter {
         domain: string,
         data: T,
         context: ContextBlock,
-        options?: DatabaseWriteOptions
+        options: BFastDatabaseOptions,
     ): Promise<any> {
-        const buffer = Buffer.from(JSON.stringify(data));
-        const {cid} = await this.generateCidFromData(data, buffer, domain);
-        await treeController.objectToTree(data, domain, this.whenWantToSaveADataNodeToATree(cid.toString()));
-        return data;
+        const dataCopy: any = Object.assign({},data);
+        const buffer = Buffer.from(JSON.stringify(dataCopy));
+        const {cid} = await this.ipfsFactory.generateCidFromData(dataCopy, buffer, domain, options);
+        const treeController = new TreeController();
+        await treeController.objectToTree(
+            dataCopy,
+            domain,
+            this.whenWantToSaveADataNodeToATree(cid.toString(), options)
+        );
+        return dataCopy;
     }
 
-    private async mDb(): Promise<Db> {
+    private async mDb(options: BFastDatabaseOptions): Promise<Db> {
         if (!DatabaseFactory.mongoClient) {
-            DatabaseFactory.mongoClient = await new MongoClient(this.config.mongoDbUri).connect();
+            DatabaseFactory.mongoClient = await new MongoClient(options.mongoDbUri).connect();
             return DatabaseFactory.mongoClient.db();
         }
         return DatabaseFactory.mongoClient.db();
     }
 
-    async init(): Promise<any> {
-        await this.ensureIpfs();
+    async init(options: BFastDatabaseOptions): Promise<any> {
+        await this.ipfsFactory.ensureIpfs(options);
     }
 
     async findOne<T extends BasicAttributesModel>(
         domain: string,
         queryModel: QueryModel<T>,
         context: ContextBlock,
-        options?: DatabaseWriteOptions
+        options: BFastDatabaseOptions
     ): Promise<any> {
+        const treeController = new TreeController();
         const queryTree = await treeController.query(domain, {
             _id: queryModel._id
         });
         const table = DatabaseFactory.nodeTable(Object.keys(queryTree)[0]);
         const id = Object.values(queryTree)[0];
-        const db = await this.mDb();
+        const db = await this.mDb(options);
         const result = await db.collection(table).findOne(
             {_id: id},
             {}
@@ -385,22 +320,23 @@ export class DatabaseFactory implements DatabaseAdapter {
             return null;
         }
         const cid = result.value;
-        if (queryModel.cids === true){
+        if (queryModel.cids === true) {
             return cid;
         }
-        return this.generateDataFromCid(cid, {
+        return this.ipfsFactory.generateDataFromCid(cid, {
             json: true
-        });
+        }, options);
     }
 
     async findMany<T extends BasicAttributesModel>(
         domain: string,
         queryModel: QueryModel<T>,
         context: ContextBlock,
-        options?: DatabaseWriteOptions
+        options: BFastDatabaseOptions
     ): Promise<any> {
         let nodesToQueryData;
         try {
+            const treeController = new TreeController();
             nodesToQueryData = await treeController.query(domain, queryModel.filter);
         } catch (e) {
             console.log(e);
@@ -409,7 +345,7 @@ export class DatabaseFactory implements DatabaseAdapter {
         if (Array.isArray(nodesToQueryData)) {
             const resultMap = {}
             for (const _tree of nodesToQueryData) {
-                const r = await this.handleQueryObjectTree(_tree, domain, queryModel);
+                const r = await this.handleQueryObjectTree(_tree, domain, queryModel, options);
                 Array.isArray(r) ?
                     (r.forEach(_r1 => {
                         resultMap[_r1._id] = _r1
@@ -419,14 +355,15 @@ export class DatabaseFactory implements DatabaseAdapter {
             const _result1: any[] = Object.values(resultMap);
             return queryModel?.count ? _result1.reduce((a, b) => a + b, 0) : _result1;
         } else {
-            return await this.handleQueryObjectTree(nodesToQueryData, domain, queryModel);
+            return await this.handleQueryObjectTree(nodesToQueryData, domain, queryModel, options);
         }
     }
 
     async updateOne<T extends BasicAttributesModel, V>(
         domain: string,
         updateModel: UpdateRuleRequestModel,
-        context: ContextBlock, options?: DatabaseUpdateOptions
+        context: ContextBlock,
+        options: BFastDatabaseOptions
     ): Promise<any> {
         let oldDoc = await this.findOne(
             domain,
@@ -454,7 +391,7 @@ export class DatabaseFactory implements DatabaseAdapter {
         domain: string,
         updateModel: UpdateRuleRequestModel,
         context: ContextBlock,
-        options?: DatabaseUpdateOptions
+        options: BFastDatabaseOptions
     ): Promise<any[]> {
         const oldDocs: any[] = await this.findMany(domain, updateModel, context, options);
         if (Array.isArray(oldDocs) && oldDocs.length === 0 && updateModel.upsert === true) {
@@ -483,10 +420,12 @@ export class DatabaseFactory implements DatabaseAdapter {
     async delete<T extends BasicAttributesModel>(
         domain: string,
         deleteModel: DeleteModel<T>,
-        context: ContextBlock, options?: DatabaseBasicOptions
+        context: ContextBlock,
+        options: BFastDatabaseOptions
     ): Promise<{ _id: string }[]> {
         let deleteTree;
         try {
+            const treeController = new TreeController();
             deleteTree = await treeController.query(
                 domain,
                 deleteModel.id ? {_id: deleteModel.id} : deleteModel.filter
@@ -498,25 +437,22 @@ export class DatabaseFactory implements DatabaseAdapter {
         if (Array.isArray(deleteTree)) {
             const result = [];
             for (const _tree of deleteTree) {
-                const r = await this.handleDeleteObjectTree(_tree, domain);
+                const r = await this.handleDeleteObjectTree(_tree, domain, options);
                 Array.isArray(r) ? result.push(...r) : result.push(r);
             }
             return result;
         } else {
-            return this.handleDeleteObjectTree(deleteTree, domain);
+            return this.handleDeleteObjectTree(deleteTree, domain, options);
         }
     }
 
-    /**
-     * need an improvement to have a behaviour like transaction but not transaction
-     * @param operations
-     */
     async bulk<V>(operations: (session: any) => Promise<any>): Promise<any> {
         return await operations(null);
     }
 
     async changes(
-        domain: string, pipeline: any[],
+        domain: string,
+        pipeline: any[],
         listener: (doc: ChangesModel) => void,
         resumeToken = undefined
     ): Promise<{ close: () => void }> {
@@ -551,64 +487,11 @@ export class DatabaseFactory implements DatabaseAdapter {
         }
     }
 
-    async generateCidFromLocalIpfsNode(buffer: Buffer) {
-        const r = await DatabaseFactory.ipfs.add(buffer, {
-            wrapWithDirectory: false
-        });
-        devLog('done save file to local ipfs with cid', r.cid.toString());
-        // DatabaseFactory.ipfs.pin.add(r.cid).catch(console.log);
-        return {
-            cid: r.cid.toString(),
-            size: r.size
-        }
-    }
-
-    async generateCidFromWeb3IpfsNode(buffer: Buffer, domain: string, data: { [k: string]: any }) {
-        // try {
-        const file = new web3File([buffer], `${domain}_${data._id}`);
-        const r = await web3Storage.put(
-            [file],
-            {
-                wrapWithDirectory: false,
-                name: `${domain}_${v4()}`,
-            }
-        );
-        devLog('done save file to web3 ipfs with cid', r);
-        return {
-            cid: r,
-            size: 0
-        }
-        // } catch (e) {
-        //     devLog('error save file to web3', e);
-        //     throw e;
-        // }
-    }
-
-    async checkIfWeHaveCidInWeb3(cid: string) {
-        if (/* when testing */this.config.useLocalIpfs === true) {
-            return true;
-        } else {
-            devLog('check cid in web3 ipfs');
-            // try {
-            const data = await web3Storage.get(cid);
-            if (data.ok && await data.files) {
-                devLog('cid exists in web3 ipfs');
-                return true;
-            } else {
-                devLog('cid not exists in web3 ipfs', await data.text());
-                return false;
-            }
-            // } catch (e) {
-            //     devLog('cid not exists in web3 ipfs', e);
-            //     return false;
-            // }
-        }
-    }
-
     async getAllContentsFromTreeTable(
         db: Db,
         domain: string,
         queryModel: QueryModel<any>,
+        options: BFastDatabaseOptions
     ): Promise<any[] | number> {
         let result = await db.collection(`${domain}__id`).find({}).toArray();
         if (result && Array.isArray(result)) {
@@ -620,13 +503,13 @@ export class DatabaseFactory implements DatabaseAdapter {
                 return result.length;
             }
             devLog('total cids to fetch data from', result.length);
-            if (queryModel.cids === true){
-                return result.map(x=>x?.value).filter(y=>y!==null);
+            if (queryModel.cids === true) {
+                return result.map(x => x?.value).filter(y => y !== null);
             }
             const _all_p = result.map(x => {
-                return this.generateDataFromCid(x?.value, {
+                return this.ipfsFactory.generateDataFromCid(x?.value, {
                     json: true
-                });
+                }, options);
             });
             const _all = await Promise.all(_all_p);
             return _all.filter(b => b !== null);
@@ -639,7 +522,8 @@ export class DatabaseFactory implements DatabaseAdapter {
         mapOfNodesToQuery,
         nodesPathList,
         domain: string,
-        db: Db): Promise<string[]> {
+        db: Db
+    ): Promise<string[]> {
         let cids = [];
         const cidMap = {};
         for (const nodePath of nodesPathList) {

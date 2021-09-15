@@ -1,12 +1,14 @@
-import {AuthAdapter} from '../adapters/auth.adapter';
 import {ContextBlock} from '../model/rules.model';
 import {BasicUserAttributesModel} from '../model/basic-user-attributes.model';
 import {DatabaseController} from './database.controller';
+import {BFastDatabaseOptions} from "../bfast-database.option";
+import {SecurityController} from "./security.controller";
+import {AuthAdapter} from "../adapters/auth.adapter";
+import {DatabaseAdapter} from "../adapters/database.adapter";
 
 export class AuthController {
 
-    constructor(private readonly authAdapter: AuthAdapter,
-                private readonly databaseController: DatabaseController) {
+    constructor() {
     }
 
     private policyDomainName = '_Policy';
@@ -40,49 +42,91 @@ export class AuthController {
         return _p1;
     }
 
-    async addPolicyRule(ruleId: string, rule: string, context: ContextBlock): Promise<any> {
-        const _p1 = await this.databaseController.writeOne(this.policyDomainName, {
+    async addPolicyRule(
+        ruleId: string,
+        rule: string,
+        databaseController: DatabaseController,
+        securityController: SecurityController,
+        databaseAdapter: DatabaseAdapter,
+        context: ContextBlock,
+        options: BFastDatabaseOptions
+    ): Promise<any> {
+        const _p1 = await databaseController.writeOne(
+            this.policyDomainName,
+            {
                 id: ruleId.replace('.', '%').concat('%id'),
                 ruleId: ruleId.replace('.', '%'),
                 ruleBody: rule.replace('.', '%'),
                 return: []
-            }, context, {
+            },
+            databaseAdapter,
+            securityController,
+            context,
+            {
                 bypassDomainVerification: context && context.useMasterKey === true
-            }
+            },
+            options
         );
         return AuthController.sanitizePolicy(_p1);
     }
 
-    async listPolicyRule(context: ContextBlock) {
-        const _j1 = await this.databaseController.query('_Policy', {
-            filter: {},
-            return: []
-        }, context, {
-            bypassDomainVerification: true
-        });
+    async listPolicyRule(
+        databaseController: DatabaseController,
+        securityController: SecurityController,
+        databaseAdapter: DatabaseAdapter,
+        context: ContextBlock,
+        options: BFastDatabaseOptions
+    ) {
+        const _j1 = await databaseController.query(
+            '_Policy',
+            {
+                filter: {},
+                return: []
+            },
+            databaseAdapter,
+            securityController,
+            context,
+            {
+                bypassDomainVerification: true
+            },
+            options);
         return _j1.map(x => AuthController.sanitizePolicy(x));
     }
 
-    async removePolicyRule(ruleId: string, context: ContextBlock) {
-        const _y89 = await this.databaseController.delete('_Policy', {
-            filter: {
-                ruleId: ruleId.replace('.', '%'),
+    async removePolicyRule(
+        ruleId: string,
+        databaseController: DatabaseController,
+        securityController: SecurityController,
+        databaseAdapter: DatabaseAdapter,
+        context: ContextBlock,
+        options: BFastDatabaseOptions
+    ) {
+        const _y89 = await databaseController.delete(
+            '_Policy',
+            {
+                filter: {
+                    ruleId: ruleId.replace('.', '%'),
+                },
+                return: ['id'],
             },
-            return: ['id'],
-        }, context, {
-            bypassDomainVerification: true
-        });
+            databaseAdapter,
+            securityController,
+            context,
+            {
+                bypassDomainVerification: true
+            },
+            options);
         return _y89.map(z => AuthController.sanitizePolicy(z));
     }
 
-    /**
-     * execute saved policy to determine if someone has access to that resource. If no policy found return true (
-     *  as assumption that its under dev mode, but you you required to set policies to secure your resources
-     * )
-     * @param ruleId - rule identifier
-     * @param context - runtime context
-     */
-    async hasPermission(ruleId: string, context: ContextBlock): Promise<boolean> {
+    async hasPermission(
+        ruleId: string,
+        databaseController: DatabaseController,
+        securityController: SecurityController,
+        databaseAdapter: DatabaseAdapter,
+        context: ContextBlock,
+        options: BFastDatabaseOptions
+    ): Promise<boolean> {
         if (context && context?.useMasterKey === true) {
             return true;
         }
@@ -96,12 +140,20 @@ export class AuthController {
             filter.push({ruleId: globalRule.replace('.', '%')});
         }
         filter.push({ruleId: originalRule.replace('.', '%')});
-        let query: any[] = await this.databaseController.query(this.policyDomainName, {
-            return: [],
-            filter,
-        }, context, {
-            bypassDomainVerification: true
-        });
+        let query: any[] = await databaseController.query(
+            this.policyDomainName,
+            {
+                return: [],
+                filter,
+            },
+            databaseAdapter,
+            securityController,
+            context,
+            {
+                bypassDomainVerification: true
+            },
+            options
+        );
         query = query.map(x => AuthController.sanitizePolicy(x));
         if (query.length === 0) {
             return true;
@@ -123,31 +175,63 @@ export class AuthController {
         return Promise.resolve(undefined);
     }
 
-    async resetPassword(email: string, context?: ContextBlock): Promise<any> {
+    async resetPassword(
+        authAdapter: AuthAdapter,
+        email: string,
+        context: ContextBlock
+    ): Promise<any> {
         if (!email) {
             throw {message: 'email required'};
         }
-        return this.authAdapter.resetPassword(email, context);
+        return authAdapter.resetPassword(email, context);
     }
 
-    async sendVerificationEmail(email: string, context?: ContextBlock): Promise<any> {
+    async sendVerificationEmail(
+        email: string,
+        authAdapter: AuthAdapter,
+        context: ContextBlock,
+        options: BFastDatabaseOptions
+    ): Promise<any> {
         if (!email) {
             throw {message: 'email required'};
         }
-        return this.authAdapter.sendVerificationEmail(email, context);
+        return authAdapter.sendVerificationEmail(email, context, options);
     }
 
-    async signIn<T extends BasicUserAttributesModel>(userModel: T, context?: ContextBlock): Promise<T> {
+    async signIn<T extends BasicUserAttributesModel>(
+        userModel: T,
+        databaseController: DatabaseController,
+        securityController: SecurityController,
+        authAdapter: AuthAdapter,
+        databaseAdapter: DatabaseAdapter,
+        context: ContextBlock,
+        options: BFastDatabaseOptions
+    ): Promise<T> {
         AuthController.validateData(userModel, true);
         userModel.return = [];
-        return this.authAdapter.signIn(userModel, context);
+        return authAdapter.signIn(
+            userModel,
+            context,
+            databaseController,
+            securityController,
+            databaseAdapter,
+            options
+        );
     }
 
-    async signUp<T extends BasicUserAttributesModel>(userModel: T, context?: ContextBlock): Promise<T> {
+    async signUp<T extends BasicUserAttributesModel>(
+        userModel: T,
+        databaseController: DatabaseController,
+        securityController: SecurityController,
+        databaseAdapter: DatabaseAdapter,
+        authAdapter: AuthAdapter,
+        context: ContextBlock,
+        options: BFastDatabaseOptions
+    ): Promise<T> {
         AuthController.validateData(userModel);
         userModel.return = [];
         userModel.emailVerified = false;
-        const oldUser = await this.databaseController.query(
+        const oldUser = await databaseController.query(
             '_User',
             {
                 filter: [
@@ -156,30 +240,70 @@ export class AuthController {
                 ],
                 return: []
             },
+            databaseAdapter,
+            securityController,
             context,
-            {bypassDomainVerification: true}
+            {bypassDomainVerification: true},
+            options
         );
         if (Array.isArray(oldUser) && oldUser.length > 0) {
             throw {message: 'User already exist'};
         }
-        return await this.authAdapter.signUp(userModel, context);
+        return await authAdapter.signUp(
+            userModel,
+            context,
+            databaseController,
+            securityController,
+            databaseAdapter,
+            options
+        );
     }
 
-    async update<T extends BasicUserAttributesModel>(userModel: T, context?: ContextBlock): Promise<T> {
+    async update<T extends BasicUserAttributesModel>(
+        userModel: T,
+        databaseController: DatabaseController,
+        securityController: SecurityController,
+        authAdapter: AuthAdapter,
+        databaseAdapter: DatabaseAdapter,
+        context: ContextBlock,
+        options: BFastDatabaseOptions
+    ): Promise<T> {
         if (context.auth === true && context.uid && typeof context.uid === 'string') {
             userModel.return = [];
             delete userModel.password;
             delete userModel._hashed_password;
             delete userModel.emailVerified;
-            return this.authAdapter.update(userModel, context);
+            return authAdapter.update(
+                userModel,
+                databaseController,
+                securityController,
+                databaseAdapter,
+                context,
+                options
+            );
         } else {
             return Promise.reject({message: 'please authenticate yourself'});
         }
     }
 
-    async updatePassword(password: string, context?: ContextBlock): Promise<any> {
+    async updatePassword(
+        password: string,
+        databaseController: DatabaseController,
+        securityController: SecurityController,
+        authAdapter: AuthAdapter,
+        databaseAdapter: DatabaseAdapter,
+        context: ContextBlock,
+        options: BFastDatabaseOptions
+    ): Promise<any> {
         if (context.uid && typeof context.uid === 'string') {
-            return this.authAdapter.updatePassword(password, context);
+            return authAdapter.updatePassword(
+                password,
+                databaseController,
+                securityController,
+                databaseAdapter,
+                context,
+                options
+            );
         } else {
             return Promise.reject({message: 'Fails to updated password of unknown user id'});
         }

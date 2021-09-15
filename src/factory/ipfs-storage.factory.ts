@@ -1,66 +1,62 @@
-/**
- * GridFSBucketAdapter
- * Stores files in Mongo using GridStore
- * Requires the database adapters to be based on mongo client
- */
-
-import {MongoClient} from 'mongodb';
 import {FilesAdapter} from '../adapters/files.adapter';
 import {pipeline} from 'stream';
 import {BFastDatabaseOptions} from '../bfast-database.option';
-import {DatabaseFactory} from "./database.factory";
 import {Buffer} from "buffer";
+import {DatabaseAdapter} from "../adapters/database.adapter";
+import {IpfsFactory} from "./ipfs.factory";
 
 export class IpfsStorageFactory implements FilesAdapter {
     private domain = '_Storage';
+    private readonly ipfsFactory = new IpfsFactory();
 
-    constructor(private readonly config: BFastDatabaseOptions,
-                private readonly databaseFactory: DatabaseFactory,
-                private readonly mongoDatabaseURI: string) {
-        if (!this.mongoDatabaseURI) {
-            this.mongoDatabaseURI = this.config.mongoDbUri;
-        }
+    constructor() {
     }
 
-    client: MongoClient;
     canHandleFileStream = true;
     isS3 = false;
-
-    async connect(): Promise<MongoClient> {
-        return MongoClient.connect(this.mongoDatabaseURI);
-    }
 
     async createFile(
         name: string,
         size: number,
         data: Buffer,
         contentType: any,
-        options: any = {}
+        databaseAdapter: DatabaseAdapter,
+        options: BFastDatabaseOptions
     ): Promise<string> {
         await this.validateFilename(name);
-        return this._saveFile(name, size, data, contentType, options);
+        return this._saveFile(name, size, data, contentType, databaseAdapter, options);
     }
 
-    async deleteFile(name: string): Promise<any> {
-        const r = await this.databaseFactory.delete(
+    async deleteFile(
+        name: string,
+        databaseAdapter: DatabaseAdapter,
+        options: BFastDatabaseOptions
+    ): Promise<any> {
+        const r = await databaseAdapter.delete(
             this.domain,
             IpfsStorageFactory.sanitize4Saving({_id: name, id: name}),
-            {}
+            {},
+            options
         );
         return r.map(x => IpfsStorageFactory.sanitize4User(x));
     }
 
-    async fileInfo(name: string): Promise<{ name: string; size: number }> {
+    async fileInfo(
+        name: string,
+        databaseAdapter: DatabaseAdapter,
+        options: BFastDatabaseOptions,
+    ): Promise<{ name: string; size: number }> {
         const fObj = IpfsStorageFactory.sanitize4Saving({
             _id: name
         });
-        const file = await this.databaseFactory.findOne(
+        const file = await databaseAdapter.findOne(
             this.domain,
             {
                 _id: fObj._id,
                 return: []
             },
-            {}
+            {},
+            options
         );
         if (file && file.size && file.name) {
             return file;
@@ -69,7 +65,12 @@ export class IpfsStorageFactory implements FilesAdapter {
         }
     }
 
-    async getFileData(name: string, asStream = false): Promise<{
+    async getFileData(
+        name: string,
+        asStream,
+        databaseAdapter: DatabaseAdapter,
+        options: BFastDatabaseOptions
+    ): Promise<{
         size: number,
         data: Buffer | ReadableStream,
         type: string
@@ -77,20 +78,24 @@ export class IpfsStorageFactory implements FilesAdapter {
         const fObj = IpfsStorageFactory.sanitize4Saving({
             _id: name
         });
-        let file = await this.databaseFactory.findOne(
+        let file = await databaseAdapter.findOne(
             this.domain,
             {
                 _id: fObj._id,
                 return: []
             },
-            {}
+            {},
+            options
         );
         file = IpfsStorageFactory.sanitize4User(file);
         if (file && file.cid) {
-            const data = await this.databaseFactory.generateDataFromCid(file.cid, {
-                json: false,
-                stream: asStream
-            });
+            const data = await this.ipfsFactory.generateDataFromCid(
+                file.cid,
+                {
+                    json: false,
+                    stream: asStream
+                },
+                options);
             return {
                 data: data,
                 ...file
@@ -104,22 +109,32 @@ export class IpfsStorageFactory implements FilesAdapter {
         return '/storage/' + configAdapter.applicationId + '/file/' + encodeURIComponent(name);
     }
 
-    async handleFileStream(name: string, req, res, contentType): Promise<any> {
+    async handleFileStream(
+        name: string,
+        req: any,
+        res: any,
+        contentType,
+        databaseAdapter: DatabaseAdapter,
+        options: BFastDatabaseOptions
+    ): Promise<any> {
         const fObj = IpfsStorageFactory.sanitize4Saving({
             _id: name
         });
-        const file = await this.databaseFactory.findOne(
+        const file = await databaseAdapter.findOne(
             this.domain,
             {
                 _id: fObj._id,
                 return: []
             },
-            {}
+            {},
+            options
         );
         if (file && file.cid && file.type && file.size) {
             const size = file.size;
             const range = req.headers.range;
-            let [start, end] = range.replace(/bytes=/, "").split('-');
+            const parts = range.replace(/bytes=/, "").split('-');
+            let start: any = parts[0];
+            let end: any = parts[1];
             start = parseInt(start, 10);
             end = end ? parseInt(end, 10) : size - 1;
 
@@ -143,12 +158,16 @@ export class IpfsStorageFactory implements FilesAdapter {
                 "Content-Length": `${end - start + 1}`,
                 "Content-Type": file.type
             });
-            const buffer = await this.databaseFactory.generateDataFromCid(file.cid, {
-                json: false,
-                stream: true,
-                start: start,
-                end: end
-            });
+            const buffer = await this.ipfsFactory.generateDataFromCid(
+                file.cid,
+                {
+                    json: false,
+                    stream: true,
+                    start: start,
+                    end: end
+                },
+                options
+            );
             // @ts-ignore
             pipeline(buffer, res, err => {
                 if (err) {
@@ -163,24 +182,27 @@ export class IpfsStorageFactory implements FilesAdapter {
         }
     }
 
-    async listFiles(query: { prefix: string, size: number, skip: number } = {
-        prefix: '',
-        size: 20,
-        skip: 0
-    }): Promise<any[]> {
-        let r = await this.databaseFactory.findMany(
+    async listFiles(
+        query: { prefix: string, size: number, skip: number } = {
+            prefix: '',
+            size: 20,
+            skip: 0
+        },
+        databaseAdapter: DatabaseAdapter,
+        options: BFastDatabaseOptions): Promise<any[]> {
+        let r = await databaseAdapter.findMany(
             this.domain,
             {
-                filter: {
-                },
+                filter: {},
                 return: [],
                 size: query.size,
                 skip: query.skip
             },
-            {}
+            {},
+            options
         );
         if (Array.isArray(r)) {
-            r = r.filter(x=>x?.name?.toString()?.includes(query.prefix)).map(x => IpfsStorageFactory.sanitize4User(x));
+            r = r.filter(x => x?.name?.toString()?.includes(query.prefix)).map(x => IpfsStorageFactory.sanitize4User(x));
             return r;
         } else {
             return [];
@@ -198,8 +220,8 @@ export class IpfsStorageFactory implements FilesAdapter {
         return null;
     }
 
-    async signedUrl(name: string): Promise<string> {
-        return this.getFileLocation(name, this.config);
+    async signedUrl(name: string, options: BFastDatabaseOptions): Promise<string> {
+        return this.getFileLocation(name, options);
     }
 
     private async _saveFile(
@@ -207,7 +229,8 @@ export class IpfsStorageFactory implements FilesAdapter {
         size: number,
         data: Buffer,
         contentType: string,
-        options: any = {}
+        databaseAdapter: DatabaseAdapter,
+        options: BFastDatabaseOptions
     ): Promise<string> {
         const _obj = IpfsStorageFactory.sanitize4Saving({
             _id: name,
@@ -215,17 +238,14 @@ export class IpfsStorageFactory implements FilesAdapter {
             type: contentType,
             cid: null
         });
-        const dataRes = await this.databaseFactory.generateCidFromData(_obj, data, this.domain);
+        const dataRes = await this.ipfsFactory.generateCidFromData(_obj, data, this.domain, options);
         _obj.cid = dataRes.cid;
-        // _obj.cidSize = dataRes.size;
         _obj.size = size;
-        IpfsStorageFactory.sanitize4User(await this.databaseFactory.writeOne(
+        IpfsStorageFactory.sanitize4User(await databaseAdapter.writeOne(
             this.domain,
             _obj,
             {},
-            {
-                bypassDomainVerification: true
-            }
+            options
         ));
         return name;
     }
@@ -245,5 +265,9 @@ export class IpfsStorageFactory implements FilesAdapter {
             x.name = x?.name?.replace(new RegExp('%', 'ig'), '.');
         }
         return x;
+    }
+
+    async init(options: BFastDatabaseOptions): Promise<void> {
+        await this.ipfsFactory.ensureIpfs(options);
     }
 }

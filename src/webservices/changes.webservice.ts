@@ -1,15 +1,20 @@
 import {functions} from 'bfast';
 import {DatabaseController} from '../controllers/database.controller';
 import {ChangesDocModel} from "../model/changes-doc.model";
+import {SecurityController} from "../controllers/security.controller";
+import {DatabaseAdapter} from "../adapters/database.adapter";
 
 export class ChangesWebservice {
 
-    constructor(private readonly databaseController: DatabaseController) {
+    constructor() {
     }
 
     changesV2(
         config: { applicationId: string, masterKey: string },
-        prefix = '/'
+        prefix = '/',
+        databaseController: DatabaseController,
+        securityController: SecurityController,
+        databaseAdapter: DatabaseAdapter
     ): { name: string, onEvent: any } {
         return functions().onEvent(
             `${prefix}v2/__changes__`,
@@ -17,10 +22,11 @@ export class ChangesWebservice {
                 if (request.auth.applicationId === config.applicationId) {
                     const bypassDomainVerification: boolean = config.masterKey === request.auth.masterKey;
                     if (request.body.pipeline && Array.isArray(request.body.pipeline) && request.body.domain) {
-                        this.databaseController
-                            .changes(
+                        databaseController.changes(
                                 request.body.domain,
                                 request.body.pipeline,
+                                databaseAdapter,
+                                securityController,
                                 (doc: ChangesDocModel) => {
                                     response.emit({change: doc});
                                 },
