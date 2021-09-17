@@ -701,10 +701,10 @@ bcryptjs@~2.4.3:
   resolved "https://registry.yarnpkg.com/bcryptjs/-/bcryptjs-2.4.3.tgz#9ab5627b93e60621ff7cdac5da9733027df1d0cb"
   integrity sha1-mrVie5PmBiH/fNrF2pczAn3x0Ms=
 
-bfast-database-tree@~1.0.1:
-  version "1.0.1"
-  resolved "https://registry.yarnpkg.com/bfast-database-tree/-/bfast-database-tree-1.0.1.tgz#9c1143eb73c2824f3ebf78bfb5e7f74666dde98f"
-  integrity sha512-KDjrhdiokRNuDF18OTvK9/19ISbpSe7JF7/T4mRkjKkyWaUxroiaMepOgb5BAPBEnkZTg26a26LXf7iD8fo6ow==
+bfast-database-tree@~1.1.2:
+  version "1.1.2"
+  resolved "https://registry.yarnpkg.com/bfast-database-tree/-/bfast-database-tree-1.1.2.tgz#dd5a1447d8554a100bb9ad7b5830a599235e4198"
+  integrity sha512-h2+F1vOtLxJLE8YYcwZkMfN1FLoSMOqrjoCBfaIITNE79JuZRaWGDrr9sICgZovppGqS0XCZvZcGVPGGBuu+3A==
 
 bfast-function@~1.13.0:
   version "1.13.0"
