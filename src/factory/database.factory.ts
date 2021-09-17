@@ -65,7 +65,16 @@ export class DatabaseFactory implements DatabaseAdapter {
         if (typeof targetNodeId === "object" && targetNodeId?.hasOwnProperty('$fn')) {
             devLog('handle query by expression', targetNodeId.$fn);
             const conn = await MongoClient.connect(options.mongoDbUri);
-            const cursor = conn.db().collection(nodeTable).find({});
+            let cursor = conn.db().collection(nodeTable).find({});
+            if (targetNodeId.hasOwnProperty('$orderBy')) {
+                cursor = cursor.sort('_id', targetNodeId.$orderBy);
+            }
+            if (targetNodeId.hasOwnProperty('$limit')) {
+                cursor = cursor.limit(targetNodeId.$limit);
+            }
+            if (targetNodeId.hasOwnProperty('$skip')) {
+                cursor = cursor.skip(targetNodeId.$skip);
+            }
             const docs = [];
             while (await cursor.hasNext()) {
                 const next = await cursor.next();
