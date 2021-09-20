@@ -21,4 +21,3 @@ module.exports.changes = webService.realtime(myConfig).changes;
 for (const fR of Object.keys(webService.storage())) {
     module.exports[fR] = webService.storage()[fR];
 }
-

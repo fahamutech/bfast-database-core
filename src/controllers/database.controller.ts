@@ -281,6 +281,19 @@ export class DatabaseController {
         );
     }
 
+    async syncs(
+        domain: string,
+        database: DatabaseAdapter,
+        security: SecurityController,
+        listener: (doc: any) => void,
+        options: BFastDatabaseOptions
+    ): Promise<ChangeStream> {
+        // if (options && options.bypassDomainVerification === false) {
+        //     await this.handleDomainValidation(domain);
+        // }
+        return database.syncs(domain, listener, options);
+    }
+
     async query(
         domain: string,
         queryModel: QueryModel<any>,

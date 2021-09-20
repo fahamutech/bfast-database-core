@@ -135,15 +135,26 @@ export class WebServices {
         };
     }
 
-    realtime(config: { applicationId: string, masterKey: string }, prefix = '/'): { changes: { name: string, onEvent: any } } {
+    realtime(config: { applicationId: string, masterKey: string }, prefix = '/'): {
+        changes: { name: string, onEvent: any }
+        syncs: { name: string, onEvent: any }
+    } {
         const changesWebService = new ChangesWebservice();
         return {
-            changes: changesWebService.changesV2(
+            changes: changesWebService.changes(
                 config,
                 prefix,
                 this.databaseController,
                 this.securityController,
                 this.databaseAdapter
+            ),
+            syncs: changesWebService.syncs(
+                config,
+                prefix,
+                this.databaseController,
+                this.securityController,
+                this.databaseAdapter,
+                this.options
             )
         };
     }

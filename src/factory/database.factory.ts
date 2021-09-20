@@ -14,6 +14,10 @@ import {ConstUtil} from "../utils/const.util";
 import {AppEventsFactory} from "./app-events.factory";
 import {devLog} from "../utils/debug.util";
 import {IpfsFactory} from "./ipfs.factory";
+import * as Y from 'yjs'
+import {WebrtcProvider} from 'y-webrtc'
+import {WebsocketProvider} from 'y-websocket'
+import {database} from "bfast";
 
 export class DatabaseFactory implements DatabaseAdapter {
 
@@ -475,6 +479,65 @@ export class DatabaseFactory implements DatabaseAdapter {
             }
         }
     }
+
+    async syncs(
+        domain: string,
+        listener: (doc: any) => void,
+        options: BFastDatabaseOptions,
+    ): Promise<{ close: () => void }> {
+        const mapName = ConstUtil.DB_SYNCS_EVENT.concat(domain);
+        const ydoc = new Y.Doc();
+        const webrtcProvider = new WebrtcProvider(domain, ydoc)
+        const websocketProvider = new WebsocketProvider(
+            `ws://localhost:${options.port}`, domain, ydoc, {
+                WebSocketPolyfill: require('ws')
+            }
+        );
+        let pData = await this.findOne(
+            mapName,
+            {
+                id: 'snapshot',
+            },
+            {useMasterKey: true},
+            options
+        );
+        if (!pData){
+            pData = {};
+        }
+        delete pData._id;
+        delete pData.id;
+        const sharedMap = ydoc.getMap(mapName);
+        Object.keys(pData).forEach(value => {
+            sharedMap.set(value, pData[value]);
+        });
+        const observer = async (_) => {
+            const data = sharedMap.toJSON();
+            data._id = 'snapshot';
+            const u = await this.updateOne(
+                mapName,
+                {
+                    id: data._id,
+                    upsert: true,
+                    update: {
+                        $set: data
+                    }
+                },
+                {return: [], useMasterKey: true},
+                options
+            );
+            listener(u);
+        }
+        sharedMap.observe(observer);
+        return {
+            close: () => {
+                sharedMap.unobserve(observer);
+                webrtcProvider.disconnect();
+                websocketProvider.disconnect();
+                ydoc.destroy();
+            }
+        }
+    }
+
 
     private incrementFields(newDoc: any, ip: { [p: string]: any }) {
         if (!newDoc) {
