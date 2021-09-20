@@ -12,3 +12,5 @@ devStart.sh
 **.tgz
 db.env.txt
 specs/video.mp4
+syncs_data
+/syncs_data
