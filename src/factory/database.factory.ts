@@ -496,17 +496,17 @@ export class DatabaseFactory implements DatabaseAdapter {
         const webrtcProvider = new WebrtcProvider(
             domain,
             ydoc,
-            // @ts-ignore
-            {
-                // password: domain,
-                signaling: [
-                    'wss://stun.l.google.com',
-                    'wss://stun1.l.google.com',
-                    'wss://stun2.l.google.com',
-                    'wss://stun3.l.google.com',
-                    'wss://stun4.l.google.com',
-                ]
-            }
+            // // @ts-ignore
+            // {
+            //     // password: domain,
+            //     // signaling: [
+            //     //     'wss://stun.l.google.com',
+            //     //     'wss://stun1.l.google.com',
+            //     //     'wss://stun2.l.google.com',
+            //     //     'wss://stun3.l.google.com',
+            //     //     'wss://stun4.l.google.com',
+            //     // ]
+            // }
         );
         const websocketProvider = new WebsocketProvider(
             'wss://demos.yjs.dev',
