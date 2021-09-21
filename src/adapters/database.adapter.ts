@@ -12,6 +12,7 @@ export abstract class DatabaseAdapter {
     abstract writeOne<T extends BasicAttributesModel>(
         domain: string,
         data: T,
+        cids: boolean,
         context: ContextBlock,
         options: BFastDatabaseOptions
     ): Promise<any>;
@@ -19,6 +20,7 @@ export abstract class DatabaseAdapter {
     abstract writeMany<T extends BasicAttributesModel>(
         domain: string,
         data: T[],
+        cids: boolean,
         context: ContextBlock,
         options: BFastDatabaseOptions
     ): Promise<any[]>;

@@ -240,6 +240,7 @@ export class RulesController {
                         result = await databaseController.writeMany(
                             domain,
                             createRuleRequest,
+                            false,
                             databaseAdapter,
                             securityController,
                             rules?.context,
@@ -252,6 +253,7 @@ export class RulesController {
                         result = await databaseController.writeOne(
                             domain,
                             createRuleRequest,
+                            false,
                             databaseAdapter,
                             securityController,
                             rules?.context,

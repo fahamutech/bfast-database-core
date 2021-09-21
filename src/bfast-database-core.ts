@@ -14,7 +14,6 @@ import {AuthAdapter} from "./adapters/auth.adapter";
 import {FilesAdapter} from "./adapters/files.adapter";
 import {S3StorageFactory} from "./factory/s3-storage.factory";
 import {IpfsStorageFactory} from "./factory/ipfs-storage.factory";
-import {startYJsWebsocketServer} from "./webservices/syncs.webservice";
 
 function getDatabaseFactory(options: BFastDatabaseOptions): DatabaseAdapter {
     return (options && options.adapters && options.adapters.database)
@@ -120,10 +119,6 @@ export class BfastDatabaseCore {
             BfastDatabaseCore._setUpDatabase(options).catch(_ => {
                 console.error(_);
                 process.exit(-1);
-            });
-            startYJsWebsocketServer().then(console.log).catch(reason => {
-                console.log('FAIL TO START A CRDT ENDPOINT -----> ', reason);
-                process.exit(0);
             });
             return new WebServices(
                 new RestController(),

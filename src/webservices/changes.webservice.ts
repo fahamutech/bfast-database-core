@@ -93,6 +93,7 @@ export class ChangesWebservice {
                             });
                             response.emit({info: 'start listening for syncs'});
                         }).catch(reason => {
+                            console.log(reason);
                             response.emit({error: reason.toString()});
                         });
                     } else {

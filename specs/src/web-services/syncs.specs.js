@@ -1,375 +1,167 @@
 const bfast = require("bfast");
 const {expect, should} = require('chai');
-const {config} = require("../../mock.config");
-const {AppEventsFactory} = require("../../../dist/factory/app-events.factory");
-
+const {config, mongoRepSet} = require("../../mock.config");
+const Y = require('yjs')
+const {WebsocketProvider} = require("y-websocket");
+const {v4} = require("uuid");
+const {WebrtcProvider} = require("y-webrtc");
+global.WebSocket = require('ws');
 
 describe('syncs', function () {
     this.timeout(5000);
+    before(async function (){
+        await mongoRepSet().start();
+    })
     describe('connectivity', function () {
         it('should connect a listener', function (done) {
             let connectedCalled = false;
-            const changes = bfast.database()
-                .table('test')
-                .query()
-                .changes(
-                    () => {
-                        connectedCalled = true;
-                    }
-                );
-            changes.addListener(response => {
+            const changes = bfast.functions().event(
+                '/v2/__syncs__',
+                () => {
+                    connectedCalled = true;
+                    changes.emit({
+                        auth: {
+                            applicationId: config.applicationId,
+                            topic: `${config.projectId}_test`
+                        },
+                        body: {
+                            domain: 'test'
+                        }
+                    });
+                },
+                // ()=>{
+                // console.log('disconnected');
+                // }
+            );
+            changes.listener(response => {
                     expect(connectedCalled).equal(true);
                     should().exist(response.body.info);
                     expect(response.body).eql({
-                        info: 'start listening for changes'
+                        info: 'start listening for syncs'
                     });
                     done();
                     changes.close();
                 }
             );
         });
-        it('should close a listener when asked', function (done) {
-            const changes = bfast.database()
-                .table('test')
-                .query()
-                .changes(
-                    () => {
-                        changes.close();
-                    },
-                    () => {
-                        done();
-                    }
-                );
-        });
-    });
-    describe('create', function () {
-        it('should receive created doc', function (done) {
-            const changes = bfast.database()
-                .table('test')
-                .query()
-                .changes(
-                    () => {
-                        bfast.database()
-                            .table('test')
-                            .save({
-                                id: 'ethan',
-                                name: 'joshua',
-                                createdAt: 'leo',
-                                updatedAt: 'leo'
-                            });
-                    },
-                    () => {
-                    }
-                );
-            changes.addListener(response => {
-                if (response.body.info) {
-                    return;
-                }
-                should().exist(response);
-                should().exist(response.body);
-                should().exist(response.body.change);
-                expect(response.body.change).eql({
-                    name: 'create',
-                    snapshot: {
-                        id: 'ethan',
-                        name: 'joshua',
-                        createdAt: 'leo',
-                        updatedAt: 'leo',
-                        createdBy: null
-                    }
-                })
-                done();
-                changes.close();
-            });
-        });
-        it('should receive all created docs', function (done) {
-            const changes = bfast.database()
-                .table('test')
-                .query()
-                .changes(
-                    () => {
-                        bfast.database()
-                            .table('test')
-                            .save([
-                                {
-                                    id: 'ethan',
-                                    name: 'joshua',
-                                    createdAt: 'leo',
-                                    updatedAt: 'leo'
-                                },
-                                {
-                                    id: 'zai',
-                                    name: 'tuni',
-                                    createdAt: 'leo',
-                                    updatedAt: 'leo'
-                                }
-                            ]);
-                    },
-                    () => {
-                    }
-                );
-            let called = 0;
-            changes.addListener(response => {
-                if (response.body.info) {
-                    return;
-                }
-                should().exist(response);
-                should().exist(response.body);
-                should().exist(response.body.change);
-                expect([
-                    {
-                        name: 'create',
-                        snapshot: {
-                            id: 'ethan',
-                            name: 'joshua',
-                            createdAt: 'leo',
-                            updatedAt: 'leo',
-                            createdBy: null
+        it('should close a syncs when asked', function (done) {
+            const changes = bfast.functions().event(
+                '/v2/__syncs__',
+                () => {
+                    changes.emit({
+                        auth: {
+                            applicationId: config.applicationId,
+                            topic: `${config.projectId}_test`
+                        },
+                        body: {
+                            domain: 'test'
                         }
-                    },
-                    {
-                        name: 'create',
-                        snapshot: {
-                            id: 'zai',
-                            name: 'tuni',
-                            createdAt: 'leo',
-                            updatedAt: 'leo',
-                            createdBy: null
-                        }
-                    }
-                ]).to.deep.include(response.body.change);
-                called += 1;
-                if (called === 2) {
-                    done();
-                    changes.close()
-                }
-
-            });
-        });
-    });
-    describe('update', function () {
-        it('should receive updated doc', function (done) {
-            const changes = bfast.database()
-                .table('test')
-                .query()
-                .changes(
-                    () => {
-                        bfast.database()
-                            .table('test')
-                            .query()
-                            .byId('ethan')
-                            .updateBuilder()
-                            .set('age', 20)
-                            .set('updatedAt', 'leo')
-                            .update();//.then(console.log);
-                    },
-                    () => {
-                    }
-                );
-            changes.addListener(response => {
-                if (response.body.info) {
-                    return;
-                }
-                should().exist(response);
-                should().exist(response.body);
-                should().exist(response.body.change);
-                expect(response.body.change).eql({
-                    name: 'update',
-                    snapshot: {
-                        id: 'ethan',
-                        name: 'joshua',
-                        age: 20,
-                        createdAt: 'leo',
-                        updatedAt: 'leo',
-                        createdBy: null
-                    }
-                })
-                changes.close();
-                done();
-            });
-        });
-        it('should receive all updated docs', function (done) {
-            const changes = bfast.database()
-                .table('test')
-                .query()
-                .changes(
-                    () => {
-                        bfast.functions()
-                            .request('/v2')
-                            .post({
-                                    applicationId: config.applicationId,
-                                    updatetest: {
-                                        filter: {
-                                            createdAt: 'leo'
-                                        },
-                                        update: {
-                                            $set: {
-                                                updatedAt: 'kesho'
-                                            }
-                                        },
-                                        return: []
-                                    }
-                                }
-                            );
-                    },
-                    () => {
-                    }
-                );
-            let called = 0;
-            changes.addListener(response => {
-                if (response.body.info) {
-                    return;
-                }
-                should().exist(response);
-                should().exist(response.body);
-                should().exist(response.body.change);
-                expect([
-                    {
-                        name: 'update',
-                        snapshot: {
-                            id: 'ethan',
-                            name: 'joshua',
-                            age: 20,
-                            createdAt: 'leo',
-                            updatedAt: 'kesho',
-                            createdBy: null
-                        }
-                    },
-                    {
-                        name: 'update',
-                        snapshot: {
-                            id: 'zai',
-                            name: 'tuni',
-                            createdAt: 'leo',
-                            updatedAt: 'kesho',
-                            createdBy: null
-                        }
-                    }
-                ]).to.deep.include(response.body.change);
-                called += 1;
-                if (called === 2) {
-                    changes.close()
+                    });
+                    changes.close();
+                },
+                () => {
                     done();
                 }
-
-            });
+            );
         });
     });
-    describe('delete', function () {
-        it('should receive deleted doc with id only', function (done) {
-            const changes = bfast.database()
-                .table('test')
-                .query()
-                .changes(
-                    () => {
-                        bfast.database()
-                            .table('test')
-                            .query()
-                            .byId('ethan')
-                            .delete();//.then(console.log);
-                    },
-                    () => {
-                    }
-                );
-            changes.addListener(response => {
-                if (response.body.info) {
-                    return;
-                }
-                should().exist(response);
-                should().exist(response.body);
-                should().exist(response.body.change);
-                expect(response.body.change).eql({
-                    name: 'delete',
-                    snapshot: {
-                        id: 'ethan'
-                    }
-                })
-                changes.close();
-                done();
-            });
-        });
-        it('should receive all updated docs', function (done) {
-            const changes = bfast.database()
-                .table('test')
-                .query()
-                .changes(
-                    () => {
-                        bfast.functions()
-                            .request('/v2')
-                            .post({
-                                    applicationId: config.applicationId,
-                                    deletetest: {
-                                        filter: {
-                                            createdAt: 'leo'
-                                        },
-                                        return: []
-                                    }
-                                }
-                            );
-                    },
-                    () => {
-                    }
-                );
-            // let called = 0;
-            changes.addListener(response => {
-                if (response.body.info) {
-                    return;
-                }
-                // console.log(response.body.change);
-                should().exist(response);
-                should().exist(response.body);
-                should().exist(response.body.change);
-                expect([
-                    {
-                        name: 'delete',
-                        snapshot: {
-                            id: 'zai'
+    describe('exchanges', function () {
+        it('should receive new snapshot doc', function (done) {
+            const changes = bfast.functions().event(
+                '/v2/__syncs__',
+                () => {
+                    console.log('connected *******');
+                    changes.emit({
+                        auth: {
+                            applicationId: config.applicationId,
+                            topic: `${config.projectId}_test`
+                        },
+                        body: {
+                            domain: 'test'
                         }
-                    }
-                ]).to.deep.include(response.body.change);
+                    });
+                }
+            );
+            const yDoc = new Y.Doc();
+            new WebrtcProvider('test', yDoc, {
+                signaling: [
+                    'wss://stun.l.google.com',
+                    'wss://stun1.l.google.com',
+                    'wss://stun2.l.google.com',
+                    'wss://stun3.l.google.com',
+                    'wss://stun4.l.google.com',
+                ]
+            });
+            new WebsocketProvider(
+                'wss://demos.yjs.dev',
+                'test',
+                yDoc,
+                {
+                    WebSocketPolyfill: require('ws'),
+                }
+            );
+            const yMap = yDoc.getMap('test');
+            // yMap.observe(arg0 => {
+            //     console.log(arg0.changes, '*****');
+            // });
+            // yMap.clear();
+            changes.listener(response => {
+                if (response?.body?.info) {
+                    const id = v4();
+                    yMap.set(id, {
+                        _id: id,
+                        age: Math.random()
+                    });
+                    return;
+                }
+                should().exist(response);
+                should().exist(response.body);
+                should().exist(response.body.change);
+                expect(typeof response.body.change).equal('string');
                 done();
                 changes.close();
             });
         });
     });
-    describe('removeListener', function () {
-        let c1, c2, r2;
-        before(function () {
-            c1 = bfast.database()
-                .table('test2')
-                .query()
-                .changes();
-            c2 = bfast.database()
-                .table('test2')
-                .query()
-                .changes();
-            c2.addListener((r) => {
-                // console.log(r);
-                if (r.body.info) {
-                    return;
-                }
-                r2 = r.body.change;
-            });
-        })
-        it('should count a total listener', function (done) {
-            setTimeout(args => {
-                const total = AppEventsFactory.getInstance().connected('_db_changes_test2');
-                expect(total).equal(2);
-                done();
-            }, 500);
-        });
-        it('should remove specific listener only', function (done) {
-            c1.close();
-            bfast.database().table('test2').save({name: 'xps', id: 'josh', createdAt: 'leo', updatedAt: 'leo'});
-            setTimeout(args => {
-                const total = AppEventsFactory.getInstance().connected('_db_changes_test2');
-                expect(total).equal(1);
-                expect(r2).eql({
-                    name: 'create',
-                    snapshot: {name: 'xps', id: 'josh', createdAt: 'leo', updatedAt: 'leo', createdBy: null}
-                })
-                done();
-            }, 700);
-        });
-    });
+
+    // describe('removeListener', function () {
+    //     let c1, c2, r2;
+    //     before(function () {
+    //         c1 = bfast.database()
+    //             .table('test2')
+    //             .query()
+    //             .changes();
+    //         c2 = bfast.database()
+    //             .table('test2')
+    //             .query()
+    //             .changes();
+    //         c2.addListener((r) => {
+    //             // console.log(r);
+    //             if (r.body.info) {
+    //                 return;
+    //             }
+    //             r2 = r.body.change;
+    //         });
+    //     })
+    //     it('should count a total listener', function (done) {
+    //         setTimeout(args => {
+    //             const total = AppEventsFactory.getInstance().connected('_db_changes_test2');
+    //             expect(total).equal(2);
+    //             done();
+    //         }, 500);
+    //     });
+    //     it('should remove specific listener only', function (done) {
+    //         c1.close();
+    //         bfast.database().table('test2').save({name: 'xps', id: 'josh', createdAt: 'leo', updatedAt: 'leo'});
+    //         setTimeout(args => {
+    //             const total = AppEventsFactory.getInstance().connected('_db_changes_test2');
+    //             expect(total).equal(1);
+    //             expect(r2).eql({
+    //                 name: 'create',
+    //                 snapshot: {name: 'xps', id: 'josh', createdAt: 'leo', updatedAt: 'leo', createdBy: null}
+    //             })
+    //             done();
+    //         }, 700);
+    //     });
+    // });
 });
