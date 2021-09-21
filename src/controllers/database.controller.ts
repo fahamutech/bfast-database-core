@@ -12,7 +12,6 @@ import {DeleteModel} from '../model/delete-model';
 import {QueryModel} from '../model/query-model';
 import {SecurityController} from './security.controller';
 import {ChangesModel} from '../model/changes.model';
-import {ChangeStream} from 'mongodb';
 import {ChangesDocModel} from "../model/changes-doc.model";
 import {AppEventsFactory} from "../factory/app-events.factory";
 import {ConstUtil} from "../utils/const.util";
@@ -42,6 +41,7 @@ export class DatabaseController {
     async writeOne<T extends BasicAttributesModel>(
         domain: string,
         data: T,
+        cids: boolean,
         database: DatabaseAdapter,
         security: SecurityController,
         context: ContextBlock,
@@ -57,6 +57,7 @@ export class DatabaseController {
         const doc = await database.writeOne<T>(
             domain,
             sanitizedData,
+            cids,
             context,
             configs
         );
@@ -73,6 +74,7 @@ export class DatabaseController {
     async writeMany<T extends BasicAttributesModel>(
         domain: string,
         data: T[],
+        cids: boolean,
         database: DatabaseAdapter,
         security: SecurityController,
         context: ContextBlock,
@@ -88,7 +90,7 @@ export class DatabaseController {
             return a;
         }, {});
         const sanitizedData = freshData.map(value => this.sanitize4Db(value));
-        const docs = await database.writeMany<any>(domain, sanitizedData, context, configs);
+        const docs = await database.writeMany<any>(domain, sanitizedData, cids, context, configs);
         return docs.map(x1 => {
             const cleanDoc = this.sanitize4User(x1, returnFieldsMap[x1._id], [], false, security);
             this.publishChanges(domain, {
@@ -227,7 +229,7 @@ export class DatabaseController {
         security: SecurityController,
         listener: (doc: ChangesDocModel) => void,
         options: DatabaseChangesOptions = {bypassDomainVerification: false, resumeToken: undefined}
-    ): Promise<ChangeStream> {
+    ): Promise<{ close: () => void }> {
         if (options && options.bypassDomainVerification === false) {
             await this.handleDomainValidation(domain);
         }
@@ -279,6 +281,19 @@ export class DatabaseController {
             },
             options.resumeToken
         );
+    }
+
+    async syncs(
+        domain: string,
+        database: DatabaseAdapter,
+        security: SecurityController,
+        listener: (doc: any) => void,
+        options: BFastDatabaseOptions
+    ): Promise<{ close: () => void }> {
+        // if (options && options.bypassDomainVerification === false) {
+        //     await this.handleDomainValidation(domain);
+        // }
+        return database.syncs(domain, listener, options);
     }
 
     async query(

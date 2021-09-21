@@ -244,6 +244,7 @@ export class IpfsStorageFactory implements FilesAdapter {
         IpfsStorageFactory.sanitize4User(await databaseAdapter.writeOne(
             this.domain,
             _obj,
+            false,
             {},
             options
         ));

@@ -14,6 +14,9 @@ import {ConstUtil} from "../utils/const.util";
 import {AppEventsFactory} from "./app-events.factory";
 import {devLog} from "../utils/debug.util";
 import {IpfsFactory} from "./ipfs.factory";
+import * as Y from 'yjs'
+import {WebrtcProvider} from 'y-webrtc'
+import {WebsocketProvider} from "y-websocket";
 
 export class DatabaseFactory implements DatabaseAdapter {
 
@@ -273,36 +276,42 @@ export class DatabaseFactory implements DatabaseAdapter {
     async writeMany<T extends BasicAttributesModel>(
         domain: string,
         data: T[],
+        cids: boolean,
         context: ContextBlock,
         options: BFastDatabaseOptions
     ): Promise<any[]> {
+        const r = [];
         for (const _data of data) {
-            await this.writeOne(
+            r.push(await this.writeOne(
                 domain,
                 _data,
+                cids,
                 context,
                 options
-            );
+            ));
         }
-        return data;
+        return r;
     }
 
     async writeOne<T extends BasicAttributesModel>(
         domain: string,
         data: T,
+        cids: boolean,
         context: ContextBlock,
         options: BFastDatabaseOptions,
     ): Promise<any> {
-        const dataCopy: any = Object.assign({}, data);
-        const buffer = Buffer.from(JSON.stringify(dataCopy));
-        const {cid} = await this.ipfsFactory.generateCidFromData(dataCopy, buffer, domain, options);
+        const buffer = Buffer.from(JSON.stringify(data));
+        const {cid} = await this.ipfsFactory.generateCidFromData(data, buffer, domain, options);
         const treeController = new TreeController();
         await treeController.objectToTree(
-            dataCopy,
+            data,
             domain,
             this.whenWantToSaveADataNodeToATree(cid.toString(), options)
         );
-        return dataCopy;
+        if (cids === true) {
+            return cid.toString();
+        }
+        return data;
     }
 
     async init(options: BFastDatabaseOptions): Promise<any> {
@@ -380,6 +389,7 @@ export class DatabaseFactory implements DatabaseAdapter {
             domain,
             {
                 _id: updateModel.id,
+                cids: false,
                 return: []
             },
             context,
@@ -395,7 +405,7 @@ export class DatabaseFactory implements DatabaseAdapter {
         const incrementParts = updateModel.update.$inc;
         let newDoc = Object.assign(oldDoc, updateParts);
         newDoc = this.incrementFields(newDoc, incrementParts);
-        return this.writeOne(domain, newDoc, context, options);
+        return this.writeOne(domain, newDoc, !!updateModel.cids, context, options);
     }
 
     async updateMany<T extends BasicAttributesModel>(
@@ -410,7 +420,7 @@ export class DatabaseFactory implements DatabaseAdapter {
             const incrementParts = updateModel.update.$inc;
             nDoc = this.incrementFields(nDoc, incrementParts);
             oldDocs.push(nDoc);
-            return this.writeMany(domain, oldDocs, context, options);
+            return this.writeMany(domain, oldDocs, !!updateModel.cids, context, options);
         }
         for (const x of oldDocs) {
             oldDocs[oldDocs.indexOf(x)] = await this.updateOne(
@@ -472,6 +482,86 @@ export class DatabaseFactory implements DatabaseAdapter {
         return {
             close: () => {
                 appEventInst.unSub(ConstUtil.DB_CHANGES_EVENT.concat(domain), listener);
+            }
+        }
+    }
+
+    async syncs(
+        domain: string,
+        listener: (doc: any) => void,
+        options: BFastDatabaseOptions,
+    ): Promise<{ close: () => void }> {
+        const ydoc = new Y.Doc();
+        global.WebSocket = require('ws');
+        const webrtcProvider = new WebrtcProvider(
+            domain,
+            ydoc,
+            // @ts-ignore
+            {
+                // password: domain,
+                signaling: [
+                    'wss://stun.l.google.com',
+                    'wss://stun1.l.google.com',
+                    'wss://stun2.l.google.com',
+                    'wss://stun3.l.google.com',
+                    'wss://stun4.l.google.com',
+                ]
+            }
+        );
+        const websocketProvider = new WebsocketProvider(
+            'wss://demos.yjs.dev',
+            domain,
+            ydoc,
+            {
+                WebSocketPolyfill: require('ws'),
+            }
+        );
+        const sharedMap = ydoc.getMap(domain);
+        const observer = async (_) => {
+            const data = sharedMap.toJSON();
+            const u = await this.updateOne(
+                'syncs',
+                {
+                    id: data._id,
+                    upsert: true,
+                    cids: true,
+                    update: {
+                        $set: {
+                            _id: domain,
+                            docs: data
+                        }
+                    }
+                },
+                {return: [], useMasterKey: true},
+                options
+            );
+            listener(u);
+        }
+        sharedMap.observe(observer);
+        let pData = await this.findOne(
+            'syncs',
+            {
+                _id: domain,
+            },
+            {useMasterKey: true},
+            options
+        );
+        if (!pData) {
+            pData = {};
+        }
+        Object.keys(pData.docs ? pData.docs : {}).forEach(k => {
+            sharedMap.set(k, pData.docs[k]);
+        });
+        return {
+            close: () => {
+                try {
+                    webrtcProvider.disconnect();
+                    websocketProvider.disconnectBc();
+                    sharedMap.unobserve(observer);
+                    ydoc.destroy();
+                } catch (e) {
+                    console.log(e);
+                }
             }
         }
     }

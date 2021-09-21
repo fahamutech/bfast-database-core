@@ -59,6 +59,7 @@ export class AuthController {
                 ruleBody: rule.replace('.', '%'),
                 return: []
             },
+            false,
             databaseAdapter,
             securityController,
             context,

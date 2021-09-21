@@ -69,6 +69,7 @@ export class AuthFactory implements AuthAdapter {
         const user = await databaseController.writeOne(
             this.domainName,
             userModel,
+            false,
             databaseAdapter,
             securityController,
             context,

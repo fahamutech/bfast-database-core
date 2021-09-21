@@ -12,6 +12,7 @@ export abstract class DatabaseAdapter {
     abstract writeOne<T extends BasicAttributesModel>(
         domain: string,
         data: T,
+        cids: boolean,
         context: ContextBlock,
         options: BFastDatabaseOptions
     ): Promise<any>;
@@ -19,6 +20,7 @@ export abstract class DatabaseAdapter {
     abstract writeMany<T extends BasicAttributesModel>(
         domain: string,
         data: T[],
+        cids: boolean,
         context: ContextBlock,
         options: BFastDatabaseOptions
     ): Promise<any[]>;
@@ -59,6 +61,8 @@ export abstract class DatabaseAdapter {
     ): Promise<any>;
 
     abstract changes(domain: string, pipeline: object[], listener: (doc: any) => void, resumeToken: string): Promise<any>;
+
+    abstract syncs(domain: string, listener: (doc: any) => void, options: BFastDatabaseOptions): Promise<any>;
 
     abstract bulk(operations: (session) => Promise<any>): Promise<any>;
 }
