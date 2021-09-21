@@ -24,7 +24,7 @@ jobs:
         with:
           image-version: latest
           port: 27017
-      - name: publish to npm@beta
+      - name: Test
         run: |
           npm install -g yarn
           npm install -g ipfs
