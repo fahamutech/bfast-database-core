@@ -104,7 +104,7 @@ export class RulesController {
                     // ruleResponse.auth.resetPassword = await this.authController.resetPassword(data.email ? data.email : data);
                 }
             } catch (e) {
-                // console.log(e);
+                console.log(e.toString());
                 ruleResponse.errors[`auth.${action}`] = {
                     message: e.message ? e.message : e.toString(),
                     path: `auth.${action}`,

@@ -72,6 +72,7 @@ describe('Transaction', function () {
                 new DatabaseFactory(),
                 config
             );
+            // console.log(results.transaction.commit)
             should().exist(results.transaction);
             should().exist(results.transaction.commit);
             const _r = {...results.transaction.commit}
@@ -83,7 +84,13 @@ describe('Transaction', function () {
                     {id: 't2'},
                 ],
                 updateProduct: {
-                    name: 'apple', price: 1000, status: 'new', id: 'xyz', createdAt: 'leo', updatedAt: 'leo'
+                    name: 'apple',
+                    price: 1000,
+                    status: 'new',
+                    id: 'xyz',
+                    createdAt: 'leo',
+                    createdBy: null,
+                    updatedAt: 'leo'
                 },
                 deleteProduct: [
                     {id: 'xyz'}

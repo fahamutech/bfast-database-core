@@ -7,7 +7,6 @@ import {UpdateRuleRequestModel} from '../model/update-rule-request.model';
 import {DeleteModel} from '../model/delete-model';
 import {BFastDatabaseOptions} from '../bfast-database.option';
 import {TreeController} from 'bfast-database-tree';
-import {Buffer} from "buffer";
 import {v4} from 'uuid';
 import {ChangesModel} from "../model/changes.model";
 import {ConstUtil} from "../utils/const.util";
@@ -17,6 +16,7 @@ import {IpfsFactory} from "./ipfs.factory";
 import * as Y from 'yjs'
 import {WebrtcProvider} from 'y-webrtc'
 import {WebsocketProvider} from "y-websocket";
+import {createHash} from "crypto";
 
 export class DatabaseFactory implements DatabaseAdapter {
 
@@ -44,7 +44,7 @@ export class DatabaseFactory implements DatabaseAdapter {
                     devLog('start save a node', key);
                     const client = new MongoClient(options.mongoDbUri);
                     const conn = await client.connect();
-                    await conn.db().collection(DatabaseFactory.nodeTable(path.toString())).updateOne({
+                    await conn.db().collection(DatabaseFactory.nodeTable(path)).updateOne({
                         _id: isNaN(Number(key)) ? key.trim() : Number(key),
                     }, {
                         $set: $setMap
@@ -61,11 +61,11 @@ export class DatabaseFactory implements DatabaseAdapter {
     }
 
     private static async connection(options: BFastDatabaseOptions): Promise<MongoClient> {
-        if (this.mongoClient) {
-            return this.mongoClient;
+        if (DatabaseFactory.mongoClient) {
+            return DatabaseFactory.mongoClient;
         }
-        this.mongoClient = await MongoClient.connect(options.mongoDbUri);
-        return this.mongoClient;
+        DatabaseFactory.mongoClient = await MongoClient.connect(options.mongoDbUri);
+        return DatabaseFactory.mongoClient;
     }
 
     private async nodeSearchResult(
@@ -76,7 +76,7 @@ export class DatabaseFactory implements DatabaseAdapter {
         if (typeof targetNodeId === "object" && targetNodeId?.hasOwnProperty('$fn')) {
             devLog('handle query by expression', targetNodeId.$fn);
             const conn = await DatabaseFactory.connection(options);
-            let cursor = conn.db().collection(nodeTable).find({});
+            let cursor = conn.db().collection(DatabaseFactory.nodeTable(nodeTable)).find({});
             if (targetNodeId.hasOwnProperty('$orderBy')) {
                 cursor = cursor.sort('_id', targetNodeId.$orderBy);
             }
@@ -104,7 +104,11 @@ export class DatabaseFactory implements DatabaseAdapter {
         } else {
             const conn = await DatabaseFactory.connection(options)
             devLog('handle query by node_id', targetNodeId);
-            const r = await conn.db().collection(nodeTable).findOne({_id: targetNodeId});
+            // console.log(nodeTable,'*****')
+            const r = await conn.db()
+                .collection(DatabaseFactory.nodeTable(nodeTable))
+                .findOne({_id: targetNodeId});
+            // console.log(r)
             return r as any;
         }
     }
@@ -117,7 +121,7 @@ export class DatabaseFactory implements DatabaseAdapter {
     ): Promise<any[] | number> {
         const nodesPathList = Object.keys(mapOfNodesToQuery);
         if (nodesPathList.length === 0) {
-            devLog('try to get all data on this node', `${domain}__id`);
+            devLog('try to get all data on this node', `${domain}/_id`);
             return this.getAllContentsFromTreeTable(
                 domain,
                 queryModel,
@@ -138,20 +142,28 @@ export class DatabaseFactory implements DatabaseAdapter {
             return cids.length;
         }
         devLog('total cids to fetch data from', cids.length);
-        if (queryModel.cids === true) {
-            return cids.filter(c => c !== null);
-        }
-        const _all_p = cids.map(x => {
-            return this.ipfsFactory.generateDataFromCid(x, {
-                json: true
-            }, options);
+        // if (queryModel.cids === true) {
+        //     return cids.filter(c => c !== null);
+        // }
+        const conn = await DatabaseFactory.connection(options);
+        const _all_p = cids.map(async x => {
+            return conn.db().collection(domain).findOne({_id: x});
+            // return r;
+            // return this.ipfsFactory.generateDataFromCid(x, {
+            //     json: true
+            // }, options);
         });
         const _all = await Promise.all(_all_p);
         return _all.filter(t => t !== null);
     }
 
-    private static nodeTable(nodePath) {
-        return nodePath?.replace(new RegExp('/', 'ig'), '_').trim();
+    private static nodeTable(nodePath: string) {
+        // console.log(nodePath,'+++++');
+        // console.log(node);
+        return createHash('sha1')
+            .update(nodePath.toString().trim())
+            .digest('hex');
+        // return nodePath?.replace(new RegExp('/', 'ig'), '_').trim();
     }
 
     private static async pruneNode(
@@ -162,12 +174,13 @@ export class DatabaseFactory implements DatabaseAdapter {
     ): Promise<{ value: any, _id: string }> {
         const conn = await this.connection(options)
         for (const k of Object.keys(nodeValue.value)) {
-            const _r1 = await conn.db().collection(`${domain}__id`).findOne({
+            const _r1 = await conn.db().collection(this.nodeTable(`${domain}/_id`)).findOne({
                 _id: k
             });
+            // console.log(_r1,'fuck in id', k);
             if (!_r1) {
                 delete nodeValue.value[k];
-                conn.db().collection(nodeTable).updateOne({
+                conn.db().collection(this.nodeTable(nodeTable)).updateOne({
                     [`value.${k}`]: {
                         $exists: true
                     }
@@ -189,12 +202,12 @@ export class DatabaseFactory implements DatabaseAdapter {
         options: BFastDatabaseOptions
     ): Promise<any> {
         const conn = await this.connection(options);
-        const _r1 = await conn.db().collection(`${domain}__id`).findOne({
+        const _r1 = await conn.db().collection(this.nodeTable(`${domain}/_id`)).findOne({
             _id: nodeValue._id
         });
         if (!_r1) {
             nodeValue.value = null;
-            conn.db().collection(nodeTable).updateOne({
+            conn.db().collection(this.nodeTable(nodeTable)).updateOne({
                 _id: targetNodeId
             }, {
                 $unset: {
@@ -217,10 +230,9 @@ export class DatabaseFactory implements DatabaseAdapter {
             return [];
         }
         for (const key of keys) {
-            const nodeTable = DatabaseFactory.nodeTable(key);
             const id = deleteTree[key];
             let result = await this.nodeSearchResult(
-                nodeTable,
+                key,
                 id,
                 options
             );
@@ -228,7 +240,7 @@ export class DatabaseFactory implements DatabaseAdapter {
                 if (typeof result.value === "object") {
                     result = await DatabaseFactory.pruneNode(
                         result,
-                        nodeTable,
+                        key,
                         domain,
                         options
                     );
@@ -244,7 +256,7 @@ export class DatabaseFactory implements DatabaseAdapter {
                     result = await DatabaseFactory.pruneNodeWithStringValue(
                         id,
                         result,
-                        nodeTable,
+                        key,
                         domain,
                         options
                     );
@@ -265,7 +277,7 @@ export class DatabaseFactory implements DatabaseAdapter {
         cids = Array.from(cids);
         const conn = await DatabaseFactory.connection(options)
         for (const x of cids) {
-            await conn.db().collection(`${domain}__id`).deleteOne({
+            await conn.db().collection(DatabaseFactory.nodeTable(`${domain}/_id`)).deleteOne({
                 _id: x
             }, {});
         }
@@ -303,17 +315,27 @@ export class DatabaseFactory implements DatabaseAdapter {
         context: ContextBlock,
         options: BFastDatabaseOptions,
     ): Promise<any> {
-        const buffer = Buffer.from(JSON.stringify(data));
-        const {cid} = await this.ipfsFactory.generateCidFromData(data, buffer, domain, options);
+        // const buffer = Buffer.from(JSON.stringify(data));
+        // const {cid} = await this.ipfsFactory.generateCidFromData(data, buffer, domain, options);
+        const conn = await DatabaseFactory.connection(options);
+        await conn.db()
+            .collection(domain)
+            .updateOne(
+                {_id: data._id},
+                {$set: data},
+                {
+                    upsert: true,
+                }
+            );
         const treeController = new TreeController();
         await treeController.objectToTree(
             data,
             domain,
-            this.whenWantToSaveADataNodeToATree(cid.toString(), options)
+            this.whenWantToSaveADataNodeToATree(data._id, options)
         );
-        if (cids === true) {
-            return cid.toString();
-        }
+        // if (cids === true) {
+        //     return insertedId.toString();
+        // }
         return data;
     }
 
@@ -331,10 +353,9 @@ export class DatabaseFactory implements DatabaseAdapter {
         const queryTree = await treeController.query(domain, {
             _id: queryModel._id
         });
-        const table = DatabaseFactory.nodeTable(Object.keys(queryTree)[0]);
         const id = Object.values(queryTree)[0];
         const conn = await DatabaseFactory.connection(options)
-        const result = await conn.db().collection(table).findOne(
+        const result = await conn.db().collection(DatabaseFactory.nodeTable(Object.keys(queryTree)[0])).findOne(
             {_id: id},
             {}
         );
@@ -342,12 +363,13 @@ export class DatabaseFactory implements DatabaseAdapter {
             return null;
         }
         const cid = result.value;
-        if (queryModel.cids === true) {
-            return cid;
-        }
-        return this.ipfsFactory.generateDataFromCid(cid, {
-            json: true
-        }, options);
+        // if (queryModel.cids === true) {
+        //     return cid;
+        // }
+        return conn.db().collection(domain).findOne({_id: cid});
+        // return this.ipfsFactory.generateDataFromCid(cid, {
+        //     json: true
+        // }, options);
     }
 
     async findMany<T extends BasicAttributesModel>(
@@ -377,6 +399,7 @@ export class DatabaseFactory implements DatabaseAdapter {
             const _result1: any[] = Object.values(resultMap);
             return queryModel?.count ? _result1.reduce((a, b) => a + b, 0) : _result1;
         } else {
+            // console.log(nodesToQueryData,'*********');
             return await this.handleQueryObjectTree(nodesToQueryData, domain, queryModel, options);
         }
     }
@@ -595,8 +618,11 @@ export class DatabaseFactory implements DatabaseAdapter {
         queryModel: QueryModel<any>,
         options: BFastDatabaseOptions
     ): Promise<any[] | number> {
-        const conn = await DatabaseFactory.connection(options)
-        let result = await conn.db().collection(`${domain}__id`).find({}).toArray();
+        const conn = await DatabaseFactory.connection(options);
+        let result = await conn.db()
+            .collection(DatabaseFactory.nodeTable(`${domain}/_id`))
+            .find({})
+            .toArray();
         if (result && Array.isArray(result)) {
             if (queryModel?.size && queryModel?.size > 0) {
                 const skip = (queryModel.skip && queryModel.skip >= 1) ? queryModel.skip : 0;
@@ -606,13 +632,14 @@ export class DatabaseFactory implements DatabaseAdapter {
                 return result.length;
             }
             devLog('total cids to fetch data from', result.length);
-            if (queryModel.cids === true) {
-                return result.map(x => x?.value).filter(y => y !== null);
-            }
+            // if (queryModel.cids === true) {
+            //     return result.map(x => x?.value).filter(y => y !== null);
+            // }
             const _all_p = result.map(x => {
-                return this.ipfsFactory.generateDataFromCid(x?.value, {
-                    json: true
-                }, options);
+                return conn.db().collection(domain).findOne({_id: x?.value});
+                // return this.ipfsFactory.generateDataFromCid(x?.value, {
+                //     json: true
+                // }, options);
             });
             const _all = await Promise.all(_all_p);
             return _all.filter(b => b !== null);
@@ -630,10 +657,10 @@ export class DatabaseFactory implements DatabaseAdapter {
         let cids = [];
         const cidMap = {};
         for (const nodePath of nodesPathList) {
-            const nodeTable = DatabaseFactory.nodeTable(nodePath);
+            // const nodeTable = DatabaseFactory.nodeTable(nodePath);
             const targetNodeId = mapOfNodesToQuery[nodePath];
             let result = await this.nodeSearchResult(
-                nodeTable,
+                nodePath,
                 targetNodeId,
                 options
             );
@@ -641,7 +668,7 @@ export class DatabaseFactory implements DatabaseAdapter {
                 if (typeof result.value === "object") {
                     result = await DatabaseFactory.pruneNode(
                         result,
-                        nodeTable,
+                        nodePath,
                         domain,
                         options
                     );
@@ -657,7 +684,7 @@ export class DatabaseFactory implements DatabaseAdapter {
                     result = await DatabaseFactory.pruneNodeWithStringValue(
                         targetNodeId,
                         result,
-                        nodeTable,
+                        nodePath,
                         domain,
                         options
                     );

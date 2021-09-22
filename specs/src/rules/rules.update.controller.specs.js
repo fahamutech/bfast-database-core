@@ -282,6 +282,7 @@ describe('RulesController', function () {
                 id: 'xyz123',
                 name: 'apple',
                 createdAt: _date,
+                // createdBy: null,
                 updatedAt: _date
             });
         });
@@ -497,6 +498,7 @@ describe('RulesController', function () {
                 c: 20,
                 e: {a: 10},
                 createdAt: 'leo',
+                createdBy: null,
                 updatedAt: 'leo'
             })
         });
