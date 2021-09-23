@@ -42,8 +42,7 @@ export class DatabaseFactory implements DatabaseAdapter {
                         }
                     }
                     devLog('start save a node', key);
-                    const client = new MongoClient(options.mongoDbUri);
-                    const conn = await client.connect();
+                    const conn = await DatabaseFactory.connection(options);
                     await conn.db().collection(DatabaseFactory.nodeTable(path)).updateOne({
                         _id: isNaN(Number(key)) ? key.trim() : Number(key),
                     }, {
