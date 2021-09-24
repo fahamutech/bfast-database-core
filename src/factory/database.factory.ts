@@ -19,11 +19,19 @@ import {WebsocketProvider} from "y-websocket";
 import {createHash} from "crypto";
 
 export class DatabaseFactory implements DatabaseAdapter {
+    private ipfsFactory = new IpfsFactory();
+    private mongoClient: MongoClient;
+    private mongoConnected = false;
+    private static instance: DatabaseFactory;
 
-    private readonly ipfsFactory = new IpfsFactory();
-    private static mongoClient: MongoClient;
+    private constructor() {
+    }
 
-    constructor() {
+    static getInstance() {
+        if (!DatabaseFactory.instance) {
+            DatabaseFactory.instance = new DatabaseFactory();
+        }
+        return DatabaseFactory.instance;
     }
 
     private whenWantToSaveADataNodeToATree(cid: string, options: BFastDatabaseOptions) {
@@ -42,7 +50,7 @@ export class DatabaseFactory implements DatabaseAdapter {
                         }
                     }
                     devLog('start save a node', key);
-                    const conn = await DatabaseFactory.connection(options);
+                    const conn = await this.connection(options);
                     await conn.db().collection(DatabaseFactory.nodeTable(path)).updateOne({
                         _id: isNaN(Number(key)) ? key.trim() : Number(key),
                     }, {
@@ -59,12 +67,21 @@ export class DatabaseFactory implements DatabaseAdapter {
         }
     }
 
-    private static async connection(options: BFastDatabaseOptions): Promise<MongoClient> {
-        if (DatabaseFactory.mongoClient) {
-            return DatabaseFactory.mongoClient;
+    private async connection(options: BFastDatabaseOptions): Promise<MongoClient> {
+        if (this.mongoClient && this.mongoConnected === true) {
+            return this.mongoClient;
         }
-        DatabaseFactory.mongoClient = await MongoClient.connect(options.mongoDbUri);
-        return DatabaseFactory.mongoClient;
+        try {
+            await this.mongoClient.close()
+        } catch (e) {
+            console.log(e.toString());
+        }
+        this.mongoClient = await MongoClient.connect(options.mongoDbUri);
+        this.mongoClient.on("topologyClosed", _ => {
+            this.mongoConnected = false;
+        });
+        this.mongoConnected = true;
+        return this.mongoClient;
     }
 
     private async nodeSearchResult(
@@ -74,7 +91,7 @@ export class DatabaseFactory implements DatabaseAdapter {
     ): Promise<{ value: any, _id: string }> {
         if (typeof targetNodeId === "object" && targetNodeId?.hasOwnProperty('$fn')) {
             devLog('handle query by expression', targetNodeId.$fn);
-            const conn = await DatabaseFactory.connection(options);
+            const conn = await this.connection(options);
             let cursor = conn.db().collection(DatabaseFactory.nodeTable(nodeTable)).find({});
             if (targetNodeId.hasOwnProperty('$orderBy')) {
                 cursor = cursor.sort('_id', targetNodeId.$orderBy);
@@ -101,7 +118,7 @@ export class DatabaseFactory implements DatabaseAdapter {
                 return a;
             }, {value: {}});
         } else {
-            const conn = await DatabaseFactory.connection(options)
+            const conn = await this.connection(options)
             devLog('handle query by node_id', targetNodeId);
             // console.log(nodeTable,'*****')
             const r = await conn.db()
@@ -144,7 +161,7 @@ export class DatabaseFactory implements DatabaseAdapter {
         // if (queryModel.cids === true) {
         //     return cids.filter(c => c !== null);
         // }
-        const conn = await DatabaseFactory.connection(options);
+        const conn = await this.connection(options);
         const _all_p = cids.map(async x => {
             return conn.db().collection(domain).findOne({_id: x});
             // return r;
@@ -171,7 +188,7 @@ export class DatabaseFactory implements DatabaseAdapter {
         domain: string,
         options: BFastDatabaseOptions
     ): Promise<{ value: any, _id: string }> {
-        const conn = await this.connection(options)
+        const conn = await this.getInstance().connection(options)
         for (const k of Object.keys(nodeValue.value)) {
             const _r1 = await conn.db().collection(this.nodeTable(`${domain}/_id`)).findOne({
                 _id: k
@@ -200,7 +217,7 @@ export class DatabaseFactory implements DatabaseAdapter {
         domain: string,
         options: BFastDatabaseOptions
     ): Promise<any> {
-        const conn = await this.connection(options);
+        const conn = await this.getInstance().connection(options);
         const _r1 = await conn.db().collection(this.nodeTable(`${domain}/_id`)).findOne({
             _id: nodeValue._id
         });
@@ -274,7 +291,7 @@ export class DatabaseFactory implements DatabaseAdapter {
             .filter(x => cidMap[x] === keys.length)
             .reduce((a, b) => a.add(b), new Set());
         cids = Array.from(cids);
-        const conn = await DatabaseFactory.connection(options)
+        const conn = await this.connection(options);
         for (const x of cids) {
             await conn.db().collection(DatabaseFactory.nodeTable(`${domain}/_id`)).deleteOne({
                 _id: x
@@ -316,7 +333,7 @@ export class DatabaseFactory implements DatabaseAdapter {
     ): Promise<any> {
         // const buffer = Buffer.from(JSON.stringify(data));
         // const {cid} = await this.ipfsFactory.generateCidFromData(data, buffer, domain, options);
-        const conn = await DatabaseFactory.connection(options);
+        const conn = await this.connection(options);
         await conn.db()
             .collection(domain)
             .updateOne(
@@ -353,7 +370,7 @@ export class DatabaseFactory implements DatabaseAdapter {
             _id: queryModel._id
         });
         const id = Object.values(queryTree)[0];
-        const conn = await DatabaseFactory.connection(options)
+        const conn = await this.connection(options);
         const result = await conn.db().collection(DatabaseFactory.nodeTable(Object.keys(queryTree)[0])).findOne(
             {_id: id},
             {}
@@ -617,7 +634,7 @@ export class DatabaseFactory implements DatabaseAdapter {
         queryModel: QueryModel<any>,
         options: BFastDatabaseOptions
     ): Promise<any[] | number> {
-        const conn = await DatabaseFactory.connection(options);
+        const conn = await this.connection(options);
         let result = await conn.db()
             .collection(DatabaseFactory.nodeTable(`${domain}/_id`))
             .find({})
