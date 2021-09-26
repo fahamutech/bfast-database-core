@@ -15,16 +15,27 @@ interface IpfsOption {
 }
 
 export class IpfsFactory {
-    static ipfs: IPFSHTTPClient;
+    private static ipfs: IPFSHTTPClient;
+    private static instance: IpfsFactory;
 
-    async ensureIpfs(options: BFastDatabaseOptions) {
-        if (!IpfsFactory.ipfs) {
+    private constructor() {
+    }
+
+    static async getInstance(options: BFastDatabaseOptions) {
+        if (!IpfsFactory.instance) {
+            IpfsFactory.instance = new IpfsFactory();
             IpfsFactory.ipfs = await create({
                 /*need improvement as it will work only in bfast cloud envs*/
                 host: options.useLocalIpfs === true ? 'localhost' : 'ipfsnode'
             });
+            return IpfsFactory.instance;
         }
+        return IpfsFactory.instance;
     }
+
+    // async ensureIpfs(options: BFastDatabaseOptions) {
+    //
+    // }
 
     async generateCidFromData(
         data: { [k: string]: any },
@@ -51,7 +62,7 @@ export class IpfsFactory {
         ipfsOptions: IpfsOption,
         options: BFastDatabaseOptions
     ): Promise<object | ReadableStream | Buffer> {
-        if ((await this.checkIfWeHaveCidInWeb3(cid,options)) === false) {
+        if ((await this.checkIfWeHaveCidInWeb3(cid, options)) === false) {
             return null;
         }
         devLog('____start fetch cid content with jsipfs_______');

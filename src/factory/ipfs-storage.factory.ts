@@ -7,7 +7,6 @@ import {IpfsFactory} from "./ipfs.factory";
 
 export class IpfsStorageFactory implements FilesAdapter {
     private domain = '_Storage';
-    private readonly ipfsFactory = new IpfsFactory();
 
     constructor() {
     }
@@ -89,7 +88,8 @@ export class IpfsStorageFactory implements FilesAdapter {
         );
         file = IpfsStorageFactory.sanitize4User(file);
         if (file && file.cid) {
-            const data = await this.ipfsFactory.generateDataFromCid(
+            const ipfs = await IpfsFactory.getInstance(options);
+            const data = await ipfs.generateDataFromCid(
                 file.cid,
                 {
                     json: false,
@@ -158,7 +158,8 @@ export class IpfsStorageFactory implements FilesAdapter {
                 "Content-Length": `${end - start + 1}`,
                 "Content-Type": file.type
             });
-            const buffer = await this.ipfsFactory.generateDataFromCid(
+            const ipfs = await IpfsFactory.getInstance(options);
+            const buffer = await ipfs.generateDataFromCid(
                 file.cid,
                 {
                     json: false,
@@ -238,7 +239,8 @@ export class IpfsStorageFactory implements FilesAdapter {
             type: contentType,
             cid: null
         });
-        const dataRes = await this.ipfsFactory.generateCidFromData(_obj, data, this.domain, options);
+        const ipfs = await IpfsFactory.getInstance(options);
+        const dataRes = await ipfs.generateCidFromData(_obj, data, this.domain, options);
         _obj.cid = dataRes.cid;
         _obj.size = size;
         IpfsStorageFactory.sanitize4User(await databaseAdapter.writeOne(
@@ -269,6 +271,6 @@ export class IpfsStorageFactory implements FilesAdapter {
     }
 
     async init(options: BFastDatabaseOptions): Promise<void> {
-        await this.ipfsFactory.ensureIpfs(options);
+        // await this.ipfsFactory.ensureIpfs(options);
     }
 }
