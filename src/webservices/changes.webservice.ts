@@ -78,7 +78,7 @@ export class ChangesWebservice {
                             request.body.domain,
                             databaseAdapter,
                             securityController,
-                            (value: any) => {
+                            (value: ChangesDocModel) => {
                                 response.emit({change: value});
                             },
                             options
@@ -104,6 +104,16 @@ export class ChangesWebservice {
                 }
             }
         );
+    }
+
+    syncsEndpoint(){
+        return functions().onEvent(
+            '/syncs',
+            (request, response) => {
+                // console.log(request,'11++++++');
+                // console.log(response.socket,'22+++++');
+            }
+        )
     }
 
 }

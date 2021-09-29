@@ -18,6 +18,7 @@ module.exports.rests = webService.rest().rules;
 module.exports.restsjwk = webService.rest().jwk;
 module.exports.changes = webService.realtime(myConfig).changes;
 module.exports.syncs = webService.realtime(myConfig).syncs;
+module.exports.syncsEndpoint = webService.realtime(myConfig).syncsEndpoint;
 for (const fR of Object.keys(webService.storage())) {
     module.exports[fR] = webService.storage()[fR];
 }

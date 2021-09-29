@@ -4,6 +4,7 @@ import {QueryModel} from '../model/query-model';
 import {UpdateRuleRequestModel} from '../model/update-rule-request.model';
 import {DeleteModel} from '../model/delete-model';
 import {BFastDatabaseOptions} from "../bfast-database.option";
+import {ChangesDocModel} from "../model/changes-doc.model";
 
 export abstract class DatabaseAdapter {
 
@@ -62,7 +63,7 @@ export abstract class DatabaseAdapter {
 
     abstract changes(domain: string, pipeline: object[], listener: (doc: any) => void, resumeToken: string): Promise<any>;
 
-    abstract syncs(domain: string, listener: (doc: any) => void, options: BFastDatabaseOptions): Promise<any>;
+    abstract syncs(domain: string, listener: (doc: ChangesDocModel) => void, options: BFastDatabaseOptions): Promise<any>;
 
     abstract bulk(operations: (session) => Promise<any>): Promise<any>;
 }

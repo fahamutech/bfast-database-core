@@ -9,7 +9,7 @@ global.WebSocket = require('ws');
 
 describe('syncs', function () {
     this.timeout(5000);
-    before(async function (){
+    before(async function () {
         await mongoRepSet().start();
     })
     describe('connectivity', function () {
@@ -34,13 +34,15 @@ describe('syncs', function () {
                 // }
             );
             changes.listener(response => {
-                    expect(connectedCalled).equal(true);
-                    should().exist(response.body.info);
-                    expect(response.body).eql({
-                        info: 'start listening for syncs'
-                    });
-                    done();
-                    changes.close();
+                    if (response?.body?.info) {
+                        expect(connectedCalled).equal(true);
+                        should().exist(response.body.info);
+                        expect(response.body).eql({
+                            info: 'start listening for syncs'
+                        });
+                        done();
+                        changes.close();
+                    }
                 }
             );
         });
@@ -67,6 +69,7 @@ describe('syncs', function () {
     });
     describe('exchanges', function () {
         it('should receive new snapshot doc', function (done) {
+            const room = Math.random().toString(16).split('.')[1];
             const changes = bfast.functions().event(
                 '/v2/__syncs__',
                 () => {
@@ -74,35 +77,35 @@ describe('syncs', function () {
                     changes.emit({
                         auth: {
                             applicationId: config.applicationId,
-                            topic: `${config.projectId}_test`
+                            topic: `${config.projectId}_${room}`
                         },
                         body: {
-                            domain: 'test'
+                            domain: room
                         }
                     });
                 }
             );
             const yDoc = new Y.Doc();
-            new WebrtcProvider('test', yDoc, {
-                signaling: [
-                    'wss://stun.l.google.com',
-                    'wss://stun1.l.google.com',
-                    'wss://stun2.l.google.com',
-                    'wss://stun3.l.google.com',
-                    'wss://stun4.l.google.com',
-                ]
+            new WebrtcProvider(room, yDoc, {
+                // signaling: [
+                //     'wss://stun.l.google.com',
+                //     'wss://stun1.l.google.com',
+                //     'wss://stun2.l.google.com',
+                //     'wss://stun3.l.google.com',
+                //     'wss://stun4.l.google.com',
+                // ]
             });
             new WebsocketProvider(
-                'wss://demos.yjs.dev',
-                'test',
+                `ws://localhost:${config.port}/syncs`,
+                room,
                 yDoc,
                 {
                     WebSocketPolyfill: require('ws'),
                 }
             );
-            const yMap = yDoc.getMap('test');
+            const yMap = yDoc.getMap(room);
             // yMap.observe(arg0 => {
-            //     console.log(arg0.changes, '*****');
+            //     console.log(arg0.changes, '++++++');
             // });
             // yMap.clear();
             changes.listener(response => {
@@ -112,6 +115,17 @@ describe('syncs', function () {
                         _id: id,
                         age: Math.random()
                     });
+                    const v = Math.random();
+                    yMap.set('a', {
+                        _id: 'a',
+                        age: v
+                    });
+                    yMap.set('a', {
+                        _id: 'a',
+                        age: v
+                    });
+                    yMap.delete('a');
+                    // console.log(yMap.toJSON(), '********');
                     return;
                 }
                 should().exist(response);

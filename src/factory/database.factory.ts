@@ -16,6 +16,9 @@ import * as Y from 'yjs'
 import {WebrtcProvider} from 'y-webrtc'
 import {WebsocketProvider} from "y-websocket";
 import {createHash} from "crypto";
+import {deriveKey} from "y-webrtc/dist/src/crypto";
+import {Transaction, YMapEvent} from "yjs";
+import {ChangesDocModel} from "../model/changes-doc.model";
 
 export class DatabaseFactory implements DatabaseAdapter {
     private static instance: DatabaseFactory;
@@ -72,7 +75,7 @@ export class DatabaseFactory implements DatabaseAdapter {
                 //     console.log(value, 'close connection OK ******');
                 // })
                 .catch(reason => {
-                    console.log(reason,'close connection FAIL *******');
+                    console.log(reason, 'close connection FAIL *******');
                 });
         }
     }
@@ -529,7 +532,7 @@ export class DatabaseFactory implements DatabaseAdapter {
 
     async syncs(
         domain: string,
-        listener: (doc: any) => void,
+        listener: (doc: ChangesDocModel) => void,
         options: BFastDatabaseOptions,
     ): Promise<{ close: () => void }> {
         const ydoc = new Y.Doc();
@@ -550,7 +553,7 @@ export class DatabaseFactory implements DatabaseAdapter {
             // }
         );
         const websocketProvider = new WebsocketProvider(
-            'wss://demos.yjs.dev',
+            `ws://localhost:${options.port}/syncs`,
             domain,
             ydoc,
             {
@@ -558,40 +561,110 @@ export class DatabaseFactory implements DatabaseAdapter {
             }
         );
         const sharedMap = ydoc.getMap(domain);
-        const observer = async (_) => {
-            const data = sharedMap.toJSON();
-            const u = await this.updateOne(
-                'syncs',
-                {
-                    id: data._id,
-                    upsert: true,
-                    cids: true,
-                    update: {
-                        $set: {
-                            _id: domain,
-                            docs: data
+        const observer = async (tEvent: YMapEvent<any>) => {
+            // console.log(tEvent.keys)
+            for (const key of Array.from(tEvent.keys.keys())) {
+                switch (tEvent.keys.get(key).action) {
+                    case "add":
+                        const doc = sharedMap.get(key);
+                        if (!Array.isArray(doc)) {
+                            this.updateOne(
+                                domain,
+                                {
+                                    id: doc._id,
+                                    upsert: true,
+                                    update: {
+                                        $set: doc
+                                    }
+                                },
+                                {},
+                                options
+                            ).catch(console.log);
+                            listener({
+                                name: "create",
+                                snapshot: doc,
+                                resumeToken: doc._id
+                            });
                         }
-                    }
-                },
-                {return: [], useMasterKey: true},
-                options
-            );
-            listener(u);
+                        // console.log(, 'ADD');
+                        break;
+                    case "delete":
+                        this.delete(
+                            domain,
+                            {
+                                id: key
+                            },
+                            {},
+                            options
+                        ).catch(console.log);
+                        listener({
+                            name: "delete",
+                            snapshot: {_id: key},
+                            resumeToken: key
+                        });
+                        // console.log(key, 'DELETE');
+                        break;
+                    case "update":
+                        const d = sharedMap.get(key);
+                        const od = tEvent.keys.get(key).oldValue;
+                        // console.log(d, 'NEW');
+                        // console.log(od, 'OLD');
+                        // console.log(JSON.stringify(d)!==JSON.stringify(od));
+                        if (!Array.isArray(d) && JSON.stringify(d)!==JSON.stringify(od)) {
+                            this.updateOne(
+                                domain,
+                                {
+                                    id: key,
+                                    upsert: true,
+                                    update: {
+                                        $set: d
+                                    }
+                                },
+                                {},
+                                options
+                            ).catch(console.log);
+                            listener({
+                                name: "update",
+                                snapshot: d,
+                                resumeToken: d._id
+                            });
+                        }
+                        // console.log(sharedMap.get(key), 'UPDATE');
+                        break;
+                }
+            }
+            // const data = sharedMap.toJSON();
         }
         sharedMap.observe(observer);
-        let pData = await this.findOne(
-            'syncs',
+        let pData = await this.findMany(
+            domain,
             {
-                _id: domain,
+                filter: {}
             },
             {useMasterKey: true},
             options
         );
         if (!pData) {
-            pData = {};
+            pData = [];
         }
-        Object.keys(pData.docs ? pData.docs : {}).forEach(k => {
-            sharedMap.set(k, pData.docs[k]);
+        pData.forEach(data => {
+            if (data.id) {
+                data._id = data.id;
+                delete data.id;
+            }
+            // if (data._created_at) {
+            //     data.createdAt = data._created_at;
+            //     delete data._created_at;
+            // }
+            // if (data._updated_at) {
+            //     data.updatedAt = data._updated_at;
+            //     delete data._updated_at;
+            // }
+            // if (data._created_by) {
+            //     data.createdBy = data._created_by;
+            //     delete data._created_by;
+            // }
+            sharedMap.set(data._id, data);
         });
         return {
             close: () => {

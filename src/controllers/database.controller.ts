@@ -287,7 +287,7 @@ export class DatabaseController {
         domain: string,
         database: DatabaseAdapter,
         security: SecurityController,
-        listener: (doc: any) => void,
+        listener: (doc: ChangesDocModel) => void,
         options: BFastDatabaseOptions
     ): Promise<{ close: () => void }> {
         // if (options && options.bypassDomainVerification === false) {
