@@ -8,8 +8,7 @@ const {DatabaseController} = require("../../../dist/index");
 const {SecurityController} = require("../../../dist/index");
 const {UpdateRuleController} = require("../../../dist/index");
 
-describe('Transaction', function () {
-
+describe('Bulk', function () {
     let _rulesController = new RulesController();
     let mongoMemoryReplSet;
     before(async function () {
@@ -23,9 +22,9 @@ describe('Transaction', function () {
         before(async function () {
             await _rulesController.handleCreateRules({
                     createProduct: [
-                        {name: 'xyz', price: 50, status: 'new', id: 'xyz', createdAt: 'leo', updatedAt: 'leo'},
-                        {name: 'zyx', price: 50, status: 'new', id: 'zyx', createdAt: 'leo', updatedAt: 'leo'},
-                        {name: 'uuu', price: 50, status: 'new', id: 'uuu', createdAt: 'leo', updatedAt: 'leo'},
+                        {name: 'xyz', price: 50, status: 'new', id: 'xyz-id', createdAt: 'leo', updatedAt: 'leo'},
+                        {name: 'zyx', price: 50, status: 'new', id: 'zyx-id', createdAt: 'leo', updatedAt: 'leo'},
+                        {name: 'uuu', price: 50, status: 'new', id: 'uuu-id', createdAt: 'leo', updatedAt: 'leo'},
                     ]
                 },
                 {errors: {}},
@@ -36,7 +35,7 @@ describe('Transaction', function () {
                 config,
                 null);
         });
-        it('should perform transaction', async function () {
+        it('should perform bulk', async function () {
             const results = await _rulesController.handleBulkRule({
                     transaction: {
                         commit: {
@@ -45,7 +44,7 @@ describe('Transaction', function () {
                                 {id: 't2', createdAt: 'leo', updatedAt: 'leo', name: 'mnb', price: 30, status: 'new'},
                             ],
                             updateProduct: {
-                                id: 'xyz',
+                                id: 'xyz-id',
                                 return: [],
                                 update: {
                                     $set: {
@@ -56,7 +55,7 @@ describe('Transaction', function () {
                                 }
                             },
                             deleteProduct: {
-                                id: 'xyz'
+                                id: 'xyz-id'
                             },
                             queryProduct: {
                                 filter: {},
@@ -72,7 +71,7 @@ describe('Transaction', function () {
                 new DatabaseFactory(),
                 config
             );
-            // console.log(results.transaction.commit)
+            // console.log(results.bulk.commit)
             should().exist(results.transaction);
             should().exist(results.transaction.commit);
             const _r = {...results.transaction.commit}
@@ -87,13 +86,13 @@ describe('Transaction', function () {
                     name: 'apple',
                     price: 1000,
                     status: 'new',
-                    id: 'xyz',
+                    id: 'xyz-id',
                     createdAt: 'leo',
                     createdBy: null,
                     updatedAt: 'leo'
                 },
                 deleteProduct: [
-                    {id: 'xyz'}
+                    {id: 'xyz-id'}
                 ],
             });
             should().exist(results.transaction.commit.createProduct);
@@ -101,7 +100,7 @@ describe('Transaction', function () {
             should().exist(results.transaction.commit.updateProduct);
             expect(results.transaction.commit.updateProduct.name).equal('apple');
             expect(results.transaction.commit.updateProduct.price).equal(1000);
-            expect(results.transaction.commit.updateProduct.id).equal('xyz');
+            expect(results.transaction.commit.updateProduct.id).equal('xyz-id');
             should().exist(results.transaction.commit.queryProduct);
             should().exist(results.transaction.commit.deleteProduct);
             expect(typeof results.transaction.commit.deleteProduct[0].id).equal('string');
@@ -110,7 +109,7 @@ describe('Transaction', function () {
             expect(results.transaction.commit.createProduct).length(2);
             expect(results.transaction.commit.queryProduct).length(5);
         });
-        it('should perform transaction when update block is array', async function () {
+        it('should perform bulk when update block is array', async function () {
             const results = await _rulesController.handleBulkRule({
                     transaction: {
                         commit: {
@@ -120,7 +119,7 @@ describe('Transaction', function () {
                             ],
                             updateProduct: [
                                 {
-                                    id: 'uuu',
+                                    id: 'uuu-id',
                                     return: [],
                                     update: {
                                         $set: {
@@ -130,7 +129,7 @@ describe('Transaction', function () {
                                     }
                                 },
                                 {
-                                    id: 'zyx',
+                                    id: 'zyx-id',
                                     return: [],
                                     update: {
                                         $set: {
@@ -141,7 +140,7 @@ describe('Transaction', function () {
                                 }
                             ],
                             deleteProduct: {
-                                id: 'uuu'
+                                id: 'uuu-id'
                             },
                             queryProduct: {
                                 filter: {},
@@ -167,19 +166,19 @@ describe('Transaction', function () {
             expect(results.transaction.commit.updateProduct).length(2);
             expect(results.transaction.commit.updateProduct[0].name).equal('apple');
             expect(results.transaction.commit.updateProduct[0].price).equal(1000);
-            expect(results.transaction.commit.updateProduct[0].id).equal('uuu');
+            expect(results.transaction.commit.updateProduct[0].id).equal('uuu-id');
             expect(results.transaction.commit.updateProduct[1].name).equal('nokia');
             expect(results.transaction.commit.updateProduct[1].price).equal(5000);
-            expect(results.transaction.commit.updateProduct[1].id).equal('zyx');
+            expect(results.transaction.commit.updateProduct[1].id).equal('zyx-id');
             should().exist(results.transaction.commit.queryProduct);
             should().exist(results.transaction.commit.deleteProduct);
-            expect(results.transaction.commit.deleteProduct[0].id).equal('uuu');
+            expect(results.transaction.commit.deleteProduct[0].id).equal('uuu-id');
             expect(Array.isArray(results.transaction.commit.createProduct)).equal(true);
             expect(Array.isArray(results.transaction.commit.queryProduct)).equal(true);
             expect(results.transaction.commit.createProduct).length(2);
             expect(results.transaction.commit.queryProduct).length(6);
         });
-        it('should perform transaction if save to already exist documents', async function () {
+        it('should perform bulk if save to already exist documents', async function () {
             const results = await _rulesController.handleBulkRule({
                     transaction: {
                         commit: {
@@ -188,7 +187,7 @@ describe('Transaction', function () {
                                 {id: 'doe2', name: 'mnb', price: 30, status: 'new', createdAt: 'leo', updatedAt: 'leo'},
                             ],
                             updateProduct: {
-                                id: 'xyz',
+                                id: 'xyz-id',
                                 return: [],
                                 update: {
                                     $set: {
@@ -227,7 +226,6 @@ describe('Transaction', function () {
         });
     });
     describe('delete', function () {
-
         before(async function () {
             await _rulesController.handleCreateRules({
                 createProduct: [
@@ -261,7 +259,6 @@ describe('Transaction', function () {
                 null
             );
         });
-
         it('should delete only matches', async function () {
             const results = await _rulesController.handleBulkRule({
                 transaction: {

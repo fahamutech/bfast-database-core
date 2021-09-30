@@ -13,11 +13,13 @@ import {ConstUtil} from "../utils/const.util";
 import {AppEventsFactory} from "./app-events.factory";
 import {devLog} from "../utils/debug.util";
 import * as Y from 'yjs'
+import {YMapEvent} from 'yjs'
 import {WebrtcProvider} from 'y-webrtc'
 import {WebsocketProvider} from "y-websocket";
 import {createHash} from "crypto";
-import {YMapEvent} from "yjs";
 import {ChangesDocModel} from "../model/changes-doc.model";
+import {Node} from "../model/node";
+import {IdNode} from "../model/id-node";
 
 export class DatabaseFactory implements DatabaseAdapter {
     private static instance: DatabaseFactory;
@@ -48,7 +50,7 @@ export class DatabaseFactory implements DatabaseAdapter {
                         }
                     }
                     devLog('start save a node', key);
-                    await conn.db().collection(DatabaseFactory.nodeTable(path)).updateOne({
+                    await conn.db().collection(DatabaseFactory.hashOfNodePath(path)).updateOne({
                         _id: isNaN(Number(key)) ? key.trim() : Number(key),
                     }, {
                         $set: $setMap
@@ -80,52 +82,52 @@ export class DatabaseFactory implements DatabaseAdapter {
     }
 
     private async nodeSearchResult(
-        nodeTable: string,
-        targetNodeId: any,
+        nodePath: string,
+        nodeId: any,
         conn: MongoClient
-    ): Promise<{ value: any, _id: string }> {
-        if (typeof targetNodeId === "object" && targetNodeId?.hasOwnProperty('$fn')) {
-            devLog('handle query by expression', targetNodeId.$fn);
+    ): Promise<Node> {
+        if (typeof nodeId === "object" && nodeId?.hasOwnProperty('$fn')) {
+            devLog('handle query by expression', nodeId.$fn);
             // const conn = await this.connection(options);
-            let cursor = conn.db().collection(DatabaseFactory.nodeTable(nodeTable)).find({});
-            if (targetNodeId.hasOwnProperty('$orderBy')) {
-                cursor = cursor.sort('_id', targetNodeId.$orderBy);
+            let cursor = conn.db().collection(DatabaseFactory.hashOfNodePath(nodePath)).find<Node | IdNode>({});
+            if (nodeId.hasOwnProperty('$orderBy')) {
+                cursor = cursor.sort('_id', nodeId.$orderBy);
             }
-            if (targetNodeId.hasOwnProperty('$limit')) {
-                cursor = cursor.limit(targetNodeId.$limit);
+            if (nodeId.hasOwnProperty('$limit')) {
+                cursor = cursor.limit(nodeId.$limit);
             }
-            if (targetNodeId.hasOwnProperty('$skip')) {
-                cursor = cursor.skip(targetNodeId.$skip);
+            if (nodeId.hasOwnProperty('$skip')) {
+                cursor = cursor.skip(nodeId.$skip);
             }
-            const docs = [];
+            const docs: any[] = [];
             while (await cursor.hasNext()) {
-                const next = await cursor.next();
-                const fn = new Function('it', targetNodeId.$fn);
+                const next: Node | IdNode = await cursor.next();
+                const fn = new Function('it', nodeId.$fn);
                 fn(next._id) === true ? docs.push(next) : null
             }
             devLog('query has found items', docs.length);
-            return docs.reduce((a, b) => {
-                if (typeof b?.value === 'string') {
-                    a.value = Object.assign(a.value, {[b._id ? b._id : b.id]: b.value});
+            return docs.reduce<Node>((a, b: Node | IdNode) => {
+                if (typeof b.value === 'string') {
+                    a.value = Object.assign(a.value, {[b._id]: b.value});
                 } else {
                     a.value = Object.assign(a.value, b.value);
                 }
+                a._ids.push(b._id);
                 return a;
-            }, {value: {}});
+            }, {value: {}, _id: null, _ids: []});
         } else {
             // const conn = await this.connection(options)
-            devLog('handle query by node_id', targetNodeId);
+            devLog('handle query by node_id', nodeId);
             // console.log(nodeTable,'*****')
-            const r = await conn.db()
-                .collection(DatabaseFactory.nodeTable(nodeTable))
-                .findOne({_id: targetNodeId});
             // console.log(r)
-            return r as any;
+            return conn.db()
+                .collection(DatabaseFactory.hashOfNodePath(nodePath))
+                .findOne<Node>({_id: nodeId});
         }
     }
 
     private async handleQueryObjectTree(
-        mapOfNodesToQuery: { [key: string]: any },
+        mapOfNodesToQuery: Map<string, string>,
         domain: string,
         queryModel: QueryModel<any>,
         conn: MongoClient
@@ -139,7 +141,7 @@ export class DatabaseFactory implements DatabaseAdapter {
                 conn
             );
         }
-        let cids = await this.processTreeSearchResultToCidList(
+        let externalKeys = await this.searchExternalKeysFromTree(
             mapOfNodesToQuery,
             nodesPathList,
             domain,
@@ -147,17 +149,17 @@ export class DatabaseFactory implements DatabaseAdapter {
         );
         if (queryModel?.size && queryModel?.size > 0) {
             const skip = (queryModel.skip && queryModel.skip >= 0) ? queryModel.skip : 0;
-            cids = cids.slice(skip, (queryModel.size + skip));
+            externalKeys = externalKeys.slice(skip, (queryModel.size + skip));
         }
         if (queryModel?.count === true) {
-            return cids.length;
+            return externalKeys.length;
         }
-        devLog('total cids to fetch data from', cids.length);
+        devLog('total cids to fetch data from', externalKeys.length);
         // if (queryModel.cids === true) {
         //     return cids.filter(c => c !== null);
         // }
         // const conn = await this.connection(options);
-        const _all_p = cids.map(async x => {
+        const _all_p = externalKeys.map(async x => {
             return conn.db().collection(domain).findOne({_id: x});
             // return r;
             // return this.ipfsFactory.generateDataFromCid(x, {
@@ -168,7 +170,7 @@ export class DatabaseFactory implements DatabaseAdapter {
         return _all.filter(t => t !== null);
     }
 
-    private static nodeTable(nodePath: string) {
+    private static hashOfNodePath(nodePath: string) {
         // console.log(nodePath,'+++++');
         // console.log(node);
         return createHash('sha1')
@@ -177,124 +179,148 @@ export class DatabaseFactory implements DatabaseAdapter {
         // return nodePath?.replace(new RegExp('/', 'ig'), '_').trim();
     }
 
-    private static async pruneNode(
-        nodeValue: { value: any, _id: string },
-        nodeTable: string,
+    private static async checkIfNodeDataObjectExistInMainNodeAndShakeTree(
+        node: Node,
+        nodePath: string,
         domain: string,
         conn: MongoClient
-    ): Promise<{ value: any, _id: string }> {
-        for (const k of Object.keys(nodeValue.value)) {
-            const _r1 = await conn.db().collection(this.nodeTable(`${domain}/_id`)).findOne({
-                _id: k
-            });
-            // console.log(_r1,'fuck in id', k);
-            if (!_r1) {
-                delete nodeValue.value[k];
-                conn.db().collection(this.nodeTable(nodeTable)).updateOne({
-                    [`value.${k}`]: {
+    ): Promise<Node> {
+        const internalKeys = Object.keys(node.value);
+        const tryPurgeEntryFromNode = async (iKey: string) => {
+            try {
+                await conn.db().collection(this.hashOfNodePath(nodePath)).updateOne({
+                    [`value.${iKey}`]: {
                         $exists: true
                     }
                 }, {
                     $unset: {
-                        [`value.${k}`]: 1
+                        [`value.${iKey}`]: 1
                     }
-                }).catch(console.log);
+                });
+            } catch (e) {
+                console.log(e);
             }
         }
-        return nodeValue;
+        for (const iKey of internalKeys) {
+            const idNode: IdNode = await conn.db()
+                .collection(this.hashOfNodePath(`${domain}/_id`))
+                .findOne<IdNode>({
+                    _id: iKey
+                });
+            if (!idNode) {
+                delete node.value[iKey];
+                await tryPurgeEntryFromNode(iKey);
+            } else {
+                const eKey = node.value[iKey];
+                const data = await conn.db().collection(domain).findOne<any>({_id: eKey});
+                const nodePathParts = nodePath.split('/');
+                let nodePathValue = data;
+                for (const nPPart of nodePathParts) {
+                    if (nPPart !== domain) {
+                        nodePathValue = nodePathValue[nPPart]
+                    }
+                }
+                if (node._id !== null && node._id !== undefined && nodePathValue !== node._id) {
+                    delete node.value[iKey];
+                    await tryPurgeEntryFromNode(iKey);
+                }
+                if (Array.isArray(node._ids) && node._ids.indexOf(nodePathValue) < 0) {
+                    delete node.value[iKey];
+                    await tryPurgeEntryFromNode(iKey);
+                }
+            }
+        }
+        return node;
     }
 
-    private static async pruneNodeWithStringValue(
-        targetNodeId: string,
-        nodeValue: { value: any, _id: string },
-        nodeTable: string,
-        domain: string,
-        conn: MongoClient
-    ): Promise<any> {
-        const _r1 = await conn.db().collection(this.nodeTable(`${domain}/_id`)).findOne({
-            _id: nodeValue._id
-        });
-        if (!_r1) {
-            nodeValue.value = null;
-            conn.db().collection(this.nodeTable(nodeTable)).updateOne({
-                _id: targetNodeId
-            }, {
-                $unset: {
-                    value: 1
-                }
-            }).catch(console.log);
-        }
-        return nodeValue;
-    }
+    // private static async checkIfNodeDataStringExistInMainNodeAndShakeTree(
+    //     targetNodeId: string,
+    //     node: Node,
+    //     nodePath: string,
+    //     domain: string,
+    //     conn: MongoClient
+    // ): Promise<any> {
+    //     const idNode: IdNode = await conn.db()
+    //         .collection(this.hashOfNodePath(`${domain}/_id`))
+    //         .findOne<IdNode>({
+    //             _id: node._id
+    //         });
+    //     if (!idNode) {
+    //         node.value = null;
+    //         conn.db().collection(this.hashOfNodePath(nodePath)).updateOne({
+    //             _id: targetNodeId
+    //         }, {
+    //             $unset: {
+    //                 value: 1
+    //             }
+    //         }).catch(console.log);
+    //     }
+    //     return node;
+    // }
 
     private async handleDeleteObjectTree(
-        deleteTree: { [key: string]: any },
+        nodePathnodeIdMap: Map<string, string>,
         domain: string,
         conn: MongoClient
     ): Promise<{ _id: string }[]> {
-        const keys = Object.keys(deleteTree);
-        let cids = [];
-        const cidMap = {};
-        if (keys.length === 0) {
+        const nodePathList = Object.keys(nodePathnodeIdMap);
+        let internalKeyList = [];
+        const internalKeyMap = {};
+        if (nodePathList.length === 0) {
             return [];
         }
-        for (const key of keys) {
-            const id = deleteTree[key];
-            let result = await this.nodeSearchResult(
-                key,
-                id,
+        for (const nodePath of nodePathList) {
+            const nodeId = nodePathnodeIdMap[nodePath];
+            let node: Node = await this.nodeSearchResult(
+                nodePath,
+                nodeId,
                 conn
             );
-            if (result && result.value) {
-                if (typeof result.value === "object") {
-                    result = await DatabaseFactory.pruneNode(
-                        result,
-                        key,
+            // console.log(node);
+            if (node && node.value) {
+                if (typeof node.value === "object") {
+                    node = await DatabaseFactory.checkIfNodeDataObjectExistInMainNodeAndShakeTree(
+                        node,
+                        nodePath,
                         domain,
                         conn
                     );
-                    for (const v of Object.keys(result.value)) {
-                        cids.push(v);
-                        if (cidMap[v]) {
-                            cidMap[v] += 1;
+                    // console.log(node, 'after prune');
+                    for (const iKey of Object.keys(node.value)) {
+                        internalKeyList.push(iKey);
+                        if (internalKeyMap[iKey]) {
+                            internalKeyMap[iKey] += 1;
                         } else {
-                            cidMap[v] = 1;
+                            internalKeyMap[iKey] = 1;
                         }
                     }
-                } else if (typeof result.value === 'string') {
-                    result = await DatabaseFactory.pruneNodeWithStringValue(
-                        id,
-                        result,
-                        key,
-                        domain,
-                        conn
-                    );
-                    if (result && result._id) {
-                        cids.push(result._id);
-                        if (cidMap[result._id]) {
-                            cidMap[result._id] += 1;
-                        } else {
-                            cidMap[result._id] = 1;
-                        }
+                } else if (typeof node.value === 'string') {
+                    internalKeyList.push(node._id);
+                    if (internalKeyMap[node._id]) {
+                        internalKeyMap[node._id] += 1;
+                    } else {
+                        internalKeyMap[node._id] = 1;
                     }
                 }
             }
         }
-        cids = cids
-            .filter(x => cidMap[x] === keys.length)
+
+        internalKeyList = internalKeyList
+            .filter(x => internalKeyMap[x] === nodePathList.length)
             .reduce((a, b) => a.add(b), new Set());
-        cids = Array.from(cids);
-        // const conn = await this.connection(options);
-        for (const x of cids) {
-            await conn.db().collection(DatabaseFactory.nodeTable(`${domain}/_id`)).deleteOne({
-                _id: x
-            }, {});
-        }
-        return cids.map(y => {
-            return {
-                _id: y
-            }
-        });
+        internalKeyList = Array.from(internalKeyList);
+
+        internalKeyList = await Promise.all(
+            internalKeyList.map(async iK => {
+                await conn.db()
+                    .collection(DatabaseFactory.hashOfNodePath(`${domain}/_id`))
+                    .deleteOne({
+                        _id: iK
+                    });
+                return {_id: iK};
+            })
+        );
+        return internalKeyList;
     }
 
     async writeMany<T extends BasicAttributesModel>(
@@ -367,7 +393,7 @@ export class DatabaseFactory implements DatabaseAdapter {
             const id = Object.values(queryTree)[0];
             // const conn = await this.connection(options);
             const result = await conn.db()
-                .collection(DatabaseFactory.nodeTable(Object.keys(queryTree)[0]))
+                .collection(DatabaseFactory.hashOfNodePath(Object.keys(queryTree)[0]))
                 .findOne(
                     {_id: id},
                     {}
@@ -609,7 +635,7 @@ export class DatabaseFactory implements DatabaseAdapter {
                         // console.log(d, 'NEW');
                         // console.log(od, 'OLD');
                         // console.log(JSON.stringify(d)!==JSON.stringify(od));
-                        if (!Array.isArray(d) && JSON.stringify(d)!==JSON.stringify(od)) {
+                        if (!Array.isArray(d) && JSON.stringify(d) !== JSON.stringify(od)) {
                             this.updateOne(
                                 domain,
                                 {
@@ -708,7 +734,7 @@ export class DatabaseFactory implements DatabaseAdapter {
     ): Promise<any[] | number> {
         // const conn = await this.connection(options);
         let result = await conn.db()
-            .collection(DatabaseFactory.nodeTable(`${domain}/_id`))
+            .collection(DatabaseFactory.hashOfNodePath(`${domain}/_id`))
             .find({})
             .toArray();
         if (result && Array.isArray(result)) {
@@ -736,59 +762,52 @@ export class DatabaseFactory implements DatabaseAdapter {
         }
     }
 
-    async processTreeSearchResultToCidList(
-        mapOfNodesToQuery,
-        nodesPathList,
+    async searchExternalKeysFromTree(
+        nodePathnodeIdMap: Map<string, string>,
+        nodePathList: Array<string>,
         domain: string,
         conn: MongoClient
     ): Promise<string[]> {
-        let cids = [];
-        const cidMap = {};
-        for (const nodePath of nodesPathList) {
-            // const nodeTable = DatabaseFactory.nodeTable(nodePath);
-            const targetNodeId = mapOfNodesToQuery[nodePath];
-            let result = await this.nodeSearchResult(
+        let externalKeyList = [];
+        const externalKeyMap = {};
+        for (const nodePath of nodePathList) {
+            const nodeId = nodePathnodeIdMap[nodePath];
+            let node: Node = await this.nodeSearchResult(
                 nodePath,
-                targetNodeId,
+                nodeId,
                 conn
             );
-            if (result && result.value) {
-                if (typeof result.value === "object") {
-                    result = await DatabaseFactory.pruneNode(
-                        result,
+            if (node && node.value) {
+                if (typeof node.value === "object") {
+                    node = await DatabaseFactory.checkIfNodeDataObjectExistInMainNodeAndShakeTree(
+                        node,
                         nodePath,
                         domain,
                         conn
                     );
-                    for (const v of Object.values<string>(result.value)) {
-                        cids.push(v);
-                        if (cidMap[v]) {
-                            cidMap[v] += 1;
+                    for (const eKey of Object.values<string>(node.value)) {
+                        externalKeyList.push(eKey);
+                        if (externalKeyMap[eKey]) {
+                            externalKeyMap[eKey] += 1;
                         } else {
-                            cidMap[v] = 1;
+                            externalKeyMap[eKey] = 1;
                         }
                     }
-                } else if (typeof result.value === 'string') {
-                    result = await DatabaseFactory.pruneNodeWithStringValue(
-                        targetNodeId,
-                        result,
-                        nodePath,
-                        domain,
-                        conn
-                    );
-                    if (result && result.value) {
-                        cids.push(result.value);
-                        if (cidMap[result.value]) {
-                            cidMap[result.value] += 1;
-                        } else {
-                            cidMap[result.value] = 1;
-                        }
+                }
+                if (typeof node.value === 'string') {
+                    externalKeyList.push(node.value as string);
+                    if (externalKeyMap[node.value as string]) {
+                        externalKeyMap[node.value as string] += 1;
+                    } else {
+                        externalKeyMap[node.value as string] = 1;
                     }
                 }
             }
         }
-        cids = cids.filter(x => cidMap[x] === nodesPathList.length).reduce((a, b) => a.add(b), new Set());
-        cids = Array.from(cids);
-        return cids;
+        externalKeyList = externalKeyList
+            .filter(x => externalKeyMap[x] === nodePathList.length)
+            .reduce((a, b) => a.add(b), new Set());
+        externalKeyList = Array.from(externalKeyList);
+        return externalKeyList;
     }
 }

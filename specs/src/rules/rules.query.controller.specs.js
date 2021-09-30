@@ -8,7 +8,7 @@ const {
     DatabaseFactory,
     AuthController,
     DatabaseController,
-    SecurityController
+    SecurityController, UpdateRuleController
 } = require("../../../dist");
 
 describe('RulesController', function () {
@@ -798,6 +798,83 @@ describe('RulesController', function () {
                     updatedAt: 'test'
                 }
             ]);
+        });
+        it('should not fetch old data in a node if that node updated from main data object', async function () {
+            await _rulesController.handleCreateRules({
+                    createProduct: {
+                        id: 'oldnode',
+                        createdAt: 'leo',
+                        updatedAt: 'leo',
+                        bei: 5000
+                    },
+                }, {errors: {}},
+                new AuthController(),
+                new DatabaseController(),
+                new SecurityController(),
+                new DatabaseFactory(),
+                config,
+                null
+            );
+            await _rulesController.handleUpdateRules({
+                    updateProduct: {
+                        id: 'oldnode',
+                        update: {
+                            $set: {
+                                bei: 4000
+                            }
+                        }
+                    },
+                },
+                {errors: {}},
+                new UpdateRuleController(),
+                new AuthController(),
+                new DatabaseController(),
+                new SecurityController(),
+                new DatabaseFactory(),
+                config,
+                null,
+            );
+            const results = await _rulesController.handleQueryRules({
+                    queryProduct: {
+                        filter: {
+                            bei: 5000,
+                        },
+                        return: []
+                    }
+                }, {errors: {}},
+                new AuthController(),
+                new DatabaseController(),
+                new SecurityController(),
+                new DatabaseFactory(),
+                config,
+                null
+            );
+            // console.log(results);
+            should().exist(results);
+            should().exist(results.queryProduct);
+            expect(results.queryProduct).length(0);
+            expect(results.queryProduct).eql([]);
+            const results1 = await _rulesController.handleQueryRules({
+                    queryProduct: {
+                        filter: {
+                            bei: 4000,
+                        },
+                        return: []
+                    }
+                }, {errors: {}},
+                new AuthController(),
+                new DatabaseController(),
+                new SecurityController(),
+                new DatabaseFactory(),
+                config,
+                null
+            );
+            // console.log(results1);
+            should().exist(results1);
+            should().exist(results1.queryProduct);
+            expect(results1.queryProduct).length(1);
+            expect(results1.queryProduct[0].id).equal('oldnode');
+            expect(results1.queryProduct[0].bei).equal(4000);
         });
     });
 });
