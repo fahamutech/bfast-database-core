@@ -579,7 +579,7 @@ export class DatabaseFactory implements DatabaseAdapter {
             // }
         );
         const websocketProvider = new WebsocketProvider(
-            'wss://yjs.bfast.fahamutech.com',
+            'wss://demos.yjs.dev',
             room,
             ydoc,
             {
