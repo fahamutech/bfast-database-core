@@ -17,7 +17,6 @@ import {YMapEvent} from 'yjs'
 import {WebrtcProvider} from 'y-webrtc'
 import {WebsocketProvider} from "y-websocket";
 import {createHash} from "crypto";
-import {ChangesDocModel} from "../model/changes-doc.model";
 import {Node} from "../model/node";
 import {IdNode} from "../model/id-node";
 
@@ -201,6 +200,16 @@ export class DatabaseFactory implements DatabaseAdapter {
                 console.log(e);
             }
         }
+        const removeInNode = async (iKey: string, nodePathValue: any)=>{
+            if (node._id !== null && node._id !== undefined && nodePathValue !== node._id) {
+                delete node.value[iKey];
+                await tryPurgeEntryFromNode(iKey);
+            }
+            if (Array.isArray(node._ids) && node._ids.indexOf(nodePathValue) < 0) {
+                delete node.value[iKey];
+                await tryPurgeEntryFromNode(iKey);
+            }
+        }
         for (const iKey of internalKeys) {
             const idNode: IdNode = await conn.db()
                 .collection(this.hashOfNodePath(`${domain}/_id`))
@@ -217,17 +226,14 @@ export class DatabaseFactory implements DatabaseAdapter {
                 let nodePathValue = data;
                 for (const nPPart of nodePathParts) {
                     if (nPPart !== domain) {
+                        if (nodePathValue === null || nodePathValue === undefined){
+                            await removeInNode(iKey, nodePathValue);
+                            return;
+                        }
                         nodePathValue = nodePathValue[nPPart]
                     }
                 }
-                if (node._id !== null && node._id !== undefined && nodePathValue !== node._id) {
-                    delete node.value[iKey];
-                    await tryPurgeEntryFromNode(iKey);
-                }
-                if (Array.isArray(node._ids) && node._ids.indexOf(nodePathValue) < 0) {
-                    delete node.value[iKey];
-                    await tryPurgeEntryFromNode(iKey);
-                }
+                await removeInNode(iKey, nodePathValue);
             }
         }
         return node;
@@ -557,7 +563,7 @@ export class DatabaseFactory implements DatabaseAdapter {
 
     async syncs(
         domain: string,
-        listener: (doc: ChangesDocModel) => void,
+        // listener: (doc: ChangesDocModel) => void,
         options: BFastDatabaseOptions,
     ): Promise<{ close: () => void }> {
         const room = `${options.projectId}_${domain}`
@@ -605,11 +611,11 @@ export class DatabaseFactory implements DatabaseAdapter {
                                 {},
                                 options
                             ).catch(console.log);
-                            listener({
-                                name: "create",
-                                snapshot: doc,
-                                resumeToken: doc._id
-                            });
+                            // listener({
+                            //     name: "create",
+                            //     snapshot: doc,
+                            //     resumeToken: doc._id
+                            // });
                         }
                         // console.log(, 'ADD');
                         break;
@@ -622,11 +628,11 @@ export class DatabaseFactory implements DatabaseAdapter {
                             {},
                             options
                         ).catch(console.log);
-                        listener({
-                            name: "delete",
-                            snapshot: {_id: key},
-                            resumeToken: key
-                        });
+                        // listener({
+                        //     name: "delete",
+                        //     snapshot: {_id: key},
+                        //     resumeToken: key
+                        // });
                         // console.log(key, 'DELETE');
                         break;
                     case "update":
@@ -648,11 +654,11 @@ export class DatabaseFactory implements DatabaseAdapter {
                                 {},
                                 options
                             ).catch(console.log);
-                            listener({
-                                name: "update",
-                                snapshot: d,
-                                resumeToken: d._id
-                            });
+                            // listener({
+                            //     name: "update",
+                            //     snapshot: d,
+                            //     resumeToken: d._id
+                            // });
                         }
                         // console.log(sharedMap.get(key), 'UPDATE');
                         break;

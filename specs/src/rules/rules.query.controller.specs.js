@@ -207,6 +207,31 @@ describe('RulesController', function () {
             expect(results.queryProduct[0].price).equal(60);
             expect(results.queryProduct[0].status).equal('new');
         });
+        it('should return query result based on filter and field not exist', async function () {
+            const results = await _rulesController.handleQueryRules({
+                    queryProduct: {
+                        filter: {
+                            customer: 'josh'
+                        },
+                        return: []
+                    }
+                }, {errors: {}},
+                new AuthController(),
+                new DatabaseController(),
+                new SecurityController(),
+                new DatabaseFactory(),
+                config,
+                null
+            );
+            // console.log(results);
+            should().exist(results.queryProduct);
+            expect(Array.isArray(results.queryProduct)).equal(true);
+            expect(results.queryProduct.length).equal(0);
+            // expect(results.queryProduct[0].name).equal('xyz');
+            // expect(results.queryProduct[0].id).equal('xyzid');
+            // expect(results.queryProduct[0].price).equal(60);
+            // expect(results.queryProduct[0].status).equal('new');
+        });
         it('should limit size of the results', async function () {
             const results = await _rulesController.handleQueryRules({
                     queryProduct: {

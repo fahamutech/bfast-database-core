@@ -78,9 +78,9 @@ export class ChangesWebservice {
                             request.body.domain,
                             databaseAdapter,
                             securityController,
-                            (value: ChangesDocModel) => {
-                                response.emit({change: value});
-                            },
+                            // (value: ChangesDocModel) => {
+                            //     response.emit({change: value});
+                            // },
                             options
                         ).then(_ => {
                             response.socket.on('disconnect', __1 => {
