@@ -16,8 +16,7 @@ import * as Y from 'yjs'
 import {WebrtcProvider} from 'y-webrtc'
 import {WebsocketProvider} from "y-websocket";
 import {createHash} from "crypto";
-import {deriveKey} from "y-webrtc/dist/src/crypto";
-import {Transaction, YMapEvent} from "yjs";
+import {YMapEvent} from "yjs";
 import {ChangesDocModel} from "../model/changes-doc.model";
 
 export class DatabaseFactory implements DatabaseAdapter {
@@ -519,7 +518,7 @@ export class DatabaseFactory implements DatabaseAdapter {
         domain: string,
         pipeline: any[],
         listener: (doc: ChangesModel) => void,
-        resumeToken = undefined
+        resumeToken = undefined,
     ): Promise<{ close: () => void }> {
         const appEventInst = AppEventsFactory.getInstance();
         appEventInst.sub(ConstUtil.DB_CHANGES_EVENT.concat(domain), listener);
@@ -535,10 +534,11 @@ export class DatabaseFactory implements DatabaseAdapter {
         listener: (doc: ChangesDocModel) => void,
         options: BFastDatabaseOptions,
     ): Promise<{ close: () => void }> {
+        const room = `${options.projectId}_${domain}`
         const ydoc = new Y.Doc();
         global.WebSocket = require('ws');
         const webrtcProvider = new WebrtcProvider(
-            domain,
+            room,
             ydoc,
             // // @ts-ignore
             // {
@@ -553,8 +553,8 @@ export class DatabaseFactory implements DatabaseAdapter {
             // }
         );
         const websocketProvider = new WebsocketProvider(
-            `ws://localhost:${options.port}/syncs`,
-            domain,
+            'wss://yjs.bfast.fahamutech.com',
+            room,
             ydoc,
             {
                 WebSocketPolyfill: require('ws'),
@@ -562,7 +562,6 @@ export class DatabaseFactory implements DatabaseAdapter {
         );
         const sharedMap = ydoc.getMap(domain);
         const observer = async (tEvent: YMapEvent<any>) => {
-            // console.log(tEvent.keys)
             for (const key of Array.from(tEvent.keys.keys())) {
                 switch (tEvent.keys.get(key).action) {
                     case "add":

@@ -69,7 +69,8 @@ describe('syncs', function () {
     });
     describe('exchanges', function () {
         it('should receive new snapshot doc', function (done) {
-            const room = Math.random().toString(16).split('.')[1];
+            const domain = Math.random().toString(16).split('.')[1];
+            const room = config.projectId + '_' + domain;
             const changes = bfast.functions().event(
                 '/v2/__syncs__',
                 () => {
@@ -77,10 +78,10 @@ describe('syncs', function () {
                     changes.emit({
                         auth: {
                             applicationId: config.applicationId,
-                            topic: `${config.projectId}_${room}`
+                            topic: `${config.projectId}_${domain}`
                         },
                         body: {
-                            domain: room
+                            domain: domain
                         }
                     });
                 }
@@ -96,14 +97,14 @@ describe('syncs', function () {
                 // ]
             });
             new WebsocketProvider(
-                `ws://localhost:${config.port}/syncs`,
+                'wss://yjs.bfast.fahamutech.com',
                 room,
                 yDoc,
                 {
                     WebSocketPolyfill: require('ws'),
                 }
             );
-            const yMap = yDoc.getMap(room);
+            const yMap = yDoc.getMap(domain);
             // yMap.observe(arg0 => {
             //     console.log(arg0.changes, '++++++');
             // });
