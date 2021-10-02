@@ -1,10 +1,8 @@
 import * as bcrypt from 'bcryptjs';
-import * as _jwt from 'jsonwebtoken';
 import * as uuid from 'uuid';
-import nodeJwk from 'node-jwk';
-import njwt from 'njwt';
+import * as _jwt from 'jsonwebtoken';
 import {BFastDatabaseOptions} from '../bfast-database.option';
-import { createHash } from 'crypto';
+import {createHash} from 'crypto';
 
 
 export class SecurityController {
@@ -12,10 +10,10 @@ export class SecurityController {
     constructor() {
     }
 
-    sha256OfObject(data: {[key: string]: any}){
+    sha256OfObject(data: { [key: string]: any }) {
         return createHash('sha256')
-        .update(JSON.stringify(data))
-        .digest('hex');
+            .update(JSON.stringify(data))
+            .digest('hex');
     }
 
     dayToMillSecond(days: number): number {
@@ -56,24 +54,25 @@ export class SecurityController {
             exp: new Date().getTime() + this.dayToMillSecond(expire)
         };
         claims = Object.assign(claims, data);
-        const jwk = this.getJwk(options.rsaKeyPairInJson);
-        const keyPEM = jwk.key.toPrivateKeyPEM();
-        const jwt = njwt.create(claims, keyPEM, jwk.alg);
-        jwt.setExpiration(new Date().getTime() + this.dayToMillSecond(expire));
-        return jwt.compact();
+        // const jwk = this.getJwk(options.rsaKeyPairInJson);
+        // const keyPEM = jwk.key.toPrivateKeyPEM();
+        // const jwt = njwt.create(claims, keyPEM, jwk.alg);
+        // jwt.setExpiration(new Date().getTime() + this.dayToMillSecond(expire));
+        return _jwt.sign(claims, options.masterKey);
     }
 
-    async verifyToken(token, options: BFastDatabaseOptions) {
-        const jwk = this.getJwk(options.rsaPublicKeyInJson);
-        const jwt = njwt.verify(token, jwk.key.toPublicKeyPEM(), jwk.alg);
-        return jwt.body.toJSON();
+    async verifyToken(token: string, options: BFastDatabaseOptions) {
+        // const jwk = this.getJwk(options.rsaPublicKeyInJson);
+        // const jwt = njwt.verify(token, jwk.key.toPublicKeyPEM(), jwk.alg);
+        // return jwt.body.toJSON();
+        return _jwt.verify(token,options.masterKey);
     }
 
     private getJwk(keyPair) {
-        const jwk = nodeJwk.JWK.fromObject(keyPair);
-        if (!jwk) {
-            throw new Error('Huh, my key is not there...');
-        }
-        return jwk;
+        // const jwk = nodeJwk.JWK.fromObject(keyPair);
+        // if (!jwk) {
+        //     throw new Error('Huh, my key is not there...');
+        // }
+        return {};
     }
 }

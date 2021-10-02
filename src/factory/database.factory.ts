@@ -18,7 +18,6 @@ import {WebrtcProvider} from 'y-webrtc'
 import {WebsocketProvider} from "y-websocket";
 import {createHash} from "crypto";
 import {Node} from "../model/node";
-import {IdNode} from "../model/id-node";
 
 export class DatabaseFactory implements DatabaseAdapter {
     private static instance: DatabaseFactory;
@@ -84,11 +83,10 @@ export class DatabaseFactory implements DatabaseAdapter {
         nodePath: string,
         nodeId: any,
         conn: MongoClient
-    ): Promise<Node> {
+    ): Promise<Node | Array<Node>> {
         if (typeof nodeId === "object" && nodeId?.hasOwnProperty('$fn')) {
             devLog('handle query by expression', nodeId.$fn);
-            // const conn = await this.connection(options);
-            let cursor = conn.db().collection(DatabaseFactory.hashOfNodePath(nodePath)).find<Node | IdNode>({});
+            let cursor = conn.db().collection(DatabaseFactory.hashOfNodePath(nodePath)).find<Node>({});
             if (nodeId.hasOwnProperty('$orderBy')) {
                 cursor = cursor.sort('_id', nodeId.$orderBy);
             }
@@ -100,20 +98,22 @@ export class DatabaseFactory implements DatabaseAdapter {
             }
             const docs: any[] = [];
             while (await cursor.hasNext()) {
-                const next: Node | IdNode = await cursor.next();
+                const next: Node = await cursor.next();
                 const fn = new Function('it', nodeId.$fn);
                 fn(next._id) === true ? docs.push(next) : null
             }
             devLog('query has found items', docs.length);
-            return docs.reduce<Node>((a, b: Node | IdNode) => {
-                if (typeof b.value === 'string') {
-                    a.value = Object.assign(a.value, {[b._id]: b.value});
-                } else {
-                    a.value = Object.assign(a.value, b.value);
-                }
-                a._ids.push(b._id);
-                return a;
-            }, {value: {}, _id: null, _ids: []});
+            // console.log(docs);
+            return docs;
+            // return docs.reduce<Node>((a, b: Node | IdNode) => {
+            //     if (typeof b.value === 'string') {
+            //         a.value = Object.assign(a.value, {[b._id]: b.value});
+            //     } else {
+            //         a.value = Object.assign(a.value, b.value);
+            //     }
+            //     a._ids.push(b._id);
+            //     return a;
+            // }, {value: {}, _id: null, _ids: []});
         } else {
             // const conn = await this.connection(options)
             devLog('handle query by node_id', nodeId);
@@ -200,40 +200,61 @@ export class DatabaseFactory implements DatabaseAdapter {
                 console.log(e);
             }
         }
-        const removeInNode = async (iKey: string, nodePathValue: any)=>{
-            if (node._id !== null && node._id !== undefined && nodePathValue !== node._id) {
-                delete node.value[iKey];
-                await tryPurgeEntryFromNode(iKey);
+        const removeInNode = async (iKey: string, eKey: string, nodePathValue: any) => {
+            if (node._id !== null && node._id !== undefined) {
+                if (nodePathValue === null || nodePathValue === undefined) {
+                    delete node?.value[iKey];
+                    await tryPurgeEntryFromNode(iKey);
+                } else if (nodePathValue[node._id]?.[iKey] !== eKey) {
+                    delete node?.value[iKey];
+                    await tryPurgeEntryFromNode(iKey);
+                }
             }
-            if (Array.isArray(node._ids) && node._ids.indexOf(nodePathValue) < 0) {
-                delete node.value[iKey];
-                await tryPurgeEntryFromNode(iKey);
-            }
+            // if (Array.isArray(node._ids)) {
+            //     delete node?.value[iKey];
+            //     await tryPurgeEntryFromNode(iKey);
+            // }
         }
         for (const iKey of internalKeys) {
-            const idNode: IdNode = await conn.db()
+            const idNode: Node = await conn.db()
                 .collection(this.hashOfNodePath(`${domain}/_id`))
-                .findOne<IdNode>({
+                .findOne<Node>({
                     _id: iKey
                 });
             if (!idNode) {
-                delete node.value[iKey];
+                delete node?.value[iKey];
                 await tryPurgeEntryFromNode(iKey);
             } else {
-                const eKey = node.value[iKey];
+                const eKey = node?.value[iKey];
                 const data = await conn.db().collection(domain).findOne<any>({_id: eKey});
+                if (data === null || data === undefined) {
+                    await removeInNode(iKey, eKey, data);
+                    return;
+                }
+                // console.log(data, '*****DATA******');
+                const tree = new TreeController();
+                // @ts-ignore
+                const tD = await tree.objectToTree(data, domain, {
+                    nodeIdHandler: () => data._id
+                });
+                // console.log(tD, '*****TREE******');
                 const nodePathParts = nodePath.split('/');
-                let nodePathValue = data;
+                // if ()nodePathParts.push(node._id);
+                // nodePathParts.push(iKey);
+                // console.log(iKey);
+                // console.log(nodePathParts);
+                let nodePathValue = tD;
                 for (const nPPart of nodePathParts) {
                     if (nPPart !== domain) {
-                        if (nodePathValue === null || nodePathValue === undefined){
-                            await removeInNode(iKey, nodePathValue);
+                        if (nodePathValue === null || nodePathValue === undefined) {
+                            await removeInNode(iKey, eKey, nodePathValue);
                             return;
                         }
-                        nodePathValue = nodePathValue[nPPart]
+                        nodePathValue = nodePathValue[nPPart];
+                        // console.log(nodePathValue);
                     }
                 }
-                await removeInNode(iKey, nodePathValue);
+                await removeInNode(iKey, eKey, nodePathValue);
             }
         }
         return node;
@@ -270,53 +291,71 @@ export class DatabaseFactory implements DatabaseAdapter {
         conn: MongoClient
     ): Promise<{ _id: string }[]> {
         const nodePathList = Object.keys(nodePathnodeIdMap);
-        let internalKeyList = [];
-        const internalKeyMap = {};
-        if (nodePathList.length === 0) {
-            return [];
-        }
-        for (const nodePath of nodePathList) {
-            const nodeId = nodePathnodeIdMap[nodePath];
-            let node: Node = await this.nodeSearchResult(
-                nodePath,
-                nodeId,
-                conn
-            );
-            // console.log(node);
-            if (node && node.value) {
-                if (typeof node.value === "object") {
-                    node = await DatabaseFactory.checkIfNodeDataObjectExistInMainNodeAndShakeTree(
-                        node,
-                        nodePath,
-                        domain,
-                        conn
-                    );
-                    // console.log(node, 'after prune');
-                    for (const iKey of Object.keys(node.value)) {
-                        internalKeyList.push(iKey);
-                        if (internalKeyMap[iKey]) {
-                            internalKeyMap[iKey] += 1;
-                        } else {
-                            internalKeyMap[iKey] = 1;
-                        }
-                    }
-                } else if (typeof node.value === 'string') {
-                    internalKeyList.push(node._id);
-                    if (internalKeyMap[node._id]) {
-                        internalKeyMap[node._id] += 1;
-                    } else {
-                        internalKeyMap[node._id] = 1;
-                    }
-                }
-            }
-        }
+        let internalKeyList = await this.searchInternalKeysFromTree(
+            nodePathnodeIdMap,
+            nodePathList,
+            domain,
+            conn
+        );
+        // let externalKeyMap = {};
+        // if (nodePathList.length === 0) {
+        //     return [];
+        // }
+        // for (const nodePath of nodePathList) {
+        //     const nodeId = nodePathnodeIdMap[nodePath];
+        //     let node: Node | Array<Node> = await this.nodeSearchResult(
+        //         nodePath,
+        //         nodeId,
+        //         conn
+        //     );
+        //     if (Array.isArray(node)){
+        //
+        //     }else {
+        //         const ext = await this.extractExternalKeysFromNodes(
+        //             node,
+        //             domain,
+        //             nodePath,
+        //             externalKeyList,
+        //             externalKeyMap,
+        //             conn
+        //         );
+        //         externalKeyList = ext.externalKeyList;
+        //         externalKeyMap = ext.externalKeyMap;
+        //     }
+        //     // if (node && node.value) {
+        //     //     if (typeof node.value === "object") {
+        //     //         node = await DatabaseFactory.checkIfNodeDataObjectExistInMainNodeAndShakeTree(
+        //     //             node,
+        //     //             nodePath,
+        //     //             domain,
+        //     //             conn
+        //     //         );
+        //     //         // console.log(node, 'after prune');
+        //     //         for (const iKey of Object.keys(node.value)) {
+        //     //             internalKeyList.push(iKey);
+        //     //             if (internalKeyMap[iKey]) {
+        //     //                 internalKeyMap[iKey] += 1;
+        //     //             } else {
+        //     //                 internalKeyMap[iKey] = 1;
+        //     //             }
+        //     //         }
+        //     //     } else if (typeof node.value === 'string') {
+        //     //         internalKeyList.push(node._id);
+        //     //         if (internalKeyMap[node._id]) {
+        //     //             internalKeyMap[node._id] += 1;
+        //     //         } else {
+        //     //             internalKeyMap[node._id] = 1;
+        //     //         }
+        //     //     }
+        //     // }
+        // }
 
-        internalKeyList = internalKeyList
-            .filter(x => internalKeyMap[x] === nodePathList.length)
-            .reduce((a, b) => a.add(b), new Set());
-        internalKeyList = Array.from(internalKeyList);
+        // externalKeyList = externalKeyList
+        //     .filter(x => externalKeyMap[x] === nodePathList.length)
+        //     .reduce((a, b) => a.add(b), new Set());
+        // externalKeyList = Array.from(externalKeyList);
 
-        internalKeyList = await Promise.all(
+        return await Promise.all(
             internalKeyList.map(async iK => {
                 await conn.db()
                     .collection(DatabaseFactory.hashOfNodePath(`${domain}/_id`))
@@ -326,7 +365,6 @@ export class DatabaseFactory implements DatabaseAdapter {
                 return {_id: iK};
             })
         );
-        return internalKeyList;
     }
 
     async writeMany<T extends BasicAttributesModel>(
@@ -738,25 +776,24 @@ export class DatabaseFactory implements DatabaseAdapter {
         queryModel: QueryModel<any>,
         conn: MongoClient
     ): Promise<any[] | number> {
-        // const conn = await this.connection(options);
-        let result = await conn.db()
+        let nodes: Array<Node> = await conn.db()
             .collection(DatabaseFactory.hashOfNodePath(`${domain}/_id`))
-            .find({})
+            .find<Node>({})
             .toArray();
-        if (result && Array.isArray(result)) {
+        if (nodes && Array.isArray(nodes)) {
             if (queryModel?.size && queryModel?.size > 0) {
                 const skip = (queryModel.skip && queryModel.skip >= 1) ? queryModel.skip : 0;
-                result = result.slice(skip, (queryModel.size + skip));
+                nodes = nodes.slice(skip, (queryModel.size + skip));
             }
             if (queryModel?.count === true) {
-                return result.length;
+                return nodes.length;
             }
-            devLog('total cids to fetch data from', result.length);
+            devLog('total cids to fetch data from', nodes.length);
             // if (queryModel.cids === true) {
             //     return result.map(x => x?.value).filter(y => y !== null);
             // }
-            const _all_p = result.map(x => {
-                return conn.db().collection(domain).findOne({_id: x?.value});
+            const _all_p = nodes.map(x => {
+                return conn.db().collection(domain).findOne({_id: x.value});
                 // return this.ipfsFactory.generateDataFromCid(x?.value, {
                 //     json: true
                 // }, options);
@@ -775,39 +812,38 @@ export class DatabaseFactory implements DatabaseAdapter {
         conn: MongoClient
     ): Promise<string[]> {
         let externalKeyList = [];
-        const externalKeyMap = {};
+        let externalKeyMap = {};
         for (const nodePath of nodePathList) {
             const nodeId = nodePathnodeIdMap[nodePath];
-            let node: Node = await this.nodeSearchResult(
+            let node: Node | Array<Node> = await this.nodeSearchResult(
                 nodePath,
                 nodeId,
                 conn
             );
-            if (node && node.value) {
-                if (typeof node.value === "object") {
-                    node = await DatabaseFactory.checkIfNodeDataObjectExistInMainNodeAndShakeTree(
-                        node,
-                        nodePath,
+            if (Array.isArray(node)) {
+                for (const n of node) {
+                    const r = await this.extractExternalKeysFromNodes(
+                        n,
                         domain,
+                        nodePath,
+                        externalKeyList,
+                        externalKeyMap,
                         conn
                     );
-                    for (const eKey of Object.values<string>(node.value)) {
-                        externalKeyList.push(eKey);
-                        if (externalKeyMap[eKey]) {
-                            externalKeyMap[eKey] += 1;
-                        } else {
-                            externalKeyMap[eKey] = 1;
-                        }
-                    }
+                    externalKeyList = r.externalKeyList;
+                    externalKeyMap = r.externalKeyMap;
                 }
-                if (typeof node.value === 'string') {
-                    externalKeyList.push(node.value as string);
-                    if (externalKeyMap[node.value as string]) {
-                        externalKeyMap[node.value as string] += 1;
-                    } else {
-                        externalKeyMap[node.value as string] = 1;
-                    }
-                }
+            } else {
+                const r = await this.extractExternalKeysFromNodes(
+                    node,
+                    domain,
+                    nodePath,
+                    externalKeyList,
+                    externalKeyMap,
+                    conn
+                );
+                externalKeyList = r.externalKeyList;
+                externalKeyMap = r.externalKeyMap;
             }
         }
         externalKeyList = externalKeyList
@@ -815,5 +851,139 @@ export class DatabaseFactory implements DatabaseAdapter {
             .reduce((a, b) => a.add(b), new Set());
         externalKeyList = Array.from(externalKeyList);
         return externalKeyList;
+    }
+
+    async searchInternalKeysFromTree(
+        nodePathnodeIdMap: Map<string, string>,
+        nodePathList: Array<string>,
+        domain: string,
+        conn: MongoClient
+    ): Promise<string[]> {
+        let internalKeyList = [];
+        let internalKeyMap = new Map();
+        for (const nodePath of nodePathList) {
+            const nodeId = nodePathnodeIdMap[nodePath];
+            let node: Node | Array<Node> = await this.nodeSearchResult(
+                nodePath,
+                nodeId,
+                conn
+            );
+            if (Array.isArray(node)) {
+                for (const n of node) {
+                    const r = await this.extractInternalKeysFromNodes(
+                        n,
+                        domain,
+                        nodePath,
+                        internalKeyList,
+                        internalKeyMap,
+                        conn
+                    );
+                    internalKeyList = r.internalKeyList;
+                    internalKeyMap = r.internalKeyMap;
+                }
+            } else {
+                const r = await this.extractInternalKeysFromNodes(
+                    node,
+                    domain,
+                    nodePath,
+                    internalKeyList,
+                    internalKeyMap,
+                    conn
+                );
+                internalKeyList = r.internalKeyList;
+                internalKeyMap = r.internalKeyMap;
+            }
+        }
+        internalKeyList = internalKeyList
+            .filter(x => internalKeyMap[x] === nodePathList.length)
+            .reduce((a, b) => a.add(b), new Set());
+        internalKeyList = Array.from(internalKeyList);
+        return internalKeyList;
+    }
+
+    private async extractExternalKeysFromNodes(
+        node: Node,
+        domain: string,
+        nodePath: string,
+        externalKeyList,
+        externalKeyMap,
+        conn: MongoClient
+    ): Promise<{
+        externalKeyList: Array<string>,
+        externalKeyMap: any
+    }> {
+        if (node && node.value) {
+            if (typeof node.value === "object") {
+                node = await DatabaseFactory.checkIfNodeDataObjectExistInMainNodeAndShakeTree(
+                    node,
+                    nodePath,
+                    domain,
+                    conn
+                );
+                for (const eKey of Object.values<string>(node.value)) {
+                    externalKeyList.push(eKey);
+                    if (externalKeyMap[eKey]) {
+                        externalKeyMap[eKey] += 1;
+                    } else {
+                        externalKeyMap[eKey] = 1;
+                    }
+                }
+            }
+            if (typeof node.value === 'string') {
+                externalKeyList.push(node.value as string);
+                if (externalKeyMap[node.value as string]) {
+                    externalKeyMap[node.value as string] += 1;
+                } else {
+                    externalKeyMap[node.value as string] = 1;
+                }
+            }
+        }
+        return {
+            externalKeyList,
+            externalKeyMap
+        }
+    }
+
+    private async extractInternalKeysFromNodes(
+        node: Node,
+        domain: string,
+        nodePath: string,
+        internalKeyList: Array<string>,
+        internalKeyMap: Map<any, any>,
+        conn: MongoClient
+    ): Promise<{
+        internalKeyList: Array<string>,
+        internalKeyMap: any
+    }> {
+        if (node && node.value) {
+            if (typeof node.value === "object") {
+                node = await DatabaseFactory.checkIfNodeDataObjectExistInMainNodeAndShakeTree(
+                    node,
+                    nodePath,
+                    domain,
+                    conn
+                );
+                for (const iKey of Object.keys(node.value)) {
+                    internalKeyList.push(iKey);
+                    if (internalKeyMap[iKey]) {
+                        internalKeyMap[iKey] += 1;
+                    } else {
+                        internalKeyMap[iKey] = 1;
+                    }
+                }
+            }
+            if (typeof node.value === 'string') {
+                internalKeyList.push(node._id as string);
+                if (internalKeyMap[node._id as string]) {
+                    internalKeyMap[node._id as string] += 1;
+                } else {
+                    internalKeyMap[node._id as string] = 1;
+                }
+            }
+        }
+        return {
+            internalKeyList: internalKeyList,
+            internalKeyMap: internalKeyMap
+        }
     }
 }
