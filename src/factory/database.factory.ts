@@ -507,21 +507,7 @@ export class DatabaseFactory implements DatabaseAdapter {
         const room = `${options.projectId}_${domain}`
         const ydoc = new Y.Doc();
         global.WebSocket = require('ws');
-        const webrtcProvider = new WebrtcProvider(
-            room,
-            ydoc,
-            // // @ts-ignore
-            // {
-            //     // password: domain,
-            //     // signaling: [
-            //     //     'wss://stun.l.google.com',
-            //     //     'wss://stun1.l.google.com',
-            //     //     'wss://stun2.l.google.com',
-            //     //     'wss://stun3.l.google.com',
-            //     //     'wss://stun4.l.google.com',
-            //     // ]
-            // }
-        );
+        const webrtcProvider = new WebrtcProvider(room, ydoc);
         const websocketProvider = new WebsocketProvider(
             'wss://demos.yjs.dev',
             room,
@@ -530,7 +516,7 @@ export class DatabaseFactory implements DatabaseAdapter {
                 WebSocketPolyfill: require('ws'),
             }
         );
-        const sharedMap = ydoc.getMap(domain);
+        let sharedMap = ydoc.getMap(domain);
         const observer = async (tEvent: YMapEvent<any>) => {
             for (const key of Array.from(tEvent.keys.keys())) {
                 switch (tEvent.keys.get(key).action) {
@@ -583,24 +569,24 @@ export class DatabaseFactory implements DatabaseAdapter {
             }
         }
         sharedMap.observe(observer);
-        let pData = await this.findMany(
-            domain,
-            {
-                filter: {}
-            },
-            {useMasterKey: true},
-            options
-        );
-        if (!pData) {
-            pData = [];
-        }
-        pData.forEach(data => {
-            if (data.id) {
-                data._id = data.id;
-                delete data.id;
-            }
-            sharedMap.set(data._id, data);
-        });
+        // let pData = await this.findMany(
+        //     domain,
+        //     {
+        //         filter: {}
+        //     },
+        //     {useMasterKey: true},
+        //     options
+        // );
+        // if (!pData) {
+        //     pData = [];
+        // }
+        // pData.forEach(data => {
+        //     if (data.id) {
+        //         data._id = data.id;
+        //         delete data.id;
+        //     }
+        //     sharedMap.set(data._id, data);
+        // });
         return {
             close: () => {
                 try {
@@ -608,10 +594,14 @@ export class DatabaseFactory implements DatabaseAdapter {
                     websocketProvider.disconnectBc();
                     sharedMap.unobserve(observer);
                     ydoc.destroy();
+                    sharedMap = undefined;
                 } catch (e) {
                     console.log(e);
                 }
-            }
+            },
+            // doc: () => {
+            //     return sharedMap;
+            // }
         }
     }
 

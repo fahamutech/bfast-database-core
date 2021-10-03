@@ -46,6 +46,72 @@ describe('syncs', function () {
                 }
             );
         });
+        it('should connect a listener twice', function (done) {
+            let connectedCalled = false;
+            let connectedCalled2 = false;
+            const s1 = bfast.functions().event(
+                '/v2/__syncs__',
+                () => {
+                    connectedCalled = true;
+                    s1.emit({
+                        auth: {
+                            applicationId: config.applicationId,
+                            topic: `${config.projectId}_test`
+                        },
+                        body: {
+                            domain: 'test'
+                        }
+                    });
+                },
+                // ()=>{
+                // console.log('disconnected');
+                // }
+            );
+            s1.listener(response => {
+                    if (response?.body?.info) {
+                        expect(connectedCalled).equal(true);
+                        should().exist(response.body.info);
+                        expect(response.body).eql({
+                            info: 'start listening for syncs'
+                        });
+                        // done();
+                        // changes.close();
+                    }
+                }
+            );
+
+            const s2 = bfast.functions().event(
+                '/v2/__syncs__',
+                () => {
+                    connectedCalled2 = true;
+                    s2.emit({
+                        auth: {
+                            applicationId: config.applicationId,
+                            topic: `${config.projectId}_test`
+                        },
+                        body: {
+                            domain: 'test'
+                        }
+                    });
+                },
+                // ()=>{
+                // console.log('disconnected');
+                // }
+            );
+            s2.listener(response => {
+                    if (response?.body?.info) {
+                        expect(connectedCalled2).equal(true);
+                        should().exist(response.body.info);
+                        expect(response.body).eql({
+                            info: 'start listening for syncs'
+                        });
+                        s1.close();
+                        s2.close();
+                        done();
+                    }
+                }
+            );
+        });
         it('should close a syncs when asked', function (done) {
             const changes = bfast.functions().event(
                 '/v2/__syncs__',
