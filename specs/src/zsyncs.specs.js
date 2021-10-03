@@ -87,15 +87,7 @@ describe('syncs', function () {
                 }
             );
             const yDoc = new Y.Doc();
-            new WebrtcProvider(room, yDoc, {
-                // signaling: [
-                //     'wss://stun.l.google.com',
-                //     'wss://stun1.l.google.com',
-                //     'wss://stun2.l.google.com',
-                //     'wss://stun3.l.google.com',
-                //     'wss://stun4.l.google.com',
-                // ]
-            });
+            new WebrtcProvider(room, yDoc);
             new WebsocketProvider(
                 'wss://demos.yjs.dev',
                 room,
@@ -104,32 +96,21 @@ describe('syncs', function () {
                     WebSocketPolyfill: require('ws'),
                 }
             );
-            // const yMap = yDoc.getMap(domain);
-            // yMap.observe(arg0 => {
-            //     console.log(arg0.changes, '++++++');
-            // });
+            const yMap = yDoc.getMap(domain);
+            yMap.observe(arg0 => {
+                // console.log(arg0.changes, '++++++');
+                done();
+                changes.close();
+            });
             // yMap.clear();
             changes.listener(response => {
+                // console.log(response)
                 if (response?.body?.info) {
-                    // const id = v4();
-                    // yMap.set(id, {
-                    //     _id: id,
-                    //     age: Math.random()
-                    // });
-                    // const v = Math.random();
-                    // yMap.set('a', {
-                    //     _id: 'a',
-                    //     age: v
-                    // });
-                    // yMap.set('a', {
-                    //     _id: 'a',
-                    //     age: v
-                    // });
-                    // yMap.delete('a');
-                    // console.log(yMap.toJSON(), '********');
-                    done();
-                    changes.close();
-                    // return;
+                    const id = v4();
+                    yMap.set(id, {
+                        _id: id,
+                        age: Math.random()
+                    });
                 }
                 // should().exist(response);
                 // should().exist(response.body);
@@ -138,45 +119,4 @@ describe('syncs', function () {
             });
         });
     });
-
-    // describe('removeListener', function () {
-    //     let c1, c2, r2;
-    //     before(function () {
-    //         c1 = bfast.database()
-    //             .table('test2')
-    //             .query()
-    //             .changes();
-    //         c2 = bfast.database()
-    //             .table('test2')
-    //             .query()
-    //             .changes();
-    //         c2.addListener((r) => {
-    //             // console.log(r);
-    //             if (r.body.info) {
-    //                 return;
-    //             }
-    //             r2 = r.body.change;
-    //         });
-    //     })
-    //     it('should count a total listener', function (done) {
-    //         setTimeout(args => {
-    //             const total = AppEventsFactory.getInstance().connected('_db_changes_test2');
-    //             expect(total).equal(2);
-    //             done();
-    //         }, 500);
-    //     });
-    //     it('should remove specific listener only', function (done) {
-    //         c1.close();
-    //         bfast.database().table('test2').save({name: 'xps', id: 'josh', createdAt: 'leo', updatedAt: 'leo'});
-    //         setTimeout(args => {
-    //             const total = AppEventsFactory.getInstance().connected('_db_changes_test2');
-    //             expect(total).equal(1);
-    //             expect(r2).eql({
-    //                 name: 'create',
-    //                 snapshot: {name: 'xps', id: 'josh', createdAt: 'leo', updatedAt: 'leo', createdBy: null}
-    //             })
-    //             done();
-    //         }, 700);
-    //     });
-    // });
 });

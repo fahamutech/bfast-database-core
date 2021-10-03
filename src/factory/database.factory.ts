@@ -20,19 +20,11 @@ import {createHash} from "crypto";
 import {Node} from "../model/node";
 
 export class DatabaseFactory implements DatabaseAdapter {
-    private static instance: DatabaseFactory;
 
-    private constructor() {
+    constructor() {
     }
 
-    static getInstance() {
-        if (!DatabaseFactory.instance) {
-            DatabaseFactory.instance = new DatabaseFactory();
-        }
-        return DatabaseFactory.instance;
-    }
-
-    private whenWantToSaveADataNodeToATree(cid: string, conn: MongoClient) {
+    whenWantToSaveADataNodeToATree(cid: string, conn: MongoClient) {
         return {
             nodeHandler: async ({path, node}) => {
                 for (const key of Object.keys(node)) {
@@ -48,7 +40,7 @@ export class DatabaseFactory implements DatabaseAdapter {
                         }
                     }
                     devLog('start save a node', key);
-                    await conn.db().collection(DatabaseFactory.hashOfNodePath(path)).updateOne({
+                    await conn.db().collection(this.hashOfNodePath(path)).updateOne({
                         _id: isNaN(Number(key)) ? key.trim() : Number(key),
                     }, {
                         $set: $setMap
@@ -59,7 +51,7 @@ export class DatabaseFactory implements DatabaseAdapter {
                 }
             },
             nodeIdHandler: async function () {
-                return cid.toString();
+                return cid?.toString();
             }
         }
     }
@@ -69,24 +61,20 @@ export class DatabaseFactory implements DatabaseAdapter {
         try {
             return await fn(conn);
         } finally {
-            conn.close()
-                // .then(value => {
-                //     console.log(value, 'close connection OK ******');
-                // })
-                .catch(reason => {
-                    console.log(reason, 'close connection FAIL *******');
-                });
+            conn.close().catch(reason => {
+                console.log(reason, 'close connection FAIL *******');
+            });
         }
     }
 
-    private async nodeSearchResult(
+    async nodeSearchResult(
         nodePath: string,
         nodeId: any,
         conn: MongoClient
     ): Promise<Node | Array<Node>> {
         if (typeof nodeId === "object" && nodeId?.hasOwnProperty('$fn')) {
             devLog('handle query by expression', nodeId.$fn);
-            let cursor = conn.db().collection(DatabaseFactory.hashOfNodePath(nodePath)).find<Node>({});
+            let cursor = conn.db().collection(this.hashOfNodePath(nodePath)).find<Node>({});
             if (nodeId.hasOwnProperty('$orderBy')) {
                 cursor = cursor.sort('_id', nodeId.$orderBy);
             }
@@ -119,13 +107,11 @@ export class DatabaseFactory implements DatabaseAdapter {
             devLog('handle query by node_id', nodeId);
             // console.log(nodeTable,'*****')
             // console.log(r)
-            return conn.db()
-                .collection(DatabaseFactory.hashOfNodePath(nodePath))
-                .findOne<Node>({_id: nodeId});
+            return conn.db().collection(this.hashOfNodePath(nodePath)).findOne<Node>({_id: nodeId});
         }
     }
 
-    private async handleQueryObjectTree(
+    async handleQueryObjectTree(
         mapOfNodesToQuery: Map<string, string>,
         domain: string,
         queryModel: QueryModel<any>,
@@ -169,16 +155,14 @@ export class DatabaseFactory implements DatabaseAdapter {
         return _all.filter(t => t !== null);
     }
 
-    private static hashOfNodePath(nodePath: string) {
-        // console.log(nodePath,'+++++');
-        // console.log(node);
+    hashOfNodePath(nodePath: string): string {
         return createHash('sha1')
             .update(nodePath.toString().trim())
             .digest('hex');
         // return nodePath?.replace(new RegExp('/', 'ig'), '_').trim();
     }
 
-    private static async checkIfNodeDataObjectExistInMainNodeAndShakeTree(
+    async checkIfNodeDataObjectExistInMainNodeAndShakeTree(
         node: Node,
         nodePath: string,
         domain: string,
@@ -260,32 +244,7 @@ export class DatabaseFactory implements DatabaseAdapter {
         return node;
     }
 
-    // private static async checkIfNodeDataStringExistInMainNodeAndShakeTree(
-    //     targetNodeId: string,
-    //     node: Node,
-    //     nodePath: string,
-    //     domain: string,
-    //     conn: MongoClient
-    // ): Promise<any> {
-    //     const idNode: IdNode = await conn.db()
-    //         .collection(this.hashOfNodePath(`${domain}/_id`))
-    //         .findOne<IdNode>({
-    //             _id: node._id
-    //         });
-    //     if (!idNode) {
-    //         node.value = null;
-    //         conn.db().collection(this.hashOfNodePath(nodePath)).updateOne({
-    //             _id: targetNodeId
-    //         }, {
-    //             $unset: {
-    //                 value: 1
-    //             }
-    //         }).catch(console.log);
-    //     }
-    //     return node;
-    // }
-
-    private async handleDeleteObjectTree(
+    async handleDeleteObjectTree(
         nodePathnodeIdMap: Map<string, string>,
         domain: string,
         conn: MongoClient
@@ -297,68 +256,10 @@ export class DatabaseFactory implements DatabaseAdapter {
             domain,
             conn
         );
-        // let externalKeyMap = {};
-        // if (nodePathList.length === 0) {
-        //     return [];
-        // }
-        // for (const nodePath of nodePathList) {
-        //     const nodeId = nodePathnodeIdMap[nodePath];
-        //     let node: Node | Array<Node> = await this.nodeSearchResult(
-        //         nodePath,
-        //         nodeId,
-        //         conn
-        //     );
-        //     if (Array.isArray(node)){
-        //
-        //     }else {
-        //         const ext = await this.extractExternalKeysFromNodes(
-        //             node,
-        //             domain,
-        //             nodePath,
-        //             externalKeyList,
-        //             externalKeyMap,
-        //             conn
-        //         );
-        //         externalKeyList = ext.externalKeyList;
-        //         externalKeyMap = ext.externalKeyMap;
-        //     }
-        //     // if (node && node.value) {
-        //     //     if (typeof node.value === "object") {
-        //     //         node = await DatabaseFactory.checkIfNodeDataObjectExistInMainNodeAndShakeTree(
-        //     //             node,
-        //     //             nodePath,
-        //     //             domain,
-        //     //             conn
-        //     //         );
-        //     //         // console.log(node, 'after prune');
-        //     //         for (const iKey of Object.keys(node.value)) {
-        //     //             internalKeyList.push(iKey);
-        //     //             if (internalKeyMap[iKey]) {
-        //     //                 internalKeyMap[iKey] += 1;
-        //     //             } else {
-        //     //                 internalKeyMap[iKey] = 1;
-        //     //             }
-        //     //         }
-        //     //     } else if (typeof node.value === 'string') {
-        //     //         internalKeyList.push(node._id);
-        //     //         if (internalKeyMap[node._id]) {
-        //     //             internalKeyMap[node._id] += 1;
-        //     //         } else {
-        //     //             internalKeyMap[node._id] = 1;
-        //     //         }
-        //     //     }
-        //     // }
-        // }
-
-        // externalKeyList = externalKeyList
-        //     .filter(x => externalKeyMap[x] === nodePathList.length)
-        //     .reduce((a, b) => a.add(b), new Set());
-        // externalKeyList = Array.from(externalKeyList);
-
         return await Promise.all(
             internalKeyList.map(async iK => {
                 await conn.db()
-                    .collection(DatabaseFactory.hashOfNodePath(`${domain}/_id`))
+                    .collection(this.hashOfNodePath(`${domain}/_id`))
                     .deleteOne({
                         _id: iK
                     });
@@ -437,7 +338,7 @@ export class DatabaseFactory implements DatabaseAdapter {
             const id = Object.values(queryTree)[0];
             // const conn = await this.connection(options);
             const result = await conn.db()
-                .collection(DatabaseFactory.hashOfNodePath(Object.keys(queryTree)[0]))
+                .collection(this.hashOfNodePath(Object.keys(queryTree)[0]))
                 .findOne(
                     {_id: id},
                     {}
@@ -601,7 +502,6 @@ export class DatabaseFactory implements DatabaseAdapter {
 
     async syncs(
         domain: string,
-        // listener: (doc: ChangesDocModel) => void,
         options: BFastDatabaseOptions,
     ): Promise<{ close: () => void }> {
         const room = `${options.projectId}_${domain}`
@@ -649,13 +549,7 @@ export class DatabaseFactory implements DatabaseAdapter {
                                 {},
                                 options
                             ).catch(console.log);
-                            // listener({
-                            //     name: "create",
-                            //     snapshot: doc,
-                            //     resumeToken: doc._id
-                            // });
                         }
-                        // console.log(, 'ADD');
                         break;
                     case "delete":
                         this.delete(
@@ -666,19 +560,10 @@ export class DatabaseFactory implements DatabaseAdapter {
                             {},
                             options
                         ).catch(console.log);
-                        // listener({
-                        //     name: "delete",
-                        //     snapshot: {_id: key},
-                        //     resumeToken: key
-                        // });
-                        // console.log(key, 'DELETE');
                         break;
                     case "update":
                         const d = sharedMap.get(key);
                         const od = tEvent.keys.get(key).oldValue;
-                        // console.log(d, 'NEW');
-                        // console.log(od, 'OLD');
-                        // console.log(JSON.stringify(d)!==JSON.stringify(od));
                         if (!Array.isArray(d) && JSON.stringify(d) !== JSON.stringify(od)) {
                             this.updateOne(
                                 domain,
@@ -692,17 +577,10 @@ export class DatabaseFactory implements DatabaseAdapter {
                                 {},
                                 options
                             ).catch(console.log);
-                            // listener({
-                            //     name: "update",
-                            //     snapshot: d,
-                            //     resumeToken: d._id
-                            // });
                         }
-                        // console.log(sharedMap.get(key), 'UPDATE');
                         break;
                 }
             }
-            // const data = sharedMap.toJSON();
         }
         sharedMap.observe(observer);
         let pData = await this.findMany(
@@ -721,18 +599,6 @@ export class DatabaseFactory implements DatabaseAdapter {
                 data._id = data.id;
                 delete data.id;
             }
-            // if (data._created_at) {
-            //     data.createdAt = data._created_at;
-            //     delete data._created_at;
-            // }
-            // if (data._updated_at) {
-            //     data.updatedAt = data._updated_at;
-            //     delete data._updated_at;
-            // }
-            // if (data._created_by) {
-            //     data.createdBy = data._created_by;
-            //     delete data._created_by;
-            // }
             sharedMap.set(data._id, data);
         });
         return {
@@ -749,7 +615,7 @@ export class DatabaseFactory implements DatabaseAdapter {
         }
     }
 
-    private incrementFields(newDoc: any, ip: { [p: string]: any }) {
+    incrementFields(newDoc: any, ip: { [p: string]: any }) {
         if (!newDoc) {
             newDoc = {};
         }
@@ -777,7 +643,7 @@ export class DatabaseFactory implements DatabaseAdapter {
         conn: MongoClient
     ): Promise<any[] | number> {
         let nodes: Array<Node> = await conn.db()
-            .collection(DatabaseFactory.hashOfNodePath(`${domain}/_id`))
+            .collection(this.hashOfNodePath(`${domain}/_id`))
             .find<Node>({})
             .toArray();
         if (nodes && Array.isArray(nodes)) {
@@ -901,20 +767,17 @@ export class DatabaseFactory implements DatabaseAdapter {
         return internalKeyList;
     }
 
-    private async extractExternalKeysFromNodes(
+    async extractExternalKeysFromNodes(
         node: Node,
         domain: string,
         nodePath: string,
         externalKeyList,
         externalKeyMap,
         conn: MongoClient
-    ): Promise<{
-        externalKeyList: Array<string>,
-        externalKeyMap: any
-    }> {
+    ): Promise<{ externalKeyList: Array<string>, externalKeyMap: any }> {
         if (node && node.value) {
             if (typeof node.value === "object") {
-                node = await DatabaseFactory.checkIfNodeDataObjectExistInMainNodeAndShakeTree(
+                node = await this.checkIfNodeDataObjectExistInMainNodeAndShakeTree(
                     node,
                     nodePath,
                     domain,
@@ -944,20 +807,17 @@ export class DatabaseFactory implements DatabaseAdapter {
         }
     }
 
-    private async extractInternalKeysFromNodes(
+    async extractInternalKeysFromNodes(
         node: Node,
         domain: string,
         nodePath: string,
         internalKeyList: Array<string>,
         internalKeyMap: Map<any, any>,
         conn: MongoClient
-    ): Promise<{
-        internalKeyList: Array<string>,
-        internalKeyMap: any
-    }> {
+    ): Promise<{ internalKeyList: Array<string>, internalKeyMap: any }> {
         if (node && node.value) {
             if (typeof node.value === "object") {
-                node = await DatabaseFactory.checkIfNodeDataObjectExistInMainNodeAndShakeTree(
+                node = await this.checkIfNodeDataObjectExistInMainNodeAndShakeTree(
                     node,
                     nodePath,
                     domain,

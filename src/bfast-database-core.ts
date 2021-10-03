@@ -18,7 +18,7 @@ import {IpfsStorageFactory} from "./factory/ipfs-storage.factory";
 function getDatabaseFactory(options: BFastDatabaseOptions): DatabaseAdapter {
     return (options && options.adapters && options.adapters.database)
         ? options.adapters.database(options)
-        : DatabaseFactory.getInstance()
+        : new DatabaseFactory()
 }
 
 function getAuthFactory(options: BFastDatabaseOptions): AuthAdapter {

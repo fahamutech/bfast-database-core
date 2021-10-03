@@ -18,7 +18,6 @@ import {DatabaseFactory} from "./factory/database.factory";
 import {IpfsFactory} from "./factory/ipfs.factory";
 import {IpfsStorageFactory} from "./factory/ipfs-storage.factory";
 import {S3StorageFactory} from "./factory/s3-storage.factory";
-// import {startYJsWebsocketServer} from "./webservices/syncs.webservice";
 
 export {WebServices} from './webservices/index.webservice';
 export {EnvUtil} from './utils/env.util';
@@ -40,4 +39,3 @@ export {DatabaseFactory} from './factory/database.factory';
 export {IpfsFactory} from './factory/ipfs.factory';
 export {IpfsStorageFactory} from './factory/ipfs-storage.factory';
 export {S3StorageFactory} from './factory/s3-storage.factory';
-// export {startYJsWebsocketServer} from './webservices/syncs.webservice'
