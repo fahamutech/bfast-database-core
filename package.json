@@ -1,6 +1,6 @@
 {
   "name": "bfast-database-core",
-  "version": "2.1.7",
+  "version": "2.1.8",
   "main": "dist/index.js",
   "license": "MIT",
   "author": {
@@ -12,7 +12,7 @@
     "joshuamshana(https://github.com/joshuamshana)",
     "fahamutech(https://github.com/fahamutech)"
   ],
-  "scripts":
+  "scripts": {
     "build": "gulp build",
     "build:docker": "gulp buildDocker",
     "test:web-services": "yarn run build && mocha specs/src/web-services/all.specs.js",
