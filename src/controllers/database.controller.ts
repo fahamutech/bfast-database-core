@@ -370,8 +370,8 @@ export class DatabaseController {
         context: ContextBlock
     ): T {
         data.createdBy = context?.uid;
-        data.createdAt = data && data.createdAt ? data.createdAt : new Date();
-        data.updatedAt = data && data.updatedAt ? data.updatedAt : new Date();
+        data.createdAt = data && data.createdAt ? data.createdAt : new Date().toISOString();
+        data.updatedAt = data && data.updatedAt ? data.updatedAt : new Date().toISOString();
         if (data._id) {
             return data;
         }

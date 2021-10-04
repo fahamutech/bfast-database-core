@@ -521,7 +521,7 @@ export class DatabaseFactory implements DatabaseAdapter {
             for (const key of Array.from(tEvent.keys.keys())) {
                 switch (tEvent.keys.get(key).action) {
                     case "add":
-                        const doc = sharedMap.get(key);
+                        const doc = this.sanitize4DB(sharedMap.get(key));
                         if (!Array.isArray(doc)) {
                             this.updateOne(
                                 domain,
@@ -557,7 +557,7 @@ export class DatabaseFactory implements DatabaseAdapter {
                                     id: key,
                                     upsert: true,
                                     update: {
-                                        $set: d
+                                        $set: this.sanitize4DB(d)
                                     }
                                 },
                                 {},
@@ -569,39 +569,18 @@ export class DatabaseFactory implements DatabaseAdapter {
             }
         }
         sharedMap.observe(observer);
-        // let pData = await this.findMany(
-        //     domain,
-        //     {
-        //         filter: {}
-        //     },
-        //     {useMasterKey: true},
-        //     options
-        // );
-        // if (!pData) {
-        //     pData = [];
-        // }
-        // pData.forEach(data => {
-        //     if (data.id) {
-        //         data._id = data.id;
-        //         delete data.id;
-        //     }
-        //     sharedMap.set(data._id, data);
-        // });
         return {
             close: () => {
                 try {
-                    webrtcProvider.disconnect();
-                    websocketProvider.disconnectBc();
-                    sharedMap.unobserve(observer);
-                    ydoc.destroy();
+                    webrtcProvider?.disconnect();
+                    websocketProvider?.disconnectBc();
+                    sharedMap?.unobserve(observer);
+                    ydoc?.destroy();
                     sharedMap = undefined;
                 } catch (e) {
                     console.log(e);
                 }
-            },
-            // doc: () => {
-            //     return sharedMap;
-            // }
+            }
         }
     }
 
@@ -835,5 +814,40 @@ export class DatabaseFactory implements DatabaseAdapter {
             internalKeyList: internalKeyList,
             internalKeyMap: internalKeyMap
         }
+    }
+
+    private sanitize4DB(data: any) {
+        if (data === null || data === undefined) {
+            return null;
+        }
+        if (data && data.hasOwnProperty('return')) {
+            delete data.return;
+        }
+        if (data && data.hasOwnProperty('id')) {
+            data._id = data.id;
+            delete data.id;
+        }
+
+        if (data && data.hasOwnProperty('_created_at')) {
+            data.createdAt = data._created_at;
+            delete data._created_at;
+        }
+
+        if (data && data.hasOwnProperty('_updated_at')) {
+            data.updatedAt = data._updated_at;
+            delete data._updated_at;
+        }
+
+        if (data && data.hasOwnProperty('_created_by')) {
+            data.createdBy = data._created_by;
+            delete data._created_by;
+        }
+        if (!data.hasOwnProperty('createdAt') || typeof data.createdAt === "object") {
+            data.createdAt = new Date().toISOString();
+        }
+        if (!data.hasOwnProperty('updatedAt') || typeof data.updatedAt === "object") {
+            data.updatedAt = new Date().toISOString();
+        }
+        return data;
     }
 }

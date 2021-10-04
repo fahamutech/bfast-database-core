@@ -3,10 +3,10 @@ export interface BasicAttributesModel {
     objectId?: string;
     _id?: string;
     _oid?: string;
-    createdAt?: Date;
-    _created_at?: Date;
-    updatedAt?: Date;
-    _updated_at?: Date;
+    createdAt?: string;
+    _created_at?: string;
+    updatedAt?: string;
+    _updated_at?: string;
     createdBy?: string;
     _created_by?: string;
     _rperm?: any;
