@@ -168,7 +168,7 @@ export class DatabaseFactory implements DatabaseAdapter {
         domain: string,
         conn: MongoClient
     ): Promise<Node> {
-        const internalKeys = Object.keys(node.value);
+        const internalKeys = Object.keys(node?.value ? node.value : {});
         const tryPurgeEntryFromNode = async (iKey: string) => {
             try {
                 await conn.db().collection(this.hashOfNodePath(nodePath)).updateOne({
@@ -219,7 +219,7 @@ export class DatabaseFactory implements DatabaseAdapter {
                 const tree = new TreeController();
                 // @ts-ignore
                 const tD = await tree.objectToTree(data, domain, {
-                    nodeIdHandler: () => data._id
+                    nodeIdHandler: () => data?._id ? data._id : data?.id
                 });
                 // console.log(tD, '*****TREE******');
                 const nodePathParts = nodePath.split('/');
@@ -301,7 +301,7 @@ export class DatabaseFactory implements DatabaseAdapter {
             await conn.db()
                 .collection(domain)
                 .updateOne(
-                    {_id: data._id},
+                    {_id: data?._id},
                     {$set: data},
                     {
                         upsert: true,
@@ -311,7 +311,7 @@ export class DatabaseFactory implements DatabaseAdapter {
             await treeController.objectToTree(
                 data,
                 domain,
-                this.whenWantToSaveADataNodeToATree(data._id, conn)
+                this.whenWantToSaveADataNodeToATree(data?._id ? data._id : data.id, conn)
             );
         }, options);
         // if (cids === true) {
@@ -346,7 +346,7 @@ export class DatabaseFactory implements DatabaseAdapter {
             if (!result) {
                 return null;
             }
-            const cid = result.value;
+            const cid = result?.value;
             // if (queryModel.cids === true) {
             //     return cid;
             // }
@@ -649,7 +649,7 @@ export class DatabaseFactory implements DatabaseAdapter {
             //     return result.map(x => x?.value).filter(y => y !== null);
             // }
             const _all_p = nodes.map(x => {
-                return conn.db().collection(domain).findOne({_id: x.value});
+                return conn.db().collection(domain).findOne({_id: x?.value});
                 // return this.ipfsFactory.generateDataFromCid(x?.value, {
                 //     json: true
                 // }, options);

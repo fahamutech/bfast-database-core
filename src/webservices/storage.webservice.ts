@@ -14,7 +14,7 @@ export class StorageWebservice {
     constructor() {
     }
 
-    private handleGetFile(
+    handleGetFile(
         securityController: SecurityController,
         restController: RestController,
         databaseController: DatabaseController,
@@ -69,7 +69,7 @@ export class StorageWebservice {
         ];
     }
 
-    private handleUploadFile(
+    handleUploadFile(
         restController: RestController,
         securityController: SecurityController,
         databaseController: DatabaseController,
@@ -125,7 +125,7 @@ export class StorageWebservice {
         ];
     }
 
-    private handleGetThumbnail(
+    handleGetThumbnail(
         restController: RestController,
         securityController: SecurityController,
         databaseController: DatabaseController,
@@ -166,7 +166,7 @@ export class StorageWebservice {
         ];
     }
 
-    private handleListFiles(
+    handleListFiles(
         restController: RestController,
         securityController: SecurityController,
         databaseController: DatabaseController,

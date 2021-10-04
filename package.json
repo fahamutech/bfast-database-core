@@ -12,7 +12,7 @@
     "joshuamshana(https://github.com/joshuamshana)",
     "fahamutech(https://github.com/fahamutech)"
   ],
-  "scripts": {
+  "scripts":
     "build": "gulp build",
     "build:docker": "gulp buildDocker",
     "test:web-services": "yarn run build && mocha specs/src/web-services/all.specs.js",

@@ -138,7 +138,7 @@ export class WebServices {
     realtime(config: { applicationId: string, masterKey: string }, prefix = '/'): {
         changes: { name: string, onEvent: any },
         syncs: { name: string, onEvent: any },
-        syncsEndpoint: { name: string, onEvent: any }
+        // syncsEndpoint: { name: string, onEvent: any }
     } {
         const changesWebService = new ChangesWebservice();
         return {
@@ -157,7 +157,7 @@ export class WebServices {
                 this.databaseAdapter,
                 this.options
             ),
-            syncsEndpoint: changesWebService.syncsEndpoint()
+            // syncsEndpoint: changesWebService.syncsEndpoint()
         };
     }
 

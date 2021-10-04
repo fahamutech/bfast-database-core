@@ -20,6 +20,9 @@ import {IpfsStorageFactory} from "./factory/ipfs-storage.factory";
 import {S3StorageFactory} from "./factory/s3-storage.factory";
 
 export {WebServices} from './webservices/index.webservice';
+export {StorageWebservice} from './webservices/storage.webservice';
+export {ChangesWebservice} from './webservices/changes.webservice';
+export {RestWebservice} from './webservices/rest.webservice';
 export {EnvUtil} from './utils/env.util';
 export {BfastDatabaseCore} from './bfast-database-core';
 export {AuthAdapter} from './adapters/auth.adapter';

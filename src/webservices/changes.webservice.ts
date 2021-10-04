@@ -35,21 +35,19 @@ export class ChangesWebservice {
                                 bypassDomainVerification,
                                 resumeToken: request.body.resumeToken
                             }
-                        )
-                            .then(_ => {
-                                response.socket.on('disconnect', __1 => {
-                                    try {
-                                        _.close();
-                                    } catch (_12) {
-                                        console.log(_12);
-                                    }
-                                    console.log(`INFO : changes resource released, with reason --> ${__1}`);
-                                });
-                                response.emit({info: 'start listening for changes'});
-                            })
-                            .catch(reason => {
-                                response.emit({error: reason.toString()});
+                        ).then(_ => {
+                            response.socket.on('disconnect', __1 => {
+                                try {
+                                    _.close();
+                                } catch (_12) {
+                                    console.log(_12);
+                                }
+                                console.log(`INFO : changes resource released, with reason --> ${__1}`);
                             });
+                            response.emit({info: 'start listening for changes'});
+                        }).catch(reason => {
+                            response.emit({error: reason.toString()});
+                        });
                     } else {
                         response.emit({error: 'pipeline/domain is required'});
                     }
@@ -106,14 +104,14 @@ export class ChangesWebservice {
         );
     }
 
-    syncsEndpoint(){
-        return functions().onEvent(
-            '/syncs',
-            (request, response) => {
-                // console.log(request,'11++++++');
-                // console.log(response.socket,'22+++++');
-            }
-        )
-    }
+    // syncsEndpoint(){
+    //     return functions().onEvent(
+    //         '/syncs',
+    //         (request, response) => {
+    //             // console.log(request,'11++++++');
+    //             // console.log(response.socket,'22+++++');
+    //         }
+    //     )
+    // }
 
 }
