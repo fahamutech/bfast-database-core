@@ -137,7 +137,7 @@ export class WebServices {
 
     realtime(config: { applicationId: string, masterKey: string }, prefix = '/'): {
         changes: { name: string, onEvent: any },
-        syncs: { name: string, onEvent: any },
+        // syncs: { name: string, onEvent: any },
         // syncsEndpoint: { name: string, onEvent: any }
     } {
         const changesWebService = new ChangesWebservice();
@@ -149,14 +149,14 @@ export class WebServices {
                 this.securityController,
                 this.databaseAdapter
             ),
-            syncs: changesWebService.syncs(
-                config,
-                prefix,
-                this.databaseController,
-                this.securityController,
-                this.databaseAdapter,
-                this.options
-            ),
+            // syncs: changesWebService.syncs(
+            //     config,
+            //     prefix,
+            //     this.databaseController,
+            //     this.securityController,
+            //     this.databaseAdapter,
+            //     this.options
+            // ),
             // syncsEndpoint: changesWebService.syncsEndpoint()
         };
     }

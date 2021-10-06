@@ -13,7 +13,6 @@ export class S3StorageFactory implements FilesAdapter {
     }
 
     s3: Client;
-
     canHandleFileStream = false;
     isS3 = true;
 

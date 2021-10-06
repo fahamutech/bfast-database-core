@@ -283,22 +283,22 @@ export class DatabaseController {
         );
     }
 
-    async syncs(
-        domain: string,
-        database: DatabaseAdapter,
-        security: SecurityController,
-        // listener: (doc: ChangesDocModel) => void,
-        options: BFastDatabaseOptions
-    ): Promise<{ close: () => void }> {
-        // if (options && options.bypassDomainVerification === false) {
-        //     await this.handleDomainValidation(domain);
-        // }
-        return database.syncs(
-            domain,
-            // listener,
-            options
-        );
-    }
+    // async syncs(
+    //     domain: string,
+    //     database: DatabaseAdapter,
+    //     security: SecurityController,
+    //     // listener: (doc: ChangesDocModel) => void,
+    //     options: BFastDatabaseOptions
+    // ): Promise<{ close: () => void }> {
+    //     // if (options && options.bypassDomainVerification === false) {
+    //     //     await this.handleDomainValidation(domain);
+    //     // }
+    //     return database.syncs(
+    //         domain,
+    //         // listener,
+    //         options
+    //     );
+    // }
 
     async query(
         domain: string,

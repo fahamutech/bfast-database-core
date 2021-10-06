@@ -12,10 +12,10 @@ import {ChangesModel} from "../model/changes.model";
 import {ConstUtil} from "../utils/const.util";
 import {AppEventsFactory} from "./app-events.factory";
 import {devLog} from "../utils/debug.util";
-import * as Y from 'yjs'
-import {YMapEvent} from 'yjs'
-import {WebrtcProvider} from 'y-webrtc'
-import {WebsocketProvider} from "y-websocket";
+// import * as Y from 'yjs'
+// import {YMapEvent} from 'yjs'
+// import {WebrtcProvider} from 'y-webrtc'
+// import {WebsocketProvider} from "y-websocket";
 import {createHash} from "crypto";
 import {Node} from "../model/node";
 
@@ -500,89 +500,89 @@ export class DatabaseFactory implements DatabaseAdapter {
         }
     }
 
-    async syncs(
-        domain: string,
-        options: BFastDatabaseOptions,
-    ): Promise<{ close: () => void }> {
-        const room = `${options.projectId}_${domain}`
-        const ydoc = new Y.Doc();
-        global.WebSocket = require('ws');
-        const webrtcProvider = new WebrtcProvider(room, ydoc);
-        const websocketProvider = new WebsocketProvider(
-            'wss://demos.yjs.dev',
-            room,
-            ydoc,
-            {
-                WebSocketPolyfill: require('ws'),
-            }
-        );
-        let sharedMap = ydoc.getMap(domain);
-        const observer = async (tEvent: YMapEvent<any>) => {
-            for (const key of Array.from(tEvent.keys.keys())) {
-                switch (tEvent.keys.get(key).action) {
-                    case "add":
-                        const doc = this.sanitize4DB(sharedMap.get(key));
-                        if (!Array.isArray(doc)) {
-                            this.updateOne(
-                                domain,
-                                {
-                                    id: doc._id,
-                                    upsert: true,
-                                    update: {
-                                        $set: doc
-                                    }
-                                },
-                                {},
-                                options
-                            ).catch(console.log);
-                        }
-                        break;
-                    case "delete":
-                        this.delete(
-                            domain,
-                            {
-                                id: key
-                            },
-                            {},
-                            options
-                        ).catch(console.log);
-                        break;
-                    case "update":
-                        const d = sharedMap.get(key);
-                        const od = tEvent.keys.get(key).oldValue;
-                        if (!Array.isArray(d) && JSON.stringify(d) !== JSON.stringify(od)) {
-                            this.updateOne(
-                                domain,
-                                {
-                                    id: key,
-                                    upsert: true,
-                                    update: {
-                                        $set: this.sanitize4DB(d)
-                                    }
-                                },
-                                {},
-                                options
-                            ).catch(console.log);
-                        }
-                        break;
-                }
-            }
-        }
-        sharedMap.observe(observer);
-        return {
-            close: () => {
-                try {
-                    webrtcProvider?.disconnect();
-                    websocketProvider?.disconnectBc();
-                    sharedMap?.unobserve(observer);
-                    ydoc?.destroy();
-                    sharedMap = undefined;
-                } catch (e) {
-                    console.log(e);
-                }
-            }
-        }
-    }
+    // async syncs(
+    //     domain: string,
+    //     options: BFastDatabaseOptions,
+    // ): Promise<{ close: () => void }> {
+    //     const room = `${options.projectId}_${domain}`
+    //     const ydoc = new Y.Doc();
+    //     global.WebSocket = require('ws');
+    //     const webrtcProvider = new WebrtcProvider(room, ydoc);
+    //     const websocketProvider = new WebsocketProvider(
+    //         'wss://demos.yjs.dev',
+    //         room,
+    //         ydoc,
+    //         {
+    //             WebSocketPolyfill: require('ws'),
+    //         }
+    //     );
+    //     let sharedMap = ydoc.getMap(domain);
+    //     const observer = async (tEvent: YMapEvent<any>) => {
+    //         for (const key of Array.from(tEvent.keys.keys())) {
+    //             switch (tEvent.keys.get(key).action) {
+    //                 case "add":
+    //                     const doc = this.sanitize4DB(sharedMap.get(key));
+    //                     if (!Array.isArray(doc)) {
+    //                         this.updateOne(
+    //                             domain,
+    //                             {
+    //                                 id: doc._id,
+    //                                 upsert: true,
+    //                                 update: {
+    //                                     $set: doc
+    //                                 }
+    //                             },
+    //                             {},
+    //                             options
+    //                         ).catch(console.log);
+    //                     }
+    //                     break;
+    //                 case "delete":
+    //                     this.delete(
+    //                         domain,
+    //                         {
+    //                             id: key
+    //                         },
+    //                         {},
+    //                         options
+    //                     ).catch(console.log);
+    //                     break;
+    //                 case "update":
+    //                     const d = sharedMap.get(key);
+    //                     const od = tEvent.keys.get(key).oldValue;
+    //                     if (!Array.isArray(d) && JSON.stringify(d) !== JSON.stringify(od)) {
+    //                         this.updateOne(
+    //                             domain,
+    //                             {
+    //                                 id: key,
+    //                                 upsert: true,
+    //                                 update: {
+    //                                     $set: this.sanitize4DB(d)
+    //                                 }
+    //                             },
+    //                             {},
+    //                             options
+    //                         ).catch(console.log);
+    //                     }
+    //                     break;
+    //             }
+    //         }
+    //     }
+    //     sharedMap.observe(observer);
+    //     return {
+    //         close: () => {
+    //             try {
+    //                 webrtcProvider?.disconnect();
+    //                 websocketProvider?.disconnectBc();
+    //                 sharedMap?.unobserve(observer);
+    //                 ydoc?.destroy();
+    //                 sharedMap = undefined;
+    //             } catch (e) {
+    //                 console.log(e);
+    //             }
+    //         }
+    //     }
+    // }
 
     incrementFields(newDoc: any, ip: { [p: string]: any }) {
         if (!newDoc) {
@@ -816,38 +816,38 @@ export class DatabaseFactory implements DatabaseAdapter {
         }
     }
 
-    private sanitize4DB(data: any) {
-        if (data === null || data === undefined) {
-            return null;
-        }
-        if (data && data.hasOwnProperty('return')) {
-            delete data.return;
-        }
-        if (data && data.hasOwnProperty('id')) {
-            data._id = data.id;
-            delete data.id;
-        }
-
-        if (data && data.hasOwnProperty('_created_at')) {
-            data.createdAt = data._created_at;
-            delete data._created_at;
-        }
-
-        if (data && data.hasOwnProperty('_updated_at')) {
-            data.updatedAt = data._updated_at;
-            delete data._updated_at;
-        }
-
-        if (data && data.hasOwnProperty('_created_by')) {
-            data.createdBy = data._created_by;
-            delete data._created_by;
-        }
-        if (!data.hasOwnProperty('createdAt') || typeof data.createdAt === "object") {
-            data.createdAt = new Date().toISOString();
-        }
-        if (!data.hasOwnProperty('updatedAt') || typeof data.updatedAt === "object") {
-            data.updatedAt = new Date().toISOString();
-        }
-        return data;
-    }
+    // private sanitize4DB(data: any) {
+    //     if (data === null || data === undefined) {
+    //         return null;
+    //     }
+    //     if (data && data.hasOwnProperty('return')) {
+    //         delete data.return;
+    //     }
+    //     if (data && data.hasOwnProperty('id')) {
+    //         data._id = data.id;
+    //         delete data.id;
+    //     }
+    //
+    //     if (data && data.hasOwnProperty('_created_at')) {
+    //         data.createdAt = data._created_at;
+    //         delete data._created_at;
+    //     }
+    //
+    //     if (data && data.hasOwnProperty('_updated_at')) {
+    //         data.updatedAt = data._updated_at;
+    //         delete data._updated_at;
+    //     }
+    //
+    //     if (data && data.hasOwnProperty('_created_by')) {
+    //         data.createdBy = data._created_by;
+    //         delete data._created_by;
+    //     }
+    //     if (!data.hasOwnProperty('createdAt') || typeof data.createdAt === "object") {
+    //         data.createdAt = new Date().toISOString();
+    //     }
+    //     if (!data.hasOwnProperty('updatedAt') || typeof data.updatedAt === "object") {
+    //         data.updatedAt = new Date().toISOString();
+    //     }
+    //     return data;
+    // }
 }

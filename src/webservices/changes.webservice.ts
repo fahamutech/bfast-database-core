@@ -58,51 +58,51 @@ export class ChangesWebservice {
         );
     }
 
-    syncs(
-        config: { applicationId: string, masterKey: string },
-        prefix = '/',
-        databaseController: DatabaseController,
-        securityController: SecurityController,
-        databaseAdapter: DatabaseAdapter,
-        options: BFastDatabaseOptions
-    ): { name: string, onEvent: any } {
-        return functions().onEvent(
-            `${prefix}v2/__syncs__`,
-            (request, response) => {
-                if (request.auth.applicationId === config.applicationId) {
-                    // const bypassDomainVerification: boolean = config.masterKey === request.auth.masterKey;
-                    if (request.body.domain) {
-                        databaseController.syncs(
-                            request.body.domain,
-                            databaseAdapter,
-                            securityController,
-                            // (value: ChangesDocModel) => {
-                            //     response.emit({change: value});
-                            // },
-                            options
-                        ).then(_ => {
-                            response.socket.on('disconnect', __1 => {
-                                try {
-                                    _.close();
-                                } catch (_12) {
-                                    console.log(_12);
-                                }
-                                console.log(`INFO : syncs resource released, with reason --> ${__1}`);
-                            });
-                            response.emit({info: 'start listening for syncs'});
-                        }).catch(reason => {
-                            console.log(reason);
-                            response.emit({error: reason.toString()});
-                        });
-                    } else {
-                        response.emit({error: 'domain is required'});
-                    }
-                } else {
-                    response.emit({error: 'unauthorized'});
-                }
-            }
-        );
-    }
+    // syncs(
+    //     config: { applicationId: string, masterKey: string },
+    //     prefix = '/',
+    //     databaseController: DatabaseController,
+    //     securityController: SecurityController,
+    //     databaseAdapter: DatabaseAdapter,
+    //     options: BFastDatabaseOptions
+    // ): { name: string, onEvent: any } {
+    //     return functions().onEvent(
+    //         `${prefix}v2/__syncs__`,
+    //         (request, response) => {
+    //             if (request.auth.applicationId === config.applicationId) {
+    //                 // const bypassDomainVerification: boolean = config.masterKey === request.auth.masterKey;
+    //                 if (request.body.domain) {
+    //                     databaseController.syncs(
+    //                         request.body.domain,
+    //                         databaseAdapter,
+    //                         securityController,
+    //                         // (value: ChangesDocModel) => {
+    //                         //     response.emit({change: value});
+    //                         // },
+    //                         options
+    //                     ).then(_ => {
+    //                         response.socket.on('disconnect', __1 => {
+    //                             try {
+    //                                 _.close();
+    //                             } catch (_12) {
+    //                                 console.log(_12);
+    //                             }
+    //                             console.log(`INFO : syncs resource released, with reason --> ${__1}`);
+    //                         });
+    //                         response.emit({info: 'start listening for syncs'});
+    //                     }).catch(reason => {
+    //                         console.log(reason);
+    //                         response.emit({error: reason.toString()});
+    //                     });
+    //                 } else {
+    //                     response.emit({error: 'domain is required'});
+    //                 }
+    //             } else {
+    //                 response.emit({error: 'unauthorized'});
+    //             }
+    //         }
+    //     );
+    // }
 
     // syncsEndpoint(){
     //     return functions().onEvent(
