@@ -752,7 +752,7 @@ export class DatabaseFactory implements DatabaseAdapter {
                     domain,
                     conn
                 );
-                for (const eKey of Object.values<string>(node.value)) {
+                for (const eKey of Object.values<string>(node?.value ? node.value : {})) {
                     externalKeyList.push(eKey);
                     if (externalKeyMap[eKey]) {
                         externalKeyMap[eKey] += 1;
@@ -792,7 +792,7 @@ export class DatabaseFactory implements DatabaseAdapter {
                     domain,
                     conn
                 );
-                for (const iKey of Object.keys(node.value)) {
+                for (const iKey of Object.keys(node?.value?node.value: {})) {
                     internalKeyList.push(iKey);
                     if (internalKeyMap[iKey]) {
                         internalKeyMap[iKey] += 1;
