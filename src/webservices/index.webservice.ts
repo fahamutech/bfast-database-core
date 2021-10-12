@@ -5,28 +5,38 @@ import {FunctionsModel} from '../model/functions.model';
 import {StorageApiModel} from '../model/storage-api.model';
 import {RestController} from "../controllers/rest.controller";
 import {SecurityController} from "../controllers/security.controller";
-import {DatabaseController} from "../controllers/database.controller";
 import {AuthController} from "../controllers/auth.controller";
 import {StorageController} from "../controllers/storage.controller";
-import {DatabaseAdapter} from "../adapters/database.adapter";
 import {FilesAdapter} from "../adapters/files.adapter";
-import {BFastDatabaseOptions} from "../bfast-database.option";
+import {BFastOptions} from "../bfast-database.option";
 import {RulesController} from "../controllers/rules.controller";
 import {UpdateRuleController} from "../controllers/update.rule.controller";
 import {AuthAdapter} from "../adapters/auth.adapter";
+import {
+    GetDataFn,
+    GetNodeFn,
+    GetNodesFn,
+    PurgeNodeValueFn,
+    UpsertDataFn,
+    UpsertNodeFn
+} from "../adapters/database.adapter";
 
 export class WebServices {
     constructor(private readonly restController: RestController,
                 private readonly rulesController: RulesController,
                 private readonly updateRuleController: UpdateRuleController,
                 private readonly securityController: SecurityController,
-                private readonly databaseController: DatabaseController,
                 private readonly authController: AuthController,
                 private readonly storageController: StorageController,
                 private readonly authAdapter: AuthAdapter,
-                private readonly databaseAdapter: DatabaseAdapter,
                 private readonly filesAdapter: FilesAdapter,
-                private readonly options: BFastDatabaseOptions) {
+                private readonly getNodes: GetNodesFn<any>,
+                private readonly getNode: GetNodeFn,
+                private readonly getDataInStore: GetDataFn,
+                private readonly upsertNode: UpsertNodeFn<any>,
+                private readonly upsertDataInStore: UpsertDataFn<any>,
+                private readonly purgeNodeValue: PurgeNodeValueFn,
+                private readonly options: BFastOptions) {
     }
 
     storage(prefix = '/'): StorageApiModel {
@@ -36,99 +46,121 @@ export class WebServices {
                 prefix,
                 this.restController,
                 this.securityController,
-                this.databaseController,
                 this.authController,
                 this.storageController,
-                this.databaseAdapter,
                 this.filesAdapter,
+                this.purgeNodeValue,
+                this.getNodes,
+                this.getNode,
+                this.getDataInStore,
                 this.options
             ),
             fileApi: storageWebservice.getFileFromStorage(
                 prefix,
                 this.restController,
                 this.securityController,
-                this.databaseController,
                 this.authController,
                 this.storageController,
-                this.databaseAdapter,
                 this.filesAdapter,
+                this.purgeNodeValue,
+                this.getNodes,
+                this.getNode,
+                this.getDataInStore,
                 this.options
             ),
             fileV2Api: storageWebservice.getFileFromStorageV2(
                 prefix,
                 this.restController,
                 this.securityController,
-                this.databaseController,
                 this.authController,
                 this.storageController,
-                this.databaseAdapter,
                 this.filesAdapter,
+                this.purgeNodeValue,
+                this.getNodes,
+                this.getNode,
+                this.getDataInStore,
                 this.options
             ),
             fileThumbnailApi: storageWebservice.geThumbnailFromStorage(
                 prefix,
                 this.restController,
                 this.securityController,
-                this.databaseController,
                 this.authController,
                 this.storageController,
-                this.databaseAdapter,
                 this.filesAdapter,
+                this.purgeNodeValue,
+                this.getNodes,
+                this.getNode,
+                this.getDataInStore,
                 this.options
             ),
             fileThumbnailV2Api: storageWebservice.geThumbnailFromStorageV2(
                 prefix,
                 this.restController,
                 this.securityController,
-                this.databaseController,
                 this.authController,
                 this.storageController,
-                this.databaseAdapter,
                 this.filesAdapter,
+                this.purgeNodeValue,
+                this.getNodes,
+                this.getNode,
+                this.getDataInStore,
                 this.options
             ),
             fileListApi: storageWebservice.getFilesFromStorage(
                 prefix,
                 this.restController,
                 this.securityController,
-                this.databaseController,
                 this.authController,
                 this.storageController,
-                this.databaseAdapter,
                 this.filesAdapter,
+                this.purgeNodeValue,
+                this.getNodes,
+                this.getNode,
+                this.getDataInStore,
                 this.options
             ),
             fileListV2Api: storageWebservice.getFilesFromStorageV2(
                 prefix,
                 this.restController,
                 this.securityController,
-                this.databaseController,
                 this.authController,
                 this.storageController,
-                this.databaseAdapter,
                 this.filesAdapter,
+                this.purgeNodeValue,
+                this.getNodes,
+                this.getNode,
+                this.getDataInStore,
                 this.options
             ),
             fileUploadApi: storageWebservice.uploadMultiPartFile(
                 prefix,
                 this.restController,
                 this.securityController,
-                this.databaseController,
                 this.authController,
                 this.storageController,
-                this.databaseAdapter,
                 this.filesAdapter,
+                this.purgeNodeValue,
+                this.getNodes,
+                this.getNode,
+                this.getDataInStore,
+                this.upsertNode,
+                this.upsertDataInStore,
                 this.options
             ),
             fileUploadV2Api: storageWebservice.uploadMultiPartFileV2(
                 prefix,
                 this.restController,
                 this.securityController,
-                this.databaseController,
                 this.authController,
                 this.storageController,
-                this.databaseAdapter,
                 this.filesAdapter,
+                this.purgeNodeValue,
+                this.getNodes,
+                this.getNode,
+                this.getDataInStore,
+                this.upsertNode,
+                this.upsertDataInStore,
                 this.options
             ),
             getUploadFileV2: storageWebservice.getUploadFileV2(prefix),
@@ -142,22 +174,7 @@ export class WebServices {
     } {
         const changesWebService = new ChangesWebservice();
         return {
-            changes: changesWebService.changes(
-                config,
-                prefix,
-                this.databaseController,
-                this.securityController,
-                this.databaseAdapter
-            ),
-            // syncs: changesWebService.syncs(
-            //     config,
-            //     prefix,
-            //     this.databaseController,
-            //     this.securityController,
-            //     this.databaseAdapter,
-            //     this.options
-            // ),
-            // syncsEndpoint: changesWebService.syncsEndpoint()
+            changes: changesWebService.changes(config, prefix, this.securityController,)
         };
     }
 
@@ -171,11 +188,15 @@ export class WebServices {
                 this.rulesController,
                 this.authController,
                 this.updateRuleController,
-                this.databaseController,
                 this.storageController,
                 this.authAdapter,
                 this.filesAdapter,
-                this.databaseAdapter,
+                this.getNodes,
+                this.getNode,
+                this.getDataInStore,
+                this.upsertNode,
+                this.upsertDataInStore,
+                this.purgeNodeValue,
                 this.options
             ),
             jwk: restWebService.authJwk(

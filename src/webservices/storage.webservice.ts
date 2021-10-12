@@ -1,13 +1,20 @@
 import {functions} from 'bfast';
 import {FunctionsModel} from '../model/functions.model';
 import {RestController} from "../controllers/rest.controller";
-import {BFastDatabaseOptions} from "../bfast-database.option";
+import {BFastOptions} from "../bfast-database.option";
 import {SecurityController} from "../controllers/security.controller";
-import {DatabaseController} from "../controllers/database.controller";
-import {DatabaseAdapter} from "../adapters/database.adapter";
 import {AuthController} from "../controllers/auth.controller";
 import {StorageController} from "../controllers/storage.controller";
 import {FilesAdapter} from "../adapters/files.adapter";
+import {
+    GetDataFn,
+    GetNodeFn,
+    GetNodesFn,
+    PurgeDataFn,
+    PurgeNodeValueFn,
+    UpsertDataFn,
+    UpsertNodeFn
+} from "../adapters/database.adapter";
 
 
 export class StorageWebservice {
@@ -17,12 +24,14 @@ export class StorageWebservice {
     handleGetFile(
         securityController: SecurityController,
         restController: RestController,
-        databaseController: DatabaseController,
         storageController: StorageController,
         authController: AuthController,
-        databaseAdapter: DatabaseAdapter,
         filesAdapter: FilesAdapter,
-        options: BFastDatabaseOptions
+        purgeDataInStore: PurgeDataFn,
+        getNodes: GetNodesFn<any>,
+        getNode,
+        getDataInStore,
+        options: BFastOptions
     ): any[] {
         return [
             (request, _, next) => {
@@ -50,10 +59,12 @@ export class StorageWebservice {
                     rq,
                     rs,
                     n,
-                    databaseController,
                     securityController,
-                    databaseAdapter,
                     authController,
+                    purgeDataInStore,
+                    getNodes,
+                    getNode,
+                    getDataInStore,
                     options
                 ),
             (rq, rs, n) => restController
@@ -62,8 +73,9 @@ export class StorageWebservice {
                     rs,
                     n,
                     storageController,
-                    databaseAdapter,
                     filesAdapter,
+                    getNode,
+                    getDataInStore,
                     options
                 )
         ];
@@ -72,12 +84,16 @@ export class StorageWebservice {
     handleUploadFile(
         restController: RestController,
         securityController: SecurityController,
-        databaseController: DatabaseController,
         authController: AuthController,
         storageController: StorageController,
-        databaseAdapter: DatabaseAdapter,
         filesAdapter: FilesAdapter,
-        options: BFastDatabaseOptions
+        purgeNodeValue: PurgeNodeValueFn,
+        getNodes: GetNodesFn<any>,
+        getNode: GetNodeFn,
+        getDataInStore: GetDataFn,
+        upsertNode: UpsertNodeFn<any>,
+        upsertDataInStore: UpsertDataFn<any>,
+        options: BFastOptions
     ): any[] {
         return [
             (request, response, next) => {
@@ -105,10 +121,12 @@ export class StorageWebservice {
                     rq,
                     rs,
                     n,
-                    databaseController,
                     securityController,
-                    databaseAdapter,
                     authController,
+                    purgeNodeValue,
+                    getNodes,
+                    getNode,
+                    getDataInStore,
                     options
                 ),
             (rq, rs, n) => restController
@@ -118,8 +136,9 @@ export class StorageWebservice {
                     n,
                     storageController,
                     securityController,
-                    databaseAdapter,
                     filesAdapter,
+                    upsertNode,
+                    upsertDataInStore,
                     options
                 )
         ];
@@ -128,12 +147,14 @@ export class StorageWebservice {
     handleGetThumbnail(
         restController: RestController,
         securityController: SecurityController,
-        databaseController: DatabaseController,
         authController: AuthController,
         storageController: StorageController,
-        databaseAdapter: DatabaseAdapter,
         filesAdapter: FilesAdapter,
-        options: BFastDatabaseOptions
+        purgeNodeValue: PurgeNodeValueFn,
+        getNodes: GetNodesFn<any>,
+        getNode: GetNodeFn,
+        getDataInStore: GetDataFn,
+        options: BFastOptions
     ): any[] {
         return [
             (request, _, next) => {
@@ -148,10 +169,12 @@ export class StorageWebservice {
                     rq,
                     rs,
                     n,
-                    databaseController,
                     securityController,
-                    databaseAdapter,
                     authController,
+                    purgeNodeValue,
+                    getNodes,
+                    getNode,
+                    getDataInStore,
                     options
                 ),
             (rq, rs, n) => restController.getThumbnail(
@@ -159,8 +182,9 @@ export class StorageWebservice {
                 rs,
                 n,
                 storageController,
-                databaseAdapter,
                 filesAdapter,
+                getNode,
+                getDataInStore,
                 options
             )
         ];
@@ -169,12 +193,14 @@ export class StorageWebservice {
     handleListFiles(
         restController: RestController,
         securityController: SecurityController,
-        databaseController: DatabaseController,
         authController: AuthController,
         storageController: StorageController,
-        databaseAdapter: DatabaseAdapter,
         filesAdapter: FilesAdapter,
-        options: BFastDatabaseOptions
+        purgeNodeValue: PurgeNodeValueFn,
+        getNodes: GetNodesFn<any>,
+        getNode: GetNodeFn,
+        getDataInStore: GetDataFn,
+        options: BFastOptions
     ): any[] {
         return [
             (request, _, next) => {
@@ -194,10 +220,12 @@ export class StorageWebservice {
                     rq,
                     rs,
                     n,
-                    databaseController,
                     securityController,
-                    databaseAdapter,
                     authController,
+                    purgeNodeValue,
+                    getNodes,
+                    getNode,
+                    getDataInStore,
                     options
                 ),
             (rq, rs, n) => restController.getAllFiles(
@@ -205,8 +233,12 @@ export class StorageWebservice {
                 rs,
                 n,
                 storageController,
-                databaseAdapter,
                 filesAdapter,
+                purgeNodeValue,
+                getNodes,
+                getNode,
+                getDataInStore,
+                securityController,
                 options
             )
         ];
@@ -232,21 +264,25 @@ export class StorageWebservice {
         prefix = '/',
         restController: RestController,
         securityController: SecurityController,
-        databaseController: DatabaseController,
         authController: AuthController,
         storageController: StorageController,
-        databaseAdapter: DatabaseAdapter,
         filesAdapter: FilesAdapter,
-        options: BFastDatabaseOptions
+        purgeNodeValue: PurgeNodeValueFn,
+        getNodes: GetNodesFn<any>,
+        getNode: GetNodeFn,
+        getDataInStore: GetDataFn,
+        options: BFastOptions
     ): FunctionsModel {
         return functions().onHttpRequest(`${prefix}files/:appId/:filename`, this.handleGetFile(
             securityController,
             restController,
-            databaseController,
             storageController,
             authController,
-            databaseAdapter,
             filesAdapter,
+            purgeNodeValue,
+            getNodes,
+            getNode,
+            getDataInStore,
             options
         ));
     }
@@ -255,21 +291,25 @@ export class StorageWebservice {
         prefix = '/',
         restController: RestController,
         securityController: SecurityController,
-        databaseController: DatabaseController,
         authController: AuthController,
         storageController: StorageController,
-        databaseAdapter: DatabaseAdapter,
         filesAdapter: FilesAdapter,
-        options: BFastDatabaseOptions
+        purgeNodeValue: PurgeNodeValueFn,
+        getNodes: GetNodesFn<any>,
+        getNode: GetNodeFn,
+        getDataInStore: GetDataFn,
+        options: BFastOptions
     ): FunctionsModel {
         return functions().onHttpRequest(`${prefix}storage/:appId/file/:filename`, this.handleGetFile(
             securityController,
             restController,
-            databaseController,
             storageController,
             authController,
-            databaseAdapter,
             filesAdapter,
+            purgeNodeValue,
+            getNodes,
+            getNode,
+            getDataInStore,
             options
         ));
     }
@@ -278,21 +318,25 @@ export class StorageWebservice {
         prefix = '/',
         restController: RestController,
         securityController: SecurityController,
-        databaseController: DatabaseController,
         authController: AuthController,
         storageController: StorageController,
-        databaseAdapter: DatabaseAdapter,
         filesAdapter: FilesAdapter,
-        options: BFastDatabaseOptions
+        purgeNodeValue: PurgeNodeValueFn,
+        getNodes: GetNodesFn<any>,
+        getNode: GetNodeFn,
+        getDataInStore: GetDataFn,
+        options: BFastOptions
     ): FunctionsModel {
         return functions().onHttpRequest(`${prefix}v2/storage/:appId/file/:filename`, this.handleGetFile(
             securityController,
             restController,
-            databaseController,
             storageController,
             authController,
-            databaseAdapter,
             filesAdapter,
+            purgeNodeValue,
+            getNodes,
+            getNode,
+            getDataInStore,
             options
         ));
     }
@@ -301,21 +345,25 @@ export class StorageWebservice {
         prefix = '/',
         restController: RestController,
         securityController: SecurityController,
-        databaseController: DatabaseController,
         authController: AuthController,
         storageController: StorageController,
-        databaseAdapter: DatabaseAdapter,
         filesAdapter: FilesAdapter,
-        options: BFastDatabaseOptions
+        purgeNodeValue: PurgeNodeValueFn,
+        getNodes: GetNodesFn<any>,
+        getNode: GetNodeFn,
+        getDataInStore: GetDataFn,
+        options: BFastOptions
     ): FunctionsModel {
         return functions().onGetHttpRequest(`${prefix}storage/:appId/file/:filename/thumbnail`, this.handleGetThumbnail(
             restController,
             securityController,
-            databaseController,
             authController,
             storageController,
-            databaseAdapter,
             filesAdapter,
+            purgeNodeValue,
+            getNodes,
+            getNode,
+            getDataInStore,
             options
         ));
     }
@@ -324,21 +372,25 @@ export class StorageWebservice {
         prefix = '/',
         restController: RestController,
         securityController: SecurityController,
-        databaseController: DatabaseController,
         authController: AuthController,
         storageController: StorageController,
-        databaseAdapter: DatabaseAdapter,
         filesAdapter: FilesAdapter,
-        options: BFastDatabaseOptions
+        purgeNodeValue: PurgeNodeValueFn,
+        getNodes: GetNodesFn<any>,
+        getNode: GetNodeFn,
+        getDataInStore: GetDataFn,
+        options: BFastOptions
     ): FunctionsModel {
         return functions().onGetHttpRequest(`${prefix}v2/storage/:appId/file/:filename/thumbnail`, this.handleGetThumbnail(
             restController,
             securityController,
-            databaseController,
             authController,
             storageController,
-            databaseAdapter,
             filesAdapter,
+            purgeNodeValue,
+            getNodes,
+            getNode,
+            getDataInStore,
             options
         ));
     }
@@ -347,21 +399,29 @@ export class StorageWebservice {
         prefix = '/',
         restController: RestController,
         securityController: SecurityController,
-        databaseController: DatabaseController,
         authController: AuthController,
         storageController: StorageController,
-        databaseAdapter: DatabaseAdapter,
         filesAdapter: FilesAdapter,
-        options: BFastDatabaseOptions
+        purgeNodeValue,
+        getNodes,
+        getNode,
+        getDataInStore,
+        upsertNode: UpsertNodeFn<any>,
+        upsertDataInStore: UpsertDataFn<any>,
+        options: BFastOptions
     ): FunctionsModel {
         return functions().onPostHttpRequest(`${prefix}storage/:appId`, this.handleUploadFile(
             restController,
             securityController,
-            databaseController,
             authController,
             storageController,
-            databaseAdapter,
             filesAdapter,
+            purgeNodeValue,
+            getNodes,
+            getNode,
+            getDataInStore,
+            upsertNode,
+            upsertDataInStore,
             options
         ));
     }
@@ -370,21 +430,29 @@ export class StorageWebservice {
         prefix = '/',
         restController: RestController,
         securityController: SecurityController,
-        databaseController: DatabaseController,
         authController: AuthController,
         storageController: StorageController,
-        databaseAdapter: DatabaseAdapter,
         filesAdapter: FilesAdapter,
-        options: BFastDatabaseOptions
+        purgeNodeValue,
+        getNodes,
+        getNode,
+        getDataInStore,
+        upsertNode: UpsertNodeFn<any>,
+        upsertDataInStore: UpsertDataFn<any>,
+        options: BFastOptions
     ): FunctionsModel {
         return functions().onPostHttpRequest(`${prefix}v2/storage/:appId`, this.handleUploadFile(
             restController,
             securityController,
-            databaseController,
             authController,
             storageController,
-            databaseAdapter,
             filesAdapter,
+            purgeNodeValue,
+            getNodes,
+            getNode,
+            getDataInStore,
+            upsertNode,
+            upsertDataInStore,
             options
         ));
     }
@@ -393,21 +461,25 @@ export class StorageWebservice {
         prefix = '/',
         restController: RestController,
         securityController: SecurityController,
-        databaseController: DatabaseController,
         authController: AuthController,
         storageController: StorageController,
-        databaseAdapter: DatabaseAdapter,
         filesAdapter: FilesAdapter,
-        options: BFastDatabaseOptions
+        purgeNodeValue,
+        getNodes,
+        getNode,
+        getDataInStore,
+        options: BFastOptions
     ): FunctionsModel {
         return functions().onGetHttpRequest(`${prefix}storage/:appId/list`, this.handleListFiles(
             restController,
             securityController,
-            databaseController,
             authController,
             storageController,
-            databaseAdapter,
             filesAdapter,
+            purgeNodeValue,
+            getNodes,
+            getNode,
+            getDataInStore,
             options
         ));
     }
@@ -416,21 +488,25 @@ export class StorageWebservice {
         prefix = '/',
         restController: RestController,
         securityController: SecurityController,
-        databaseController: DatabaseController,
         authController: AuthController,
         storageController: StorageController,
-        databaseAdapter: DatabaseAdapter,
         filesAdapter: FilesAdapter,
-        options: BFastDatabaseOptions
+        purgeNodeValue,
+        getNodes,
+        getNode,
+        getDataInStore,
+        options: BFastOptions
     ): FunctionsModel {
         return functions().onGetHttpRequest(`${prefix}v2/storage/:appId/list`, this.handleListFiles(
             restController,
             securityController,
-            databaseController,
             authController,
             storageController,
-            databaseAdapter,
             filesAdapter,
+            purgeNodeValue,
+            getNodes,
+            getNode,
+            getDataInStore,
             options
         ));
     }

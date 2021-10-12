@@ -4,17 +4,24 @@ import formidable from 'formidable';
 import {readFile} from 'fs';
 import {promisify} from "util";
 import mime from 'mime'
-import {DatabaseController} from "./database.controller";
 import {StorageController} from "./storage.controller";
-import {BFastDatabaseOptions} from "../bfast-database.option";
+import {BFastOptions} from "../bfast-database.option";
 import {AuthController} from "./auth.controller";
 import {NextFunction, Request, Response} from 'express'
 import {SecurityController} from "./security.controller";
 import {RulesController} from "./rules.controller";
-import {DatabaseAdapter} from "../adapters/database.adapter";
 import {AuthAdapter} from "../adapters/auth.adapter";
 import {UpdateRuleController} from "./update.rule.controller";
 import {FilesAdapter} from "../adapters/files.adapter";
+import {
+    GetDataFn,
+    GetNodeFn,
+    GetNodesFn,
+    PurgeNodeFn,
+    PurgeNodeValueFn,
+    UpsertDataFn,
+    UpsertNodeFn
+} from "../adapters/database.adapter";
 
 export class RestController {
     constructor() {
@@ -25,18 +32,18 @@ export class RestController {
         response: Response,
         _: NextFunction,
         storageController: StorageController,
-        databaseAdapter: DatabaseAdapter,
         filesAdapter: FilesAdapter,
+        getNode: GetNodeFn,
+        getDataInStore: GetDataFn,
         options
     ): void {
         if (request?.method?.toString()?.toLowerCase() === 'head') {
-            storageController.fileInfo(request, response, databaseAdapter, filesAdapter, options);
+            storageController.fileInfo(request, response, getNode, getDataInStore, filesAdapter, options);
         } else if (storageController.isS3(filesAdapter) === true) {
             storageController.handleGetFileBySignedUrl(
                 request,
                 response,
                 false,
-                databaseAdapter,
                 filesAdapter,
                 options
             );
@@ -45,8 +52,9 @@ export class RestController {
                 request,
                 response,
                 false,
-                databaseAdapter,
                 filesAdapter,
+                getNode,
+                getDataInStore,
                 options
             );
         }
@@ -57,25 +65,27 @@ export class RestController {
         response: Response,
         _: NextFunction,
         storageController: StorageController,
-        databaseAdapter: DatabaseAdapter,
         filesAdapter: FilesAdapter,
-        options: BFastDatabaseOptions
+        getNode: GetNodeFn,
+        getDataInStore: GetDataFn,
+        options: BFastOptions
     ): void {
         if (storageController.isS3(filesAdapter) === true) {
             storageController.handleGetFileBySignedUrl(
                 request,
                 response,
                 true,
-                databaseAdapter,
                 filesAdapter,
-                options);
+                options
+            );
         } else {
             storageController.handleGetFileRequest(
                 request,
                 response,
                 true,
-                databaseAdapter,
                 filesAdapter,
+                getNode,
+                getDataInStore,
                 options
             );
         }
@@ -86,9 +96,13 @@ export class RestController {
         response: Response,
         _: NextFunction,
         storageController: StorageController,
-        databaseAdapter: DatabaseAdapter,
         filesAdapter: FilesAdapter,
-        options: BFastDatabaseOptions
+        purgeNodeValue: PurgeNodeValueFn,
+        getNodes: GetNodesFn<any>,
+        getNode: GetNodeFn,
+        getDataInStore: GetDataFn,
+        security: SecurityController,
+        options: BFastOptions
     ): void {
         storageController.listFiles({
                 skip: request.query.skip ? parseInt(request.query.skip.toString()) : 0,
@@ -96,9 +110,14 @@ export class RestController {
                 size: request.query.size ? parseInt(request.query.size.toString()) : 20,
                 prefix: request.query.prefix ? request.query.prefix.toString() : '',
             },
-            databaseAdapter,
             filesAdapter,
-            options).then(value => {
+            purgeNodeValue,
+            getNodes,
+            getNode,
+            getDataInStore,
+            security,
+            options
+        ).then(value => {
             response.json(value);
         }).catch(reason => {
             response.status(StatusCodes.EXPECTATION_FAILED).send({message: reason.toString()});
@@ -111,9 +130,10 @@ export class RestController {
         _: NextFunction,
         storageController: StorageController,
         securityController: SecurityController,
-        databaseAdapter: DatabaseAdapter,
         filesAdapter: FilesAdapter,
-        options: BFastDatabaseOptions
+        upsertNode: UpsertNodeFn<any>,
+        upsertDataInStore: UpsertDataFn<any>,
+        options: BFastOptions
     ): void {
         const contentType = request.get('content-type').split(';')[0].toString().trim();
         if (contentType !== 'multipart/form-data'.trim()) {
@@ -154,8 +174,9 @@ export class RestController {
                             size: file.size,
                             name: fileMeta.name
                         }, request.body.context,
-                        databaseAdapter,
                         filesAdapter,
+                        upsertNode,
+                        upsertDataInStore,
                         securityController,
                         options);
                     urls.push(result);
@@ -175,8 +196,9 @@ export class RestController {
                             name: fileMeta.name
                         },
                         request.body.context,
-                        databaseAdapter,
                         filesAdapter,
+                        upsertNode,
+                        upsertDataInStore,
                         securityController,
                         options
                     );
@@ -194,7 +216,7 @@ export class RestController {
         request: any,
         response: any,
         next: any,
-        options: BFastDatabaseOptions
+        options: BFastOptions
     ): void {
         const applicationId = request.body.applicationId;
         if (applicationId === options.applicationId) {
@@ -211,18 +233,22 @@ export class RestController {
         request: Request,
         response: Response,
         next: NextFunction,
-        databaseController: DatabaseController,
         securityController: SecurityController,
-        databaseAdapter: DatabaseAdapter,
         authController: AuthController,
-        options: BFastDatabaseOptions
+        purgeNodeValue: PurgeNodeValueFn,
+        getNodes: GetNodesFn<any>,
+        getNode: GetNodeFn,
+        getDataInStore: GetDataFn,
+        options: BFastOptions
     ): void {
         authController.hasPermission(
             request.body.ruleId,
-            databaseController,
             securityController,
-            databaseAdapter,
             request.body.context,
+            purgeNodeValue,
+            getNodes,
+            getNode,
+            getDataInStore,
             options
         ).then(value => {
             if (value === true) {
@@ -240,7 +266,7 @@ export class RestController {
         response: Response,
         next: NextFunction,
         securityController: SecurityController,
-        options: BFastDatabaseOptions
+        options: BFastOptions
     ): void {
         const token = request.body.token;
         const headerToken = request.headers['x-bfast-token'];
@@ -306,13 +332,18 @@ export class RestController {
         rulesController: RulesController,
         authController: AuthController,
         updateRuleController: UpdateRuleController,
-        databaseController: DatabaseController,
         securityController: SecurityController,
         storageController: StorageController,
         authAdapter: AuthAdapter,
-        databaseAdapter: DatabaseAdapter,
         filesAdapter: FilesAdapter,
-        options: BFastDatabaseOptions,
+        purgeNodeValue: PurgeNodeValueFn,
+        getNodes: GetNodesFn<any>,
+        getNode: GetNodeFn,
+        getDataInStore: GetDataFn,
+        upsertNode: UpsertNodeFn<any>,
+        upsertDataInStore: UpsertDataFn<any>,
+        purgeNode: PurgeNodeFn,
+        options: BFastOptions,
     ): void {
         const body = request.body;
         const results: RuleResponse = {errors: {}};
@@ -320,19 +351,28 @@ export class RestController {
             body,
             results,
             authController,
-            databaseController,
             securityController,
             authAdapter,
-            databaseAdapter,
+            purgeNodeValue,
+            getNodes,
+            getNode,
+            getDataInStore,
+            upsertNode,
+            upsertDataInStore,
             options
         ).then(_1 => {
             return rulesController.handleAuthorizationRule(
                 body,
                 results,
                 authController,
-                databaseController,
                 securityController,
-                databaseAdapter,
+                upsertNode,
+                upsertDataInStore,
+                purgeNodeValue,
+                getNodes,
+                getNode,
+                getDataInStore,
+                purgeNode,
                 options
             );
         }).then(_2 => {
@@ -340,9 +380,13 @@ export class RestController {
                 body,
                 results,
                 authController,
-                databaseController,
                 securityController,
-                databaseAdapter,
+                getNodes,
+                getNode,
+                getDataInStore,
+                upsertNode,
+                upsertDataInStore,
+                purgeNodeValue,
                 options,
                 null
             );
@@ -352,9 +396,13 @@ export class RestController {
                 results,
                 updateRuleController,
                 authController,
-                databaseController,
                 securityController,
-                databaseAdapter,
+                purgeNodeValue,
+                getNodes,
+                getNode,
+                getDataInStore,
+                upsertNode,
+                upsertDataInStore,
                 options,
                 null
             );
@@ -363,9 +411,12 @@ export class RestController {
                 body,
                 results,
                 authController,
-                databaseController,
                 securityController,
-                databaseAdapter,
+                purgeNodeValue,
+                getNodes,
+                getNode,
+                getDataInStore,
+                purgeNode,
                 options,
                 null
             );
@@ -374,9 +425,11 @@ export class RestController {
                 body,
                 results,
                 authController,
-                databaseController,
                 securityController,
-                databaseAdapter,
+                getNodes,
+                getNode,
+                getDataInStore,
+                purgeNodeValue,
                 options,
                 null
             );
@@ -386,9 +439,14 @@ export class RestController {
                 results,
                 updateRuleController,
                 authController,
-                databaseController,
                 securityController,
-                databaseAdapter,
+                getNodes,
+                getNode,
+                getDataInStore,
+                upsertNode,
+                upsertDataInStore,
+                purgeNodeValue,
+                purgeNode,
                 options
             );
         }).then(_8 => {
@@ -397,11 +455,15 @@ export class RestController {
                 results,
                 storageController,
                 authController,
-                databaseController,
                 securityController,
                 authAdapter,
-                databaseAdapter,
                 filesAdapter,
+                purgeNodeValue,
+                getNodes,
+                getNode,
+                getDataInStore,
+                upsertNode,
+                upsertDataInStore,
                 options
             );
         }).then(_9 => {

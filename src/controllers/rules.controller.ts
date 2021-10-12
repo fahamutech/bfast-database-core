@@ -1,16 +1,24 @@
 import {RuleResponse, RulesModel} from '../model/rules.model';
 import {UpdateRuleRequestModel} from '../model/update-rule-request.model';
 import {DeleteModel} from '../model/delete-model';
-import {DatabaseController} from './database.controller';
 import {AuthController} from './auth.controller';
 import {StorageController} from './storage.controller';
 import {UpdateRuleController} from './update.rule.controller';
-import {BFastDatabaseOptions} from '../bfast-database.option';
+import {BFastOptions} from '../bfast-database.option';
 import {devLog} from "../utils/debug.util";
 import {SecurityController} from "./security.controller";
 import {AuthAdapter} from "../adapters/auth.adapter";
-import {DatabaseAdapter} from "../adapters/database.adapter";
 import {FilesAdapter} from "../adapters/files.adapter";
+import {bulk, findByFilter, remove, writeMany, writeOne} from "./database.controller";
+import {
+    GetDataFn,
+    GetNodeFn,
+    GetNodesFn,
+    PurgeNodeFn,
+    PurgeNodeValueFn,
+    UpsertDataFn,
+    UpsertNodeFn
+} from "../adapters/database.adapter";
 
 export class RulesController {
 
@@ -28,21 +36,29 @@ export class RulesController {
         rules: RulesModel,
         ruleResponse: RuleResponse,
         authController: AuthController,
-        databaseController: DatabaseController,
         securityController: SecurityController,
         authAdapter: AuthAdapter,
-        databaseAdapter: DatabaseAdapter,
-        options: BFastDatabaseOptions,
+        purgeNodeValue: PurgeNodeValueFn,
+        getNodes: GetNodesFn<any>,
+        getNode: GetNodeFn,
+        getDataInStore: GetDataFn,
+        upsertNode: UpsertNodeFn<any>,
+        upsertDataInStore: UpsertDataFn<any>,
+        options: BFastOptions,
     ): Promise<RuleResponse> {
         try {
             return this.processAuthenticationBlock(
                 ruleResponse,
                 rules,
                 authController,
-                databaseController,
                 securityController,
                 authAdapter,
-                databaseAdapter,
+                purgeNodeValue,
+                getNodes,
+                getNode,
+                getDataInStore,
+                upsertNode,
+                upsertDataInStore,
                 options
             );
         } catch (e) {
@@ -59,11 +75,15 @@ export class RulesController {
         ruleResponse: RuleResponse,
         rules: RulesModel,
         authController: AuthController,
-        databaseController: DatabaseController,
         securityController: SecurityController,
         authAdapter: AuthAdapter,
-        databaseAdapter: DatabaseAdapter,
-        options: BFastDatabaseOptions,
+        purgeNodeValue: PurgeNodeValueFn,
+        getNodes: GetNodesFn<any>,
+        getNode: GetNodeFn,
+        getDataInStore: GetDataFn,
+        upsertNode: UpsertNodeFn<any>,
+        upsertDataInStore: UpsertDataFn<any>,
+        options: BFastOptions,
     ) {
         const authenticationRules = this.getRulesKey(rules).filter(rule => rule.startsWith('auth'));
         if (authenticationRules.length === 0) {
@@ -77,11 +97,15 @@ export class RulesController {
                 if (action === 'signUp') {
                     const signUpResponse = await authController.signUp(
                         data,
-                        databaseController,
                         securityController,
-                        databaseAdapter,
                         authAdapter,
                         rules.context,
+                        purgeNodeValue,
+                        getNodes,
+                        getNode,
+                        getDataInStore,
+                        upsertNode,
+                        upsertDataInStore,
                         options
                     );
                     ruleResponse.auth = {};
@@ -89,11 +113,13 @@ export class RulesController {
                 } else if (action === 'signIn') {
                     const signInResponse = await authController.signIn(
                         data,
-                        databaseController,
                         securityController,
                         authAdapter,
-                        databaseAdapter,
                         rules.context,
+                        purgeNodeValue,
+                        getNodes,
+                        getNode,
+                        getDataInStore,
                         options
                     );
                     ruleResponse.auth = {};
@@ -119,10 +145,15 @@ export class RulesController {
         rules: RulesModel,
         ruleResponse: RuleResponse,
         authController: AuthController,
-        databaseController: DatabaseController,
         securityController: SecurityController,
-        databaseAdapter: DatabaseAdapter,
-        options: BFastDatabaseOptions,
+        upsertNode: UpsertNodeFn<any>,
+        upsertDataInStore: UpsertDataFn<any>,
+        purgeNodeValue: PurgeNodeValueFn,
+        getNodes: GetNodesFn<any>,
+        getNode: GetNodeFn,
+        getDataInStore: GetDataFn,
+        purgeNode: PurgeNodeFn,
+        options: BFastOptions,
     ): Promise<RuleResponse> {
         try {
             const policyRules = this.getRulesKey(rules).filter(rule => rule.startsWith('policy'));
@@ -148,10 +179,10 @@ export class RulesController {
                             authorizationResults[rule] = await authController.addPolicyRule(
                                 rule,
                                 data[rule],
-                                databaseController,
                                 securityController,
-                                databaseAdapter,
                                 rules.context,
+                                upsertNode,
+                                upsertDataInStore,
                                 options
                             );
                         }
@@ -159,10 +190,12 @@ export class RulesController {
                         ruleResponse.policy[action] = authorizationResults;
                     } else if (action === 'list' && typeof data === 'object') {
                         const listResponse = await authController.listPolicyRule(
-                            databaseController,
                             securityController,
-                            databaseAdapter,
                             rules.context,
+                            purgeNodeValue,
+                            getNodes,
+                            getNode,
+                            getDataInStore,
                             options
                         );
                         ruleResponse.policy = {};
@@ -170,10 +203,13 @@ export class RulesController {
                     } else if (action === 'remove' && typeof data === 'object') {
                         const removeResponse = await authController.removePolicyRule(
                             data.ruleId,
-                            databaseController,
                             securityController,
-                            databaseAdapter,
                             rules.context,
+                            purgeNodeValue,
+                            getNodes,
+                            getNode,
+                            getDataInStore,
+                            purgeNode,
                             options
                         );
                         ruleResponse.policy = {};
@@ -204,10 +240,14 @@ export class RulesController {
         rules: RulesModel,
         ruleResponse: RuleResponse,
         authController: AuthController,
-        databaseController: DatabaseController,
         securityController: SecurityController,
-        databaseAdapter,
-        options: BFastDatabaseOptions,
+        getNodes: GetNodesFn<any>,
+        getNode: GetNodeFn,
+        getDataInStore: GetDataFn,
+        upsertNode: UpsertNodeFn<any>,
+        upsertDataInStore: UpsertDataFn<any>,
+        purgeNodeValue: PurgeNodeValueFn,
+        options: BFastOptions,
         transactionSession: any
     ): Promise<RuleResponse> {
         try {
@@ -220,10 +260,12 @@ export class RulesController {
                 const createRuleRequest = rules[createRule];
                 const allowed = await authController.hasPermission(
                     `create.${domain}`,
-                    databaseController,
                     securityController,
-                    databaseAdapter,
                     rules?.context,
+                    purgeNodeValue,
+                    getNodes,
+                    getNode,
+                    getDataInStore,
                     options
                 );
                 if (allowed !== true) {
@@ -237,11 +279,12 @@ export class RulesController {
                 try {
                     let result;
                     if (createRuleRequest && Array.isArray(createRuleRequest)) {
-                        result = await databaseController.writeMany(
+                        result = await writeMany(
                             domain,
                             createRuleRequest,
                             false,
-                            databaseAdapter,
+                            upsertNode,
+                            upsertDataInStore,
                             securityController,
                             rules?.context,
                             {
@@ -250,11 +293,12 @@ export class RulesController {
                             },
                             options);
                     } else {
-                        result = await databaseController.writeOne(
+                        result = await writeOne(
                             domain,
                             createRuleRequest,
                             false,
-                            databaseAdapter,
+                            upsertNode,
+                            upsertDataInStore,
                             securityController,
                             rules?.context,
                             {
@@ -295,10 +339,13 @@ export class RulesController {
         rulesBlockModel: RulesModel,
         ruleResultModel: RuleResponse,
         authController: AuthController,
-        databaseController: DatabaseController,
         securityController: SecurityController,
-        databaseAdapter,
-        options: BFastDatabaseOptions,
+        purgeNodeValue: PurgeNodeValueFn,
+        getNodes: GetNodesFn<any>,
+        getNode: GetNodeFn,
+        getDataInStore: GetDataFn,
+        purgeNode: PurgeNodeFn,
+        options: BFastOptions,
         transactionSession: any
     ): Promise<RuleResponse> {
         try {
@@ -311,10 +358,12 @@ export class RulesController {
                 const rulesBlockModelElement: DeleteModel<any> = rulesBlockModel[deleteRule];
                 const allowed = await authController.hasPermission(
                     `delete.${domain}`,
-                    databaseController,
                     securityController,
-                    databaseAdapter,
                     rulesBlockModel?.context,
+                    purgeNodeValue,
+                    getNodes,
+                    getNode,
+                    getDataInStore,
                     options
                 );
                 if (allowed !== true) {
@@ -331,10 +380,14 @@ export class RulesController {
                         delete rulesBlockModelElement.filter;
                         filter._id = rulesBlockModelElement.id;
                         rulesBlockModelElement.filter = filter;
-                        ruleResultModel[deleteRule] = await databaseController.delete(
+                        ruleResultModel[deleteRule] = await remove(
                             domain,
                             rulesBlockModelElement,
-                            databaseAdapter,
+                            purgeNodeValue,
+                            getNodes,
+                            getNode,
+                            getDataInStore,
+                            purgeNode,
                             securityController,
                             rulesBlockModel?.context,
                             {
@@ -353,10 +406,14 @@ export class RulesController {
                         if (rulesBlockModelElement?.filter && Object.keys(rulesBlockModelElement?.filter).length === 0) {
                             throw new Error('Empty filter map is not supported in delete rule');
                         }
-                        ruleResultModel[deleteRule] = await databaseController.delete(
+                        ruleResultModel[deleteRule] = await remove(
                             domain,
                             rulesBlockModelElement,
-                            databaseAdapter,
+                            purgeNodeValue,
+                            getNodes,
+                            getNode,
+                            getDataInStore,
+                            purgeNode,
                             securityController,
                             rulesBlockModel?.context,
                             {
@@ -397,10 +454,12 @@ export class RulesController {
         rulesBlockModel: RulesModel,
         ruleResultModel: RuleResponse,
         authController: AuthController,
-        databaseController: DatabaseController,
         securityController: SecurityController,
-        databaseAdapter,
-        options: BFastDatabaseOptions,
+        getNodes: GetNodesFn<any>,
+        getNode: GetNodeFn,
+        getDataInStore: GetDataFn,
+        purgeNodeValue: PurgeNodeValueFn,
+        options: BFastOptions,
         transactionSession: any
     ): Promise<RuleResponse> {
         try {
@@ -413,10 +472,12 @@ export class RulesController {
                 const rulesBlockModelElement = rulesBlockModel[queryRule];
                 const allowed = await authController.hasPermission(
                     `query.${domain}`,
-                    databaseController,
                     securityController,
-                    databaseAdapter,
                     rulesBlockModel?.context,
+                    purgeNodeValue,
+                    getNodes,
+                    getNode,
+                    getDataInStore,
                     options
                 );
                 if (allowed !== true) {
@@ -436,10 +497,13 @@ export class RulesController {
                         };
                     } else {
                         ruleResultModel[queryRule]
-                            = await databaseController.query(
+                            = await findByFilter(
                             domain,
                             rulesBlockModelElement,
-                            databaseAdapter,
+                            purgeNodeValue,
+                            getNodes,
+                            getNode,
+                            getDataInStore,
                             securityController,
                             rulesBlockModel?.context,
                             {
@@ -480,10 +544,15 @@ export class RulesController {
         ruleResultModel: RuleResponse,
         updateRuleController: UpdateRuleController,
         authController: AuthController,
-        databaseController: DatabaseController,
         securityController: SecurityController,
-        databaseAdapter,
-        options: BFastDatabaseOptions,
+        getNodes: GetNodesFn<any>,
+        getNode: GetNodeFn,
+        getDataInStore: GetDataFn,
+        upsertNode: UpsertNodeFn<any>,
+        upsertDataInStore: UpsertDataFn<any>,
+        purgeNodeValue: PurgeNodeValueFn,
+        purgeNode: PurgeNodeFn,
+        options: BFastOptions,
     ): Promise<RuleResponse> {
         try {
             const transactionRules = this.getRulesKey(rulesBlockModel).filter(rule => rule.startsWith('transaction'));
@@ -494,14 +563,18 @@ export class RulesController {
             const transaction = rulesBlockModel[transactionRule];
             const transactionOperationRules = transaction.commit;
             const resultObject: RuleResponse = {errors: {}};
-            await databaseController.bulk(databaseAdapter, async session => {
+            await bulk(async session => {
                 await this.handleCreateRules(
                     transactionOperationRules,
                     resultObject,
                     authController,
-                    databaseController,
                     securityController,
-                    databaseAdapter,
+                    getNodes,
+                    getNode,
+                    getDataInStore,
+                    upsertNode,
+                    upsertDataInStore,
+                    purgeNodeValue,
                     options,
                     session
                 );
@@ -510,9 +583,13 @@ export class RulesController {
                     resultObject,
                     updateRuleController,
                     authController,
-                    databaseController,
                     securityController,
-                    databaseAdapter,
+                    purgeNodeValue,
+                    getNodes,
+                    getNode,
+                    getDataInStore,
+                    upsertNode,
+                    upsertDataInStore,
                     options,
                     session
                 );
@@ -520,9 +597,11 @@ export class RulesController {
                     transactionOperationRules,
                     resultObject,
                     authController,
-                    databaseController,
                     securityController,
-                    databaseAdapter,
+                    getNodes,
+                    getNode,
+                    getDataInStore,
+                    purgeNodeValue,
                     options,
                     session
                 );
@@ -530,9 +609,12 @@ export class RulesController {
                     transactionOperationRules,
                     resultObject,
                     authController,
-                    databaseController,
                     securityController,
-                    databaseAdapter,
+                    purgeNodeValue,
+                    getNodes,
+                    getNode,
+                    getDataInStore,
+                    purgeNode,
                     options,
                     session
                 );
@@ -555,10 +637,14 @@ export class RulesController {
         ruleResponse: RuleResponse,
         updateRuleController: UpdateRuleController,
         authController: AuthController,
-        databaseController: DatabaseController,
         securityController: SecurityController,
-        databaseAdapter: DatabaseAdapter,
-        options: BFastDatabaseOptions,
+        purgeNodeValue: PurgeNodeValueFn,
+        getNodes: GetNodesFn<any>,
+        getNode: GetNodeFn,
+        getDataInStore: GetDataFn,
+        upsertNode: UpsertNodeFn<any>,
+        upsertDataInStore: UpsertDataFn<any>,
+        options: BFastOptions,
         transactionSession: any
     ): Promise<RuleResponse> {
         try {
@@ -571,10 +657,12 @@ export class RulesController {
                 const updateRuleRequests: UpdateRuleRequestModel = rules[updateRule];
                 const allowed = await authController.hasPermission(
                     `update.${domain}`,
-                    databaseController,
                     securityController,
-                    databaseAdapter,
                     rules.context,
+                    purgeNodeValue,
+                    getNodes,
+                    getNode,
+                    getDataInStore,
                     options
                 );
                 if (allowed !== true) {
@@ -592,9 +680,13 @@ export class RulesController {
                             const response = await updateRuleController.update(
                                 rules,
                                 domain,
-                                databaseAdapter,
+                                purgeNodeValue,
+                                getNodes,
+                                getNode,
+                                getDataInStore,
+                                upsertNode,
+                                upsertDataInStore,
                                 value,
-                                databaseController,
                                 securityController,
                                 null,
                                 options
@@ -606,9 +698,13 @@ export class RulesController {
                         ruleResponse[updateRule] = await updateRuleController.update(
                             rules,
                             domain,
-                            databaseAdapter,
+                            purgeNodeValue,
+                            getNodes,
+                            getNode,
+                            getDataInStore,
+                            upsertNode,
+                            upsertDataInStore,
                             updateRuleRequests,
-                            databaseController,
                             securityController,
                             null,
                             options
@@ -646,12 +742,16 @@ export class RulesController {
         ruleResultModel: RuleResponse,
         storageController: StorageController,
         authController: AuthController,
-        databaseController: DatabaseController,
         securityController: SecurityController,
         authAdapter: AuthAdapter,
-        databaseAdapter,
         filesAdapter: FilesAdapter,
-        options: BFastDatabaseOptions,
+        purgeNodeValue: PurgeNodeValueFn,
+        getNodes: GetNodesFn<any>,
+        getNode: GetNodeFn,
+        getDataInStore: GetDataFn,
+        upsertNode: UpsertNodeFn<any>,
+        upsertDataInStore: UpsertDataFn<any>,
+        options: BFastOptions,
     ): Promise<RuleResponse> {
         try {
             const fileRules = this.getRulesKey(rulesBlockModel).filter(rule => rule.startsWith('files'));
@@ -666,10 +766,12 @@ export class RulesController {
                     if (action === 'save') {
                         const allowed = await authController.hasPermission(
                             `files.save`,
-                            databaseController,
                             securityController,
-                            databaseAdapter,
                             rulesBlockModel.context,
+                            purgeNodeValue,
+                            getNodes,
+                            getNode,
+                            getDataInStore,
                             options
                         );
                         if (allowed !== true) {
@@ -684,17 +786,21 @@ export class RulesController {
                                 data,
                                 rulesBlockModel.context,
                                 filesAdapter,
-                                databaseAdapter,
+                                upsertNode,
+                                upsertDataInStore,
+                                securityController,
                                 options
                             );
                         }
                     } else if (action === 'delete') {
                         const allowed = await authController.hasPermission(
                             `files.delete`,
-                            databaseController,
                             securityController,
-                            databaseAdapter,
                             rulesBlockModel.context,
+                            purgeNodeValue,
+                            getNodes,
+                            getNode,
+                            getDataInStore,
                             options
                         );
                         if (allowed !== true) {
@@ -708,7 +814,11 @@ export class RulesController {
                             ruleResultModel.files.delete = await storageController.delete(
                                 data,
                                 rulesBlockModel.context,
-                                databaseAdapter,
+                                purgeNodeValue,
+                                getNodes,
+                                getNode,
+                                getDataInStore,
+                                securityController,
                                 filesAdapter,
                                 options
                             );
@@ -716,10 +826,12 @@ export class RulesController {
                     } else if (action === 'list') {
                         const allowed = await authController.hasPermission(
                             `files.list`,
-                            databaseController,
                             securityController,
-                            databaseAdapter,
                             rulesBlockModel.context,
+                            purgeNodeValue,
+                            getNodes,
+                            getNode,
+                            getDataInStore,
                             options
                         );
                         if (allowed !== true) {
@@ -736,9 +848,14 @@ export class RulesController {
                                 after: data.after,
                                 skip: data && data.skip ? data.skip : 0
                             },
-                                databaseAdapter,
                                 filesAdapter,
-                                options);
+                                purgeNodeValue,
+                                getNodes,
+                                getNode,
+                                getDataInStore,
+                                securityController,
+                                options
+                            );
                         }
                     }
                 } catch (e) {

@@ -2,10 +2,9 @@ const {mongoRepSet, config} = require('../../mock.config');
 const {assert, should} = require('chai');
 const {RulesController} = require("../../../dist/index");
 const {AuthFactory} = require("../../../dist/index");
-const {DatabaseFactory} = require("../../../dist/index");
 const {AuthController} = require("../../../dist/index");
-const {DatabaseController} = require("../../../dist/index");
 const {SecurityController} = require("../../../dist/index");
+const {purgeDataInStore, getNodes, getNode, getDataInStore, upsertNode, upsertDataInStore} = require("../../../dist");
 
 describe('RulesController::Auth Unit Test', function () {
 
@@ -32,11 +31,16 @@ describe('RulesController::Auth Unit Test', function () {
                     }
                 }, results,
                 new AuthController(),
-                new DatabaseController(),
                 new SecurityController(),
                 new AuthFactory(),
-                new DatabaseFactory(),
+                purgeDataInStore,
+                getNodes,
+                getNode,
+                getDataInStore,
+                upsertNode,
+                upsertDataInStore,
                 config);
+            console.log(results);
             assert(results.auth['signUp'] !== undefined);
             assert(results.auth['signUp'] !== null);
             assert(results.auth['signUp'].username === 'doe');
@@ -58,10 +62,14 @@ describe('RulesController::Auth Unit Test', function () {
                 },
                 {errors: {}},
                 new AuthController(),
-                new DatabaseController(),
                 new SecurityController(),
                 new AuthFactory(),
-                new DatabaseFactory(),
+                purgeDataInStore,
+                getNodes,
+                getNode,
+                getDataInStore,
+                upsertNode,
+                upsertDataInStore,
                 config
             );
             should().not.exist(results.auth);
@@ -82,10 +90,14 @@ describe('RulesController::Auth Unit Test', function () {
                 },
                 results,
                 new AuthController(),
-                new DatabaseController(),
                 new SecurityController(),
                 new AuthFactory(),
-                new DatabaseFactory(),
+                purgeDataInStore,
+                getNodes,
+                getNode,
+                getDataInStore,
+                upsertNode,
+                upsertDataInStore,
                 config
             )
             should().not.exist(results.auth);
@@ -105,10 +117,14 @@ describe('RulesController::Auth Unit Test', function () {
                 },
                 results,
                 new AuthController(),
-                new DatabaseController(),
                 new SecurityController(),
                 new AuthFactory(),
-                new DatabaseFactory(),
+                purgeDataInStore,
+                getNodes,
+                getNode,
+                getDataInStore,
+                upsertNode,
+                upsertDataInStore,
                 config
             );
             should().not.exist(results.auth);
@@ -124,10 +140,14 @@ describe('RulesController::Auth Unit Test', function () {
                     }
                 }, results,
                 new AuthController(),
-                new DatabaseController(),
                 new SecurityController(),
                 new AuthFactory(),
-                new DatabaseFactory(),
+                purgeDataInStore,
+                getNodes,
+                getNode,
+                getDataInStore,
+                upsertNode,
+                upsertDataInStore,
                 config
             );
             should().not.exist(results.auth);
@@ -144,10 +164,14 @@ describe('RulesController::Auth Unit Test', function () {
                     }
                 }, results,
                 new AuthController(),
-                new DatabaseController(),
                 new SecurityController(),
                 new AuthFactory(),
-                new DatabaseFactory(),
+                purgeDataInStore,
+                getNodes,
+                getNode,
+                getDataInStore,
+                upsertNode,
+                upsertDataInStore,
                 config
             );
             should().not.exist(results.auth);
@@ -164,10 +188,14 @@ describe('RulesController::Auth Unit Test', function () {
                 },
                 results,
                 new AuthController(),
-                new DatabaseController(),
                 new SecurityController(),
                 new AuthFactory(),
-                new DatabaseFactory(),
+                purgeDataInStore,
+                getNodes,
+                getNode,
+                getDataInStore,
+                upsertNode,
+                upsertDataInStore,
                 config
             );
             should().not.exist(results.auth);
@@ -190,10 +218,14 @@ describe('RulesController::Auth Unit Test', function () {
                 },
                 {errors: {}},
                 new AuthController(),
-                new DatabaseController(),
                 new SecurityController(),
                 new AuthFactory(),
-                new DatabaseFactory(),
+                purgeDataInStore,
+                getNodes,
+                getNode,
+                getDataInStore,
+                upsertNode,
+                upsertDataInStore,
                 config
             );
             should().exist(r.auth.signUp);
@@ -211,9 +243,13 @@ describe('RulesController::Auth Unit Test', function () {
                 },
                 {errors: {}},
                 new AuthController(),
-                new DatabaseController(),
                 new SecurityController(),
-                new DatabaseFactory(),
+                purgeDataInStore,
+                getNodes,
+                getNode,
+                getDataInStore,
+                upsertNode,
+                upsertDataInStore,
                 config,
                 null
             );
@@ -229,12 +265,17 @@ describe('RulesController::Auth Unit Test', function () {
                 },
                 {errors: {}},
                 new AuthController(),
-                new DatabaseController(),
                 new SecurityController(),
                 new AuthFactory(),
-                new DatabaseFactory(),
+                purgeDataInStore,
+                getNodes,
+                getNode,
+                getDataInStore,
+                upsertNode,
+                upsertDataInStore,
                 config
             );
+            console.log(results);
             should().exist(results.auth.signIn);
             assert(typeof results.auth.signIn === 'object');
             assert(results.auth.signIn.username === 'doe2');
@@ -252,10 +293,14 @@ describe('RulesController::Auth Unit Test', function () {
                 },
                 {errors: {}},
                 new AuthController(),
-                new DatabaseController(),
                 new SecurityController(),
                 new AuthFactory(),
-                new DatabaseFactory(),
+                purgeDataInStore,
+                getNodes,
+                getNode,
+                getDataInStore,
+                upsertNode,
+                upsertDataInStore,
                 config
             );
             should().not.exist(results.auth);
@@ -273,10 +318,14 @@ describe('RulesController::Auth Unit Test', function () {
                 },
                 {errors: {}},
                 new AuthController(),
-                new DatabaseController(),
                 new SecurityController(),
                 new AuthFactory(),
-                new DatabaseFactory(),
+                purgeDataInStore,
+                getNodes,
+                getNode,
+                getDataInStore,
+                upsertNode,
+                upsertDataInStore,
                 config
             );
             should().not.exist(results.auth);
@@ -293,10 +342,14 @@ describe('RulesController::Auth Unit Test', function () {
                 },
                 {errors: {}},
                 new AuthController(),
-                new DatabaseController(),
                 new SecurityController(),
                 new AuthFactory(),
-                new DatabaseFactory(),
+                purgeDataInStore,
+                getNodes,
+                getNode,
+                getDataInStore,
+                upsertNode,
+                upsertDataInStore,
                 config
             );
             should().not.exist(results.auth);

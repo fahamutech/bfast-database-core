@@ -1,6 +1,5 @@
 const {config} = require('./mock.config');
 const {BfastFunctions} = require('bfast-function');
-const {startYJsWebsocketServer} = require('../dist/index')
 const bfastFs = new BfastFunctions({
     port: config.port,
     functionsConfig: {
@@ -8,7 +7,6 @@ const bfastFs = new BfastFunctions({
         bfastJsonPath: __dirname + '/bfast.json'
     }
 });
-// let ySocketServer;
 exports.mochaHooks = {
     async beforeAll() {
         process.env.APPLICATION_ID = config.applicationId;

@@ -1,4 +1,4 @@
 export interface Node {
-    value: { [key: string]: string } | string;
-    _id: string;
+    value: string | { [key: string]: string };
+    _id: string | number;
 }

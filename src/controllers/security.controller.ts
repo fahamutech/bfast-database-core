@@ -1,7 +1,7 @@
 import * as bcrypt from 'bcryptjs';
 import * as uuid from 'uuid';
 import * as _jwt from 'jsonwebtoken';
-import {BFastDatabaseOptions} from '../bfast-database.option';
+import {BFastOptions} from '../bfast-database.option';
 import {createHash} from 'crypto';
 
 
@@ -41,7 +41,7 @@ export class SecurityController {
 
     async getToken(
         data: { uid: string, [key: string]: any } = {uid: undefined},
-        options: BFastDatabaseOptions,
+        options: BFastOptions,
         expire = 30,
         host = 'https://api.bfast.fahamutech.com',
     ) {
@@ -61,7 +61,7 @@ export class SecurityController {
         return _jwt.sign(claims, options.masterKey);
     }
 
-    async verifyToken(token: string, options: BFastDatabaseOptions) {
+    async verifyToken(token: string, options: BFastOptions) {
         // const jwk = this.getJwk(options.rsaPublicKeyInJson);
         // const jwt = njwt.verify(token, jwk.key.toPublicKeyPEM(), jwk.alg);
         // return jwt.body.toJSON();

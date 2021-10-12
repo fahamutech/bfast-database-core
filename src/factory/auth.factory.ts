@@ -1,10 +1,18 @@
 import {AuthAdapter} from '../adapters/auth.adapter';
 import {BasicUserAttributesModel} from '../model/basic-user-attributes.model';
 import {ContextBlock} from '../model/rules.model';
-import {BFastDatabaseOptions} from "../bfast-database.option";
+import {BFastOptions} from "../bfast-database.option";
 import {SecurityController} from "../controllers/security.controller";
-import {DatabaseController} from "../controllers/database.controller";
-import {DatabaseAdapter} from "../adapters/database.adapter";
+import {findByFilter, updateOne, writeOne} from "../controllers/database.controller";
+import {
+    GetDataFn,
+    GetNodeFn,
+    GetNodesFn,
+    PurgeNodeValueFn,
+    UpsertDataFn,
+    UpsertNodeFn
+} from "../adapters/database.adapter";
+import {match} from "assert";
 
 export class AuthFactory implements AuthAdapter {
     private domainName = '_User';
@@ -18,13 +26,15 @@ export class AuthFactory implements AuthAdapter {
 
     async signIn<T extends BasicUserAttributesModel>(
         userModel: T,
+        purgeNodeValue: PurgeNodeValueFn,
+        getNodes: GetNodesFn<any>,
+        getNode: GetNodeFn,
+        getDataInStore: GetDataFn,
         context: ContextBlock,
-        databaseController: DatabaseController,
         securityController: SecurityController,
-        databaseAdapter: DatabaseAdapter,
-        options: BFastDatabaseOptions
+        options: BFastOptions
     ): Promise<T> {
-        const users = await databaseController.query(
+        const users = await findByFilter(
             this.domainName,
             {
                 filter: {
@@ -32,7 +42,10 @@ export class AuthFactory implements AuthAdapter {
                 },
                 return: []
             },
-            databaseAdapter,
+            purgeNodeValue,
+            getNodes,
+            getNode,
+            getDataInStore,
             securityController,
             context,
             {bypassDomainVerification: true},
@@ -59,18 +72,19 @@ export class AuthFactory implements AuthAdapter {
 
     async signUp<T extends BasicUserAttributesModel>(
         userModel: T,
+        upsertNode: UpsertNodeFn<any>,
+        upsertDataInStore: UpsertDataFn<any>,
         context: ContextBlock,
-        databaseController: DatabaseController,
         securityController: SecurityController,
-        databaseAdapter: DatabaseAdapter,
-        options: BFastDatabaseOptions
+        options: BFastOptions
     ): Promise<T> {
         userModel.password = await securityController.hashPlainText(userModel?.password);
-        const user = await databaseController.writeOne(
+        const user = await writeOne(
             this.domainName,
             userModel,
             false,
-            databaseAdapter,
+            upsertNode,
+            upsertDataInStore,
             securityController,
             context,
             {bypassDomainVerification: true},
@@ -81,23 +95,21 @@ export class AuthFactory implements AuthAdapter {
         return user;
     }
 
-    async deleteUser(context: ContextBlock): Promise<any> {
-        return undefined;
-    }
-
     async sendVerificationEmail(email: string, context?: ContextBlock): Promise<any> {
         return undefined;
     }
 
     async update<T extends BasicUserAttributesModel>(
         userModel: T,
-        databaseController: DatabaseController,
+        getNode: GetNodeFn,
+        getDataInStore: GetDataFn,
+        upsertNode: UpsertNodeFn<any>,
+        upsertDataInStore: UpsertDataFn<any>,
         securityController: SecurityController,
-        databaseAdapter: DatabaseAdapter,
         context: ContextBlock,
-        options: BFastDatabaseOptions
+        options: BFastOptions
     ): Promise<T> {
-        return databaseController.updateOne(
+        return updateOne(
             this.domainName,
             {
                 id: context.uid,
@@ -106,7 +118,10 @@ export class AuthFactory implements AuthAdapter {
                     $set: userModel
                 }
             },
-            databaseAdapter,
+            getNode,
+            getDataInStore,
+            upsertNode,
+            upsertDataInStore,
             securityController,
             context,
             {bypassDomainVerification: true},
@@ -116,14 +131,16 @@ export class AuthFactory implements AuthAdapter {
 
     async updatePassword(
         password: string,
-        databaseController: DatabaseController,
+        getNode: GetNodeFn,
+        getDataInStore: GetDataFn,
+        upsertNode: UpsertNodeFn<any>,
+        upsertDataInStore: UpsertDataFn<any>,
         securityController: SecurityController,
-        databaseAdapter: DatabaseAdapter,
         context: ContextBlock,
-        options: BFastDatabaseOptions
+        options: BFastOptions
     ): Promise<any> {
         const hashedPassword = await securityController.hashPlainText(password);
-        return databaseController.updateOne(
+        return updateOne(
             this.domainName,
             {
                 id: context.uid,
@@ -133,7 +150,10 @@ export class AuthFactory implements AuthAdapter {
                     }
                 }
             },
-            databaseAdapter,
+            getNode,
+            getDataInStore,
+            upsertNode,
+            upsertDataInStore,
             securityController,
             context,
             {bypassDomainVerification: true},

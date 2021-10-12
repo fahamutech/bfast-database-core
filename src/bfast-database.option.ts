@@ -1,8 +1,7 @@
-import {DatabaseAdapter} from './adapters/database.adapter';
 import {AuthAdapter} from './adapters/auth.adapter';
 import {EmailAdapter} from './adapters/email.adapter';
 
-export interface BFastDatabaseOptions {
+export interface BFastOptions {
     useLocalIpfs?: boolean;
     port: string;
     masterKey: string;
@@ -15,9 +14,8 @@ export interface BFastDatabaseOptions {
     rsaPublicKeyInJson: any;
     web3Token?: string;
     adapters?: {
-        database?: (config: BFastDatabaseOptions) => DatabaseAdapter;
-        auth?: (config: BFastDatabaseOptions) => AuthAdapter;
-        email?: (config: BFastDatabaseOptions) => EmailAdapter;
+        auth?: (config: BFastOptions) => AuthAdapter;
+        email?: (config: BFastOptions) => EmailAdapter;
         s3Storage?: {
             accessKey: string;
             bucket: string;

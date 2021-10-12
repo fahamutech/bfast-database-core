@@ -64,6 +64,32 @@ describe('RulesController', function () {
             expect(results.updateProduct.name).equal('apple');
             expect(results.updateProduct.price).equal(50);
         });
+        it('should update a document by id with dates', async function () {
+            const results = await _rulesController.handleUpdateRules({
+                    updateProduct: {
+                        id: 'josh',
+                        update: {
+                            $set: {
+                                name: 'ethan'
+                            }
+                        },
+                        return: []
+                    }
+                }, {errors: {}},
+                new UpdateRuleController(),
+                new AuthController(),
+                new DatabaseController(),
+                new SecurityController(),
+                new DatabaseFactory(),
+                config,
+                null
+            );
+            // console.log(results);
+            should().exist(results.updateProduct);
+            expect(results.updateProduct.name).equal('ethan');
+            expect(results.updateProduct.price).equal(60);
+            expect(results.updateProduct.createdAt).equal('leo');
+        });
         it('should update a documents by filter', async function () {
             const results = await _rulesController.handleUpdateRules({
                     updateProduct: {

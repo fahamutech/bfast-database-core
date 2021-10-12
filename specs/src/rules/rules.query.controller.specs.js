@@ -155,6 +155,8 @@ describe('RulesController', function () {
             should().exist(results.queryProduct);
             expect(results.queryProduct).length(1);
             expect(results.queryProduct[0].id).equal('xyzid');
+            expect(results.queryProduct[0].createdAt).equal('test');
+            expect(results.queryProduct[0].updatedAt).equal('test');
             // console.log(results.queryProduct);
         });
         it('should perform match for AND operation when field in data is in array', async function () {

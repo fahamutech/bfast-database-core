@@ -1,10 +1,18 @@
 import {ContextBlock} from '../model/rules.model';
 import {BasicUserAttributesModel} from '../model/basic-user-attributes.model';
-import {DatabaseController} from './database.controller';
-import {BFastDatabaseOptions} from "../bfast-database.option";
+import {BFastOptions} from "../bfast-database.option";
 import {SecurityController} from "./security.controller";
 import {AuthAdapter} from "../adapters/auth.adapter";
-import {DatabaseAdapter} from "../adapters/database.adapter";
+import {findByFilter, remove, writeOne} from "./database.controller";
+import {
+    GetDataFn,
+    GetNodeFn,
+    GetNodesFn,
+    PurgeNodeFn,
+    PurgeNodeValueFn,
+    UpsertDataFn,
+    UpsertNodeFn
+} from "../adapters/database.adapter";
 
 export class AuthController {
 
@@ -45,13 +53,13 @@ export class AuthController {
     async addPolicyRule(
         ruleId: string,
         rule: string,
-        databaseController: DatabaseController,
         securityController: SecurityController,
-        databaseAdapter: DatabaseAdapter,
         context: ContextBlock,
-        options: BFastDatabaseOptions
+        upsertNode: UpsertNodeFn<any>,
+        upsertDataInStore: UpsertDataFn<any>,
+        options: BFastOptions
     ): Promise<any> {
-        const _p1 = await databaseController.writeOne(
+        const _p1 = await writeOne(
             this.policyDomainName,
             {
                 id: ruleId.replace('.', '%').concat('%id'),
@@ -60,7 +68,8 @@ export class AuthController {
                 return: []
             },
             false,
-            databaseAdapter,
+            upsertNode,
+            upsertDataInStore,
             securityController,
             context,
             {
@@ -72,37 +81,46 @@ export class AuthController {
     }
 
     async listPolicyRule(
-        databaseController: DatabaseController,
         securityController: SecurityController,
-        databaseAdapter: DatabaseAdapter,
         context: ContextBlock,
-        options: BFastDatabaseOptions
+        purgeNodeValue: PurgeNodeValueFn,
+        getNodes: GetNodesFn<any>,
+        getNode: GetNodeFn,
+        getDataInStore: GetDataFn,
+        options: BFastOptions
     ) {
-        const _j1 = await databaseController.query(
+        const _j1 = await findByFilter(
             '_Policy',
             {
                 filter: {},
                 return: []
             },
-            databaseAdapter,
+            purgeNodeValue,
+            getNodes,
+            getNode,
+            getDataInStore,
             securityController,
             context,
             {
                 bypassDomainVerification: true
             },
-            options);
+            options
+        );
         return _j1.map(x => AuthController.sanitizePolicy(x));
     }
 
     async removePolicyRule(
         ruleId: string,
-        databaseController: DatabaseController,
         securityController: SecurityController,
-        databaseAdapter: DatabaseAdapter,
         context: ContextBlock,
-        options: BFastDatabaseOptions
+        purgeNodeValue: PurgeNodeValueFn,
+        getNodes: GetNodesFn<any>,
+        getNode: GetNodeFn,
+        getDataInStore: GetDataFn,
+        purgeNode: PurgeNodeFn,
+        options: BFastOptions
     ) {
-        const _y89 = await databaseController.delete(
+        const _y89 = await remove(
             '_Policy',
             {
                 filter: {
@@ -110,7 +128,11 @@ export class AuthController {
                 },
                 return: ['id'],
             },
-            databaseAdapter,
+            purgeNodeValue,
+            getNodes,
+            getNode,
+            getDataInStore,
+            purgeNode,
             securityController,
             context,
             {
@@ -122,11 +144,13 @@ export class AuthController {
 
     async hasPermission(
         ruleId: string,
-        databaseController: DatabaseController,
         securityController: SecurityController,
-        databaseAdapter: DatabaseAdapter,
         context: ContextBlock,
-        options: BFastDatabaseOptions
+        purgeNodeValue: PurgeNodeValueFn,
+        getNodes: GetNodesFn<any>,
+        getNode: GetNodeFn,
+        getDataInStore: GetDataFn,
+        options: BFastOptions
     ): Promise<boolean> {
         if (context && context?.useMasterKey === true) {
             return true;
@@ -141,13 +165,16 @@ export class AuthController {
             filter.push({ruleId: globalRule.replace('.', '%')});
         }
         filter.push({ruleId: originalRule.replace('.', '%')});
-        let query: any[] = await databaseController.query(
+        let query: any[] = await findByFilter(
             this.policyDomainName,
             {
                 return: [],
                 filter,
             },
-            databaseAdapter,
+            purgeNodeValue,
+            getNodes,
+            getNode,
+            getDataInStore,
             securityController,
             context,
             {
@@ -191,7 +218,7 @@ export class AuthController {
         email: string,
         authAdapter: AuthAdapter,
         context: ContextBlock,
-        options: BFastDatabaseOptions
+        options: BFastOptions
     ): Promise<any> {
         if (!email) {
             throw {message: 'email required'};
@@ -201,38 +228,46 @@ export class AuthController {
 
     async signIn<T extends BasicUserAttributesModel>(
         userModel: T,
-        databaseController: DatabaseController,
         securityController: SecurityController,
         authAdapter: AuthAdapter,
-        databaseAdapter: DatabaseAdapter,
         context: ContextBlock,
-        options: BFastDatabaseOptions
+        purgeNodeValue: PurgeNodeValueFn,
+        getNodes: GetNodesFn<any>,
+        getNode: GetNodeFn,
+        getDataInStore: GetDataFn,
+        options: BFastOptions
     ): Promise<T> {
         AuthController.validateData(userModel, true);
         userModel.return = [];
         return authAdapter.signIn(
             userModel,
+            purgeNodeValue,
+            getNodes,
+            getNode,
+            getDataInStore,
             context,
-            databaseController,
             securityController,
-            databaseAdapter,
             options
         );
     }
 
     async signUp<T extends BasicUserAttributesModel>(
         userModel: T,
-        databaseController: DatabaseController,
         securityController: SecurityController,
-        databaseAdapter: DatabaseAdapter,
         authAdapter: AuthAdapter,
         context: ContextBlock,
-        options: BFastDatabaseOptions
+        purgeNodeValue: PurgeNodeValueFn,
+        getNodes: GetNodesFn<any>,
+        getNode: GetNodeFn,
+        getDataInStore,
+        upsertNode: UpsertNodeFn<any>,
+        upsertDataInStore: UpsertDataFn<any>,
+        options: BFastOptions
     ): Promise<T> {
         AuthController.validateData(userModel);
         userModel.return = [];
         userModel.emailVerified = false;
-        const oldUser = await databaseController.query(
+        const oldUser = await findByFilter(
             '_User',
             {
                 filter: [
@@ -241,7 +276,10 @@ export class AuthController {
                 ],
                 return: []
             },
-            databaseAdapter,
+            purgeNodeValue,
+            getNodes,
+            getNode,
+            getDataInStore,
             securityController,
             context,
             {bypassDomainVerification: true},
@@ -252,22 +290,24 @@ export class AuthController {
         }
         return await authAdapter.signUp(
             userModel,
+            upsertNode,
+            upsertDataInStore,
             context,
-            databaseController,
             securityController,
-            databaseAdapter,
             options
         );
     }
 
     async update<T extends BasicUserAttributesModel>(
         userModel: T,
-        databaseController: DatabaseController,
         securityController: SecurityController,
         authAdapter: AuthAdapter,
-        databaseAdapter: DatabaseAdapter,
         context: ContextBlock,
-        options: BFastDatabaseOptions
+        getNode: GetNodeFn,
+        getDataInStore: GetDataFn,
+        upsertNode: UpsertNodeFn<any>,
+        upsertDataInStore: UpsertDataFn<any>,
+        options: BFastOptions
     ): Promise<T> {
         if (context.auth === true && context.uid && typeof context.uid === 'string') {
             userModel.return = [];
@@ -276,9 +316,11 @@ export class AuthController {
             delete userModel.emailVerified;
             return authAdapter.update(
                 userModel,
-                databaseController,
+                getNode,
+                getDataInStore,
+                upsertNode,
+                upsertDataInStore,
                 securityController,
-                databaseAdapter,
                 context,
                 options
             );
@@ -289,19 +331,23 @@ export class AuthController {
 
     async updatePassword(
         password: string,
-        databaseController: DatabaseController,
         securityController: SecurityController,
         authAdapter: AuthAdapter,
-        databaseAdapter: DatabaseAdapter,
         context: ContextBlock,
-        options: BFastDatabaseOptions
+        getNode: GetNodeFn,
+        getDataInStore: GetDataFn,
+        upsertNode: UpsertNodeFn<any>,
+        upsertDataInStore: UpsertDataFn<any>,
+        options: BFastOptions
     ): Promise<any> {
         if (context.uid && typeof context.uid === 'string') {
             return authAdapter.updatePassword(
                 password,
-                databaseController,
+                getNode,
+                getDataInStore,
+                upsertNode,
+                upsertDataInStore,
                 securityController,
-                databaseAdapter,
                 context,
                 options
             );

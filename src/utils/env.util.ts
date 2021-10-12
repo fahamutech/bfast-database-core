@@ -1,6 +1,6 @@
 // @ts-ignore
 import {readFileSync, statSync} from 'fs';
-import {BFastDatabaseOptions} from "../bfast-database.option";
+import {BFastOptions} from "../bfast-database.option";
 
 enum EnvNames {
     APPLICATION_ID = 'APPLICATION_ID',
@@ -50,7 +50,7 @@ export class EnvUtil {
         }
     }
 
-    loadEnv(): BFastDatabaseOptions {
+    loadEnv(): BFastOptions {
         let isS3Configured = true;
         const s3Bucket = this.getEnv(process.env[EnvNames.S3_BUCKET.toString()]);
         const s3AccessKey = this.getEnv(process.env[EnvNames.S3_ACCESS_KEY.toString()]);
@@ -84,7 +84,7 @@ export class EnvUtil {
             })
         }
         // @ts-ignore
-        const options: BFastDatabaseOptions = {};
+        const options: BFastOptions = {};
         options.useLocalIpfs = this.getEnv(process.env[EnvNames.USE_LOCAL_IPFS])?.toString()?.toLowerCase() === 'true';
         options.applicationId = this.getEnv(process.env[EnvNames.APPLICATION_ID]);
         options.projectId = this.getEnv(process.env[EnvNames.PROJECT_ID]);

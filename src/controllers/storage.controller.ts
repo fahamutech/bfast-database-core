@@ -4,13 +4,20 @@ import {ContextBlock} from '../model/rules.model';
 import mime from 'mime';
 import {StatusCodes} from 'http-status-codes';
 import {Stream} from 'stream';
-import {BFastDatabaseOptions} from '../bfast-database.option';
+import {BFastOptions} from '../bfast-database.option';
 import bfast from 'bfast';
 import sharp from 'sharp';
 import {Buffer} from "buffer";
-import {DatabaseAdapter} from "../adapters/database.adapter";
 import {SecurityController} from "./security.controller";
 import {Request, Response} from 'express'
+import {
+    GetDataFn,
+    GetNodeFn,
+    GetNodesFn,
+    PurgeNodeValueFn,
+    UpsertDataFn,
+    UpsertNodeFn
+} from "../adapters/database.adapter";
 
 export class StorageController {
     constructor() {
@@ -49,8 +56,10 @@ export class StorageController {
         fileModel: FileModel,
         _: ContextBlock,
         filesAdapter: FilesAdapter,
-        databaseAdapter: DatabaseAdapter,
-        options: BFastDatabaseOptions
+        upsertNode: UpsertNodeFn<any>,
+        upsertDataInStore: UpsertDataFn<any>,
+        security: SecurityController,
+        options: BFastOptions
     ): Promise<string> {
         const {name, base64} = fileModel;
         let {type} = fileModel;
@@ -89,7 +98,9 @@ export class StorageController {
                 Buffer.from(dataToSave.data, 'base64')
                 : dataToSave.data,
             dataToSave?.type,
-            databaseAdapter,
+            upsertNode,
+            upsertDataInStore,
+            security,
             options
         );
         return filesAdapter.getFileLocation(file, options);
@@ -110,9 +121,10 @@ export class StorageController {
         request: Request,
         response: Response,
         thumbnail: boolean,
-        databaseAdapter: DatabaseAdapter,
         filesAdapter: FilesAdapter,
-        options: BFastDatabaseOptions
+        getNode: GetNodeFn,
+        getDataInStore: GetDataFn,
+        options: BFastOptions
     ): void {
         const name = request.params.filename;
         // @ts-ignore
@@ -121,7 +133,8 @@ export class StorageController {
             filesAdapter.getFileData(
                 name,
                 true,
-                databaseAdapter,
+                getNode,
+                getDataInStore,
                 options
             ).then(value => {
                 const width = parseInt(request.query.width ? request.query.width.toString() : '100');
@@ -130,10 +143,10 @@ export class StorageController {
                 // @ts-ignore
                 value.data.pipe(sharp().resize(width, height !== 0 ? height : null)).pipe(response);
             }).catch(_ => {
-                this.getFileData(name, contentType, request, response, databaseAdapter, filesAdapter, options);
+                this.getFileData(name, contentType, request, response, filesAdapter,getNode,getDataInStore, options);
             });
         } else {
-            this.getFileData(name, contentType, request, response, databaseAdapter, filesAdapter, options);
+            this.getFileData(name, contentType, request, response, filesAdapter, getNode, getDataInStore, options);
         }
     }
 
@@ -142,52 +155,77 @@ export class StorageController {
         contentType,
         request,
         response,
-        databaseAdapter: DatabaseAdapter,
         filesAdapter: FilesAdapter,
-        options: BFastDatabaseOptions
+        getNode: GetNodeFn,
+        getDataInStore: GetDataFn,
+        options: BFastOptions
     ) {
         if (this.checkStreamCapability(request, filesAdapter)) {
             filesAdapter
-                .handleFileStream(name, request, response, contentType, databaseAdapter, options)
-                .catch(_43 => {
+                .handleFileStream(
+                    name,
+                    request,
+                    response,
+                    getNode,
+                    getDataInStore,
+                    contentType,
+                    options
+                ).catch(_43 => {
                     response.status(StatusCodes.NOT_FOUND);
                     // response.set('Content-Type', 'text/plain');
                     response.json({message: 'File not found'});
                 });
         } else {
             filesAdapter
-                .getFileData(name, false, databaseAdapter, options)
-                .then(data => {
-                    response.status(StatusCodes.OK);
-                    response.set({
-                        'Content-Type': data.type,
-                        'Content-Length': data.size
-                    });
-                    return response.send(data.data);
-                })
-                .catch(_12 => {
-                    response.status(StatusCodes.NOT_FOUND);
-                    response.json({message: 'File not found'});
+                .getFileData(
+                    name,
+                    false,
+                    getNode,
+                    getDataInStore,
+                    options
+                ).then(data => {
+                response.status(StatusCodes.OK);
+                response.set({
+                    'Content-Type': data.type,
+                    'Content-Length': data.size
                 });
+                return response.send(data.data);
+            }).catch(_12 => {
+                response.status(StatusCodes.NOT_FOUND);
+                response.json({message: 'File not found'});
+            });
         }
     }
 
     async listFiles(
         data: { prefix: string, size: number, skip: number, after: string },
-        databaseAdapter: DatabaseAdapter,
         filesAdapter: FilesAdapter,
-        options: BFastDatabaseOptions
+        purgeNodeValue: PurgeNodeValueFn,
+        getNodes: GetNodesFn<any>,
+        getNode: GetNodeFn,
+        getDataInStore: GetDataFn,
+        security: SecurityController,
+        options: BFastOptions
     ): Promise<any[]> {
-        return filesAdapter.listFiles(data, databaseAdapter, options);
+        return filesAdapter.listFiles(
+            data,
+            purgeNodeValue,
+            getNodes,
+            getNode,
+            getDataInStore,
+            security,
+            options
+        );
     }
 
     async saveFromBuffer(
         fileModel: { data: Buffer; name: string; type: string, size: number },
         context: ContextBlock,
-        databaseAdapter: DatabaseAdapter,
         filesAdapter: FilesAdapter,
-        securityController: SecurityController,
-        options: BFastDatabaseOptions
+        upsertNode: UpsertNodeFn<any>,
+        upsertDataInStore: UpsertDataFn<any>,
+        security: SecurityController,
+        options: BFastOptions
     ): Promise<string> {
         let {type} = fileModel;
         const {name, data, size} = fileModel;
@@ -206,23 +244,44 @@ export class StorageController {
         }
         const newFilename = (context && context.storage && context.storage.preserveName === true)
             ? name
-            : securityController.generateUUID() + '-' + name;
-        const file = await filesAdapter.createFile(newFilename, size, data, type, databaseAdapter, options);
+            : security.generateUUID() + '-' + name;
+        const file = await filesAdapter.createFile(
+            newFilename,
+            size,
+            data,
+            type,
+            upsertNode,
+            upsertDataInStore,
+            security,
+            options
+        );
         return filesAdapter.getFileLocation(file, options);
     }
 
     async delete(
         data: { name: string },
         _: ContextBlock,
-        databaseAdapter: DatabaseAdapter,
+        purgeNodeValue: PurgeNodeValueFn,
+        getNodes: GetNodesFn<any>,
+        getNode: GetNodeFn,
+        getDataInStore: GetDataFn,
+        security: SecurityController,
         filesAdapter: FilesAdapter,
-        options: BFastDatabaseOptions
+        options: BFastOptions
     ): Promise<string> {
         const {name} = data;
         if (!name) {
             throw new Error('Filename required');
         }
-        return filesAdapter.deleteFile(name, databaseAdapter, options);
+        return filesAdapter.deleteFile(
+            name,
+            purgeNodeValue,
+            getNodes,
+            getNode,
+            getDataInStore,
+            security,
+            options
+        );
     }
 
     isS3(filesAdapter: FilesAdapter): boolean {
@@ -233,9 +292,8 @@ export class StorageController {
         request: any,
         response: any,
         thumbnail,
-        databaseAdapter: DatabaseAdapter,
         filesAdapter: FilesAdapter,
-        options: BFastDatabaseOptions
+        options: BFastOptions
     ): void {
         const name = request.params.filename;
         // @ts-ignore
@@ -270,18 +328,23 @@ export class StorageController {
     fileInfo(
         request: Request,
         response: Response,
-        databaseAdapter: DatabaseAdapter,
+        getNode: GetNodeFn,
+        getDataInStore: GetDataFn,
         filesAdapter: FilesAdapter,
-        options: BFastDatabaseOptions
+        options: BFastOptions
     ) {
         filesAdapter
-            .fileInfo(request?.params?.filename, databaseAdapter, options)
-            .then(info => {
-                response.status(200);
-                response.set('Accept-Ranges', 'bytes');
-                response.set('Content-Length', info.size.toString());
-                response.end();
-            })
+            .fileInfo(
+                request?.params?.filename,
+                getNode,
+                getDataInStore,
+                options
+            ).then(info => {
+            response.status(200);
+            response.set('Accept-Ranges', 'bytes');
+            response.set('Content-Length', info.size.toString());
+            response.end();
+        })
             .catch(_23 => {
                 response.status(StatusCodes.NOT_FOUND);
                 response.json({message: 'File not found'});

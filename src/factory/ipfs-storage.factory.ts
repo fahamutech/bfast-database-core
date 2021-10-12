@@ -1,9 +1,18 @@
 import {FilesAdapter} from '../adapters/files.adapter';
 import {pipeline} from 'stream';
-import {BFastDatabaseOptions} from '../bfast-database.option';
+import {BFastOptions} from '../bfast-database.option';
 import {Buffer} from "buffer";
-import {DatabaseAdapter} from "../adapters/database.adapter";
+import {
+    GetDataFn,
+    GetNodeFn,
+    GetNodesFn,
+    PurgeNodeValueFn,
+    UpsertDataFn,
+    UpsertNodeFn
+} from "../adapters/database.adapter";
 import {IpfsFactory} from "./ipfs.factory";
+import {findByFilter, findById, remove, writeOne} from "../controllers/database.controller";
+import {SecurityController} from "../controllers/security.controller";
 
 export class IpfsStorageFactory implements FilesAdapter {
     private domain = '_Storage';
@@ -18,23 +27,44 @@ export class IpfsStorageFactory implements FilesAdapter {
         name: string,
         size: number,
         data: Buffer,
-        contentType: any,
-        databaseAdapter: DatabaseAdapter,
-        options: BFastDatabaseOptions
+        contentType: string,
+        upsertNode: UpsertNodeFn<any>,
+        upsertDataInStore: UpsertDataFn<any>,
+        security: SecurityController,
+        options: BFastOptions
     ): Promise<string> {
         await this.validateFilename(name);
-        return this._saveFile(name, size, data, contentType, databaseAdapter, options);
+        return this._saveFile(name,
+            size,
+            data,
+            contentType,
+            upsertNode,
+            upsertDataInStore,
+            security,
+            options
+        );
     }
 
     async deleteFile(
         name: string,
-        databaseAdapter: DatabaseAdapter,
-        options: BFastDatabaseOptions
+        purgeNodeValue: PurgeNodeValueFn,
+        getNodes: GetNodesFn<any>,
+        getNode: GetNodeFn,
+        getData: GetDataFn,
+        security: SecurityController,
+        options: BFastOptions
     ): Promise<any> {
-        const r = await databaseAdapter.delete(
+        const r = await remove(
             this.domain,
-            IpfsStorageFactory.sanitize4Saving({_id: name, id: name}),
+            {id: name},
+            purgeNodeValue,
+            getNodes,
+            getNode,
+            getData,
+            purgeNodeValue,
+            security,
             {},
+            {bypassDomainVerification: true},
             options
         );
         return r.map(x => IpfsStorageFactory.sanitize4User(x));
@@ -42,19 +72,22 @@ export class IpfsStorageFactory implements FilesAdapter {
 
     async fileInfo(
         name: string,
-        databaseAdapter: DatabaseAdapter,
-        options: BFastDatabaseOptions,
+        getNode: GetNodeFn,
+        getDataInStore: GetDataFn,
+        options: BFastOptions,
     ): Promise<{ name: string; size: number }> {
         const fObj = IpfsStorageFactory.sanitize4Saving({
             _id: name
         });
-        const file = await databaseAdapter.findOne(
+        const file = await findById(
             this.domain,
             {
                 _id: fObj._id,
                 return: []
             },
-            {},
+            getNode,
+            getDataInStore,
+            {bypassDomainVerification: true},
             options
         );
         if (file && file.size && file.name) {
@@ -67,8 +100,9 @@ export class IpfsStorageFactory implements FilesAdapter {
     async getFileData(
         name: string,
         asStream,
-        databaseAdapter: DatabaseAdapter,
-        options: BFastDatabaseOptions
+        getNode: GetNodeFn,
+        getDataInStore: GetDataFn,
+        options: BFastOptions
     ): Promise<{
         size: number,
         data: Buffer | ReadableStream,
@@ -77,13 +111,15 @@ export class IpfsStorageFactory implements FilesAdapter {
         const fObj = IpfsStorageFactory.sanitize4Saving({
             _id: name
         });
-        let file = await databaseAdapter.findOne(
+        let file = await findById(
             this.domain,
             {
                 _id: fObj._id,
                 return: []
             },
-            {},
+            getNode,
+            getDataInStore,
+            {bypassDomainVerification: true},
             options
         );
         file = IpfsStorageFactory.sanitize4User(file);
@@ -105,7 +141,7 @@ export class IpfsStorageFactory implements FilesAdapter {
         }
     }
 
-    async getFileLocation(name: string, configAdapter: BFastDatabaseOptions): Promise<string> {
+    async getFileLocation(name: string, configAdapter: BFastOptions): Promise<string> {
         return '/storage/' + configAdapter.applicationId + '/file/' + encodeURIComponent(name);
     }
 
@@ -113,20 +149,23 @@ export class IpfsStorageFactory implements FilesAdapter {
         name: string,
         req: any,
         res: any,
+        getNode: GetNodeFn,
+        getDataInStore: GetDataFn,
         contentType,
-        databaseAdapter: DatabaseAdapter,
-        options: BFastDatabaseOptions
+        options: BFastOptions
     ): Promise<any> {
         const fObj = IpfsStorageFactory.sanitize4Saving({
             _id: name
         });
-        const file = await databaseAdapter.findOne(
+        const file = await findById(
             this.domain,
             {
-                _id: fObj._id,
+                id: fObj._id,
                 return: []
             },
-            {},
+            getNode,
+            getDataInStore,
+            {bypassDomainVerification: true},
             options
         );
         if (file && file.cid && file.type && file.size) {
@@ -189,9 +228,14 @@ export class IpfsStorageFactory implements FilesAdapter {
             size: 20,
             skip: 0
         },
-        databaseAdapter: DatabaseAdapter,
-        options: BFastDatabaseOptions): Promise<any[]> {
-        let r = await databaseAdapter.findMany(
+        purgeNodeValue: PurgeNodeValueFn,
+        getNodes: GetNodesFn<any>,
+        getNode: GetNodeFn,
+        getDataInStore: GetDataFn,
+        security: SecurityController,
+        options: BFastOptions
+    ): Promise<any[]> {
+        let r = await findByFilter(
             this.domain,
             {
                 filter: {},
@@ -199,7 +243,13 @@ export class IpfsStorageFactory implements FilesAdapter {
                 size: query.size,
                 skip: query.skip
             },
-            {},
+            purgeNodeValue,
+            getNodes,
+            getNode,
+            getDataInStore,
+            security,
+            {useMasterKey: true},
+            {bypassDomainVerification: true},
             options
         );
         if (Array.isArray(r)) {
@@ -221,7 +271,7 @@ export class IpfsStorageFactory implements FilesAdapter {
         return null;
     }
 
-    async signedUrl(name: string, options: BFastDatabaseOptions): Promise<string> {
+    async signedUrl(name: string, options: BFastOptions): Promise<string> {
         return this.getFileLocation(name, options);
     }
 
@@ -230,8 +280,10 @@ export class IpfsStorageFactory implements FilesAdapter {
         size: number,
         data: Buffer,
         contentType: string,
-        databaseAdapter: DatabaseAdapter,
-        options: BFastDatabaseOptions
+        upsertNode: UpsertNodeFn<any>,
+        upsertDataInStore: UpsertDataFn<any>,
+        security: SecurityController,
+        options: BFastOptions
     ): Promise<string> {
         const _obj = IpfsStorageFactory.sanitize4Saving({
             _id: name,
@@ -243,11 +295,15 @@ export class IpfsStorageFactory implements FilesAdapter {
         const dataRes = await ipfs.generateCidFromData(_obj, data, this.domain, options);
         _obj.cid = dataRes.cid;
         _obj.size = size;
-        IpfsStorageFactory.sanitize4User(await databaseAdapter.writeOne(
+        IpfsStorageFactory.sanitize4User(await writeOne(
             this.domain,
             _obj,
             false,
+            upsertNode,
+            upsertDataInStore,
+            security,
             {},
+            {bypassDomainVerification: true},
             options
         ));
         return name;
@@ -270,7 +326,7 @@ export class IpfsStorageFactory implements FilesAdapter {
         return x;
     }
 
-    async init(options: BFastDatabaseOptions): Promise<void> {
+    async init(options: BFastOptions): Promise<void> {
         // await this.ipfsFactory.ensureIpfs(options);
     }
 }

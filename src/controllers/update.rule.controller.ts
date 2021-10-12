@@ -1,20 +1,24 @@
-import {DatabaseController} from './database.controller';
 import {RulesModel} from '../model/rules.model';
 import {UpdateRuleRequestModel} from '../model/update-rule-request.model';
-import {BFastDatabaseOptions} from "../bfast-database.option";
-import {DatabaseAdapter} from "../adapters/database.adapter";
+import {BFastOptions} from "../bfast-database.option";
 import {SecurityController} from "./security.controller";
+import {findByFilter, updateOne} from "./database.controller";
+import {GetDataFn, GetNodeFn, UpsertDataFn, UpsertNodeFn} from "../adapters/database.adapter";
 
 export class UpdateRuleController {
     async update(
         rules: RulesModel,
         domain: string,
-        databaseAdapter: DatabaseAdapter,
+        purgeNodeValue,
+        getNodes,
+        getNode: GetNodeFn,
+        getData: GetDataFn,
+        upsertNode: UpsertNodeFn<any>,
+        upsertData: UpsertDataFn<any>,
         updateRuleRequest: UpdateRuleRequestModel,
-        databaseController: DatabaseController,
         securityController: SecurityController,
         transactionSession: any,
-        options: BFastDatabaseOptions
+        options: BFastOptions
     ): Promise<any[] | string> {
         if (!updateRuleRequest?.update) {
             throw new Error('Please update field is required, which contains properties to update a document');
@@ -24,10 +28,13 @@ export class UpdateRuleController {
             delete updateRuleRequest.filter;
             filter._id = updateRuleRequest.id;
             updateRuleRequest.filter = filter;
-            return databaseController.updateOne(
+            return updateOne(
                 domain,
                 updateRuleRequest,
-                databaseAdapter,
+                getNode,
+                getData,
+                upsertNode,
+                upsertData,
                 securityController,
                 rules?.context,
                 {
@@ -40,10 +47,13 @@ export class UpdateRuleController {
             if (updateRuleRequest?.filter && Object.keys(updateRuleRequest?.filter).length === 0) {
                 throw new Error('Empty map is not supported in update rule');
             }
-            return databaseController.updateMany(
+            return findByFilter(
                 domain,
                 updateRuleRequest,
-                databaseAdapter,
+                purgeNodeValue,
+                getNodes,
+                getNode,
+                getData,
                 securityController,
                 rules.context,
                 {

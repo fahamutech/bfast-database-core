@@ -1,52 +1,78 @@
-// @ts-ignore
 import {PassThrough} from 'stream';
-import {BFastDatabaseOptions} from '../bfast-database.option';
-import {DatabaseAdapter} from "./database.adapter";
+import {BFastOptions} from '../bfast-database.option';
+import {GetDataFn, GetNodeFn, GetNodesFn, PurgeNodeValueFn, UpsertDataFn, UpsertNodeFn} from "./database.adapter";
+import {SecurityController} from "../controllers/security.controller";
+import {Buffer} from "buffer";
 
 export abstract class FilesAdapter {
 
     canHandleFileStream: boolean;
     isS3: boolean;
 
-    abstract init(options: BFastDatabaseOptions): Promise<any>;
+    abstract init(options: BFastOptions): Promise<any>;
 
     abstract createFile(
-        filename: string,
+        name: string,
         size: number,
         data: Buffer,
         contentType: string,
-        databaseAdapter: DatabaseAdapter,
-        options: BFastDatabaseOptions
+        upsertNode: UpsertNodeFn<any>,
+        upsertDataInStore: UpsertDataFn<any>,
+        security: SecurityController,
+        options: BFastOptions
     ): Promise<string>;
 
-    abstract deleteFile(filename: string, databaseAdapter: DatabaseAdapter, options: BFastDatabaseOptions): Promise<any>;
+    abstract deleteFile(
+        filename: string, purgeNodeValue: PurgeNodeValueFn,
+        getNodes: GetNodesFn<any>,
+        getNode: GetNodeFn,
+        getData: GetDataFn,
+        security: SecurityController,
+        options: BFastOptions
+    ): Promise<any>;
 
-    abstract getFileData(filename: string, asStream: boolean, databaseAdapter: DatabaseAdapter, options: BFastDatabaseOptions): Promise<{
+    abstract getFileData(
+        name: string,
+        asStream,
+        getNode: GetNodeFn,
+        getDataInStore: GetDataFn,
+        options: BFastOptions
+    ): Promise<{
         size: number,
         data: Buffer | ReadableStream,
         type: string
     }>;
 
-    abstract getFileLocation(filename: string, config: BFastDatabaseOptions): Promise<string>;
+    abstract getFileLocation(filename: string, config: BFastOptions): Promise<string>;
 
     abstract handleFileStream(
-        filename: any,
-        request: any,
-        response: any,
-        contentType: any,
-        databaseAdapter: DatabaseAdapter,
-        options: BFastDatabaseOptions
+        name: string,
+        req: any,
+        res: any,
+        getNode: GetNodeFn,
+        getDataInStore: GetDataFn,
+        contentType,
+        options: BFastOptions
     ): any;
 
-    abstract signedUrl(filename: string, options: BFastDatabaseOptions): Promise<string>;
+    abstract signedUrl(filename: string, options: BFastOptions): Promise<string>;
 
     abstract listFiles(
         query: { prefix: string, size: number, skip: number, after: string },
-        databaseAdapter: DatabaseAdapter,
-        options: BFastDatabaseOptions
+        purgeNodeValue: PurgeNodeValueFn,
+        getNodes: GetNodesFn<any>,
+        getNode: GetNodeFn,
+        getDataInStore: GetDataFn,
+        security: SecurityController,
+        options: BFastOptions
     ): Promise<any>;
 
-    abstract validateFilename(filename: string, options: BFastDatabaseOptions): Promise<any>;
+    abstract validateFilename(filename: string, options: BFastOptions): Promise<any>;
 
-    abstract fileInfo(filename: string, databaseAdapter: DatabaseAdapter, options: BFastDatabaseOptions): Promise<{ name: string, size: number }>;
+    abstract fileInfo(
+        name: string,
+        getNode: GetNodeFn,
+        getDataInStore: GetDataFn,
+        options: BFastOptions,
+    ): Promise<{ name: string, size: number }>;
 }
