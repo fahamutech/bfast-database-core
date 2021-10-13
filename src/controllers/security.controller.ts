@@ -4,75 +4,59 @@ import * as _jwt from 'jsonwebtoken';
 import {BFastOptions} from '../bfast-database.option';
 import {createHash} from 'crypto';
 
+export function generateUUID(): string {
+    return uuid.v4();
+}
+export function sha256OfObject(data: { [key: string]: any }) {
+    return createHash('sha256')
+        .update(JSON.stringify(data))
+        .digest('hex');
+}
 
-export class SecurityController {
+export function dayToMillSecond(days: number): number {
+    return (days * 24 * 60 * 60 * 1000);
+}
 
-    constructor() {
-    }
+export async function comparePassword(plainPassword: string, hashPassword: string): Promise<boolean> {
+    return await bcrypt.compare(plainPassword, hashPassword);
+}
 
-    sha256OfObject(data: { [key: string]: any }) {
-        return createHash('sha256')
-            .update(JSON.stringify(data))
-            .digest('hex');
-    }
+export async function hashPlainText(plainText: string): Promise<string> {
+    return await bcrypt.hash(plainText, 3);
+}
 
-    dayToMillSecond(days: number): number {
-        return (days * 24 * 60 * 60 * 1000);
-    }
+export function decodeToken(token: string): { uid: string, [key: string]: any } {
+    return _jwt.decode(token, {
+        complete: true,
+        json: true
+    });
+}
 
-    async comparePassword(plainPassword: string, hashPassword: string): Promise<boolean> {
-        return await bcrypt.compare(plainPassword, hashPassword);
-    }
+export async function getToken(
+    data: { uid: string, [key: string]: any } = {uid: undefined},
+    options: BFastOptions,
+    expire = 30,
+    host = 'https://api.bfast.fahamutech.com',
+) {
+    const time = Math.floor(new Date().getTime() / 1000);
+    let claims = {
+        iss: host,
+        sub: host,
+        aud: host,
+        iat: time,
+        exp: new Date().getTime() + this.dayToMillSecond(expire)
+    };
+    claims = Object.assign(claims, data);
+    // const jwk = this.getJwk(options.rsaKeyPairInJson);
+    // const keyPEM = jwk.key.toPrivateKeyPEM();
+    // const jwt = njwt.create(claims, keyPEM, jwk.alg);
+    // jwt.setExpiration(new Date().getTime() + this.dayToMillSecond(expire));
+    return _jwt.sign(claims, options.masterKey);
+}
 
-    async hashPlainText(plainText: string): Promise<string> {
-        return await bcrypt.hash(plainText, 3);
-    }
-
-    decodeToken(token: string): { uid: string, [key: string]: any } {
-        return _jwt.decode(token, {
-            complete: true,
-            json: true
-        });
-    }
-
-    generateUUID(): string {
-        return uuid.v4();
-    }
-
-    async getToken(
-        data: { uid: string, [key: string]: any } = {uid: undefined},
-        options: BFastOptions,
-        expire = 30,
-        host = 'https://api.bfast.fahamutech.com',
-    ) {
-        const time = Math.floor(new Date().getTime() / 1000);
-        let claims = {
-            iss: host,
-            sub: host,
-            aud: host,
-            iat: time,
-            exp: new Date().getTime() + this.dayToMillSecond(expire)
-        };
-        claims = Object.assign(claims, data);
-        // const jwk = this.getJwk(options.rsaKeyPairInJson);
-        // const keyPEM = jwk.key.toPrivateKeyPEM();
-        // const jwt = njwt.create(claims, keyPEM, jwk.alg);
-        // jwt.setExpiration(new Date().getTime() + this.dayToMillSecond(expire));
-        return _jwt.sign(claims, options.masterKey);
-    }
-
-    async verifyToken(token: string, options: BFastOptions) {
-        // const jwk = this.getJwk(options.rsaPublicKeyInJson);
-        // const jwt = njwt.verify(token, jwk.key.toPublicKeyPEM(), jwk.alg);
-        // return jwt.body.toJSON();
-        return _jwt.verify(token,options.masterKey);
-    }
-
-    private getJwk(keyPair) {
-        // const jwk = nodeJwk.JWK.fromObject(keyPair);
-        // if (!jwk) {
-        //     throw new Error('Huh, my key is not there...');
-        // }
-        return {};
-    }
+export async function verifyToken(token: string, options: BFastOptions) {
+    // const jwk = this.getJwk(options.rsaPublicKeyInJson);
+    // const jwt = njwt.verify(token, jwk.key.toPublicKeyPEM(), jwk.alg);
+    // return jwt.body.toJSON();
+    return _jwt.verify(token,options.masterKey);
 }

@@ -1,7 +1,5 @@
-import {PassThrough} from 'stream';
 import {BFastOptions} from '../bfast-database.option';
 import {GetDataFn, GetNodeFn, GetNodesFn, PurgeNodeValueFn, UpsertDataFn, UpsertNodeFn} from "./database.adapter";
-import {SecurityController} from "../controllers/security.controller";
 import {Buffer} from "buffer";
 
 export abstract class FilesAdapter {
@@ -18,7 +16,6 @@ export abstract class FilesAdapter {
         contentType: string,
         upsertNode: UpsertNodeFn<any>,
         upsertDataInStore: UpsertDataFn<any>,
-        security: SecurityController,
         options: BFastOptions
     ): Promise<string>;
 
@@ -27,7 +24,6 @@ export abstract class FilesAdapter {
         getNodes: GetNodesFn<any>,
         getNode: GetNodeFn,
         getData: GetDataFn,
-        security: SecurityController,
         options: BFastOptions
     ): Promise<any>;
 
@@ -63,7 +59,6 @@ export abstract class FilesAdapter {
         getNodes: GetNodesFn<any>,
         getNode: GetNodeFn,
         getDataInStore: GetDataFn,
-        security: SecurityController,
         options: BFastOptions
     ): Promise<any>;
 

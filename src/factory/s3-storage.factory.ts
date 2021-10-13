@@ -11,7 +11,6 @@ import {
     UpsertDataFn,
     UpsertNodeFn
 } from "../adapters/database.adapter";
-import {SecurityController} from "../controllers/security.controller";
 
 const url = require('url');
 
@@ -31,7 +30,6 @@ export class S3StorageFactory implements FilesAdapter {
         contentType: string,
         upsertNode: UpsertNodeFn<any>,
         upsertDataInStore: UpsertDataFn<any>,
-        security: SecurityController,
         options: BFastOptions
     ): Promise<string> {
         const bucket = options?.adapters?.s3Storage?.bucket;
@@ -50,7 +48,6 @@ export class S3StorageFactory implements FilesAdapter {
         getNodes: GetNodesFn<any>,
         getNode: GetNodeFn,
         getData: GetDataFn,
-        security: SecurityController,
         options: BFastOptions
     ): Promise<any> {
         const bucket = options?.adapters?.s3Storage?.bucket;
@@ -129,7 +126,6 @@ export class S3StorageFactory implements FilesAdapter {
         getNodes: GetNodesFn<any>,
         getNode: GetNodeFn,
         getDataInStore: GetDataFn,
-        security: SecurityController,
         options: BFastOptions
     ): Promise<any> {
         const bucket = options?.adapters?.s3Storage?.bucket;

@@ -12,7 +12,6 @@ import {
 } from "../adapters/database.adapter";
 import {IpfsFactory} from "./ipfs.factory";
 import {findByFilter, findById, remove, writeOne} from "../controllers/database.controller";
-import {SecurityController} from "../controllers/security.controller";
 
 export class IpfsStorageFactory implements FilesAdapter {
     private domain = '_Storage';
@@ -30,7 +29,6 @@ export class IpfsStorageFactory implements FilesAdapter {
         contentType: string,
         upsertNode: UpsertNodeFn<any>,
         upsertDataInStore: UpsertDataFn<any>,
-        security: SecurityController,
         options: BFastOptions
     ): Promise<string> {
         await this.validateFilename(name);
@@ -40,7 +38,6 @@ export class IpfsStorageFactory implements FilesAdapter {
             contentType,
             upsertNode,
             upsertDataInStore,
-            security,
             options
         );
     }
@@ -51,7 +48,6 @@ export class IpfsStorageFactory implements FilesAdapter {
         getNodes: GetNodesFn<any>,
         getNode: GetNodeFn,
         getData: GetDataFn,
-        security: SecurityController,
         options: BFastOptions
     ): Promise<any> {
         const r = await remove(
@@ -62,7 +58,6 @@ export class IpfsStorageFactory implements FilesAdapter {
             getNode,
             getData,
             purgeNodeValue,
-            security,
             {},
             {bypassDomainVerification: true},
             options
@@ -232,7 +227,6 @@ export class IpfsStorageFactory implements FilesAdapter {
         getNodes: GetNodesFn<any>,
         getNode: GetNodeFn,
         getDataInStore: GetDataFn,
-        security: SecurityController,
         options: BFastOptions
     ): Promise<any[]> {
         let r = await findByFilter(
@@ -247,7 +241,6 @@ export class IpfsStorageFactory implements FilesAdapter {
             getNodes,
             getNode,
             getDataInStore,
-            security,
             {useMasterKey: true},
             {bypassDomainVerification: true},
             options
@@ -282,7 +275,6 @@ export class IpfsStorageFactory implements FilesAdapter {
         contentType: string,
         upsertNode: UpsertNodeFn<any>,
         upsertDataInStore: UpsertDataFn<any>,
-        security: SecurityController,
         options: BFastOptions
     ): Promise<string> {
         const _obj = IpfsStorageFactory.sanitize4Saving({
@@ -301,7 +293,6 @@ export class IpfsStorageFactory implements FilesAdapter {
             false,
             upsertNode,
             upsertDataInStore,
-            security,
             {},
             {bypassDomainVerification: true},
             options

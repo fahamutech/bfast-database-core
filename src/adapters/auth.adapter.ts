@@ -1,7 +1,6 @@
 import {BasicUserAttributesModel} from '../model/basic-user-attributes.model';
 import {ContextBlock} from '../model/rules.model';
 import {BFastOptions} from "../bfast-database.option";
-import {SecurityController} from "../controllers/security.controller";
 import {GetDataFn, GetNodeFn, GetNodesFn, PurgeNodeValueFn, UpsertDataFn, UpsertNodeFn} from "./database.adapter";
 
 export abstract class AuthAdapter {
@@ -10,7 +9,6 @@ export abstract class AuthAdapter {
         upsertNode: UpsertNodeFn<any>,
         upsertDataInStore: UpsertDataFn<any>,
         context: ContextBlock,
-        securityController: SecurityController,
         options: BFastOptions
     ): Promise<T>;
 
@@ -21,7 +19,6 @@ export abstract class AuthAdapter {
         getNode: GetNodeFn,
         getDataInStore: GetDataFn,
         context: ContextBlock,
-        securityController: SecurityController,
         options: BFastOptions
     ): Promise<T>;
 
@@ -33,7 +30,6 @@ export abstract class AuthAdapter {
         getDataInStore: GetDataFn,
         upsertNode: UpsertNodeFn<any>,
         upsertDataInStore: UpsertDataFn<any>,
-        securityController: SecurityController,
         context: ContextBlock,
         options: BFastOptions
     ): Promise<any>;
@@ -44,7 +40,6 @@ export abstract class AuthAdapter {
         getDataInStore: GetDataFn,
         upsertNode: UpsertNodeFn<any>,
         upsertDataInStore: UpsertDataFn<any>,
-        securityController: SecurityController,
         context: ContextBlock,
         options: BFastOptions
     ): Promise<T>;

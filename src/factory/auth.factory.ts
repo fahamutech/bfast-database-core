@@ -2,7 +2,6 @@ import {AuthAdapter} from '../adapters/auth.adapter';
 import {BasicUserAttributesModel} from '../model/basic-user-attributes.model';
 import {ContextBlock} from '../model/rules.model';
 import {BFastOptions} from "../bfast-database.option";
-import {SecurityController} from "../controllers/security.controller";
 import {findByFilter, updateOne, writeOne} from "../controllers/database.controller";
 import {
     GetDataFn,
@@ -12,7 +11,8 @@ import {
     UpsertDataFn,
     UpsertNodeFn
 } from "../adapters/database.adapter";
-import {match} from "assert";
+
+import {comparePassword, getToken, hashPlainText} from "../controllers/security.controller";
 
 export class AuthFactory implements AuthAdapter {
     private domainName = '_User';
@@ -31,7 +31,6 @@ export class AuthFactory implements AuthAdapter {
         getNode: GetNodeFn,
         getDataInStore: GetDataFn,
         context: ContextBlock,
-        securityController: SecurityController,
         options: BFastOptions
     ): Promise<T> {
         const users = await findByFilter(
@@ -46,21 +45,19 @@ export class AuthFactory implements AuthAdapter {
             getNodes,
             getNode,
             getDataInStore,
-            securityController,
             context,
             {bypassDomainVerification: true},
             options
         );
         if (users && Array.isArray(users) && users.length === 1) {
             const user = users[0];
-            const securityController = new SecurityController();
-            if (await securityController.comparePassword(userModel.password, user.password ? user.password : user._hashed_password)) {
+            if (await comparePassword(userModel.password, user.password ? user.password : user._hashed_password)) {
                 delete user.password;
                 delete user._hashed_password;
                 delete user._acl;
                 delete user._rperm;
                 delete user._wperm;
-                user.token = await securityController.getToken({uid: user.id}, options);
+                user.token = await getToken({uid: user.id}, options);
                 return user;
             } else {
                 throw new Error('Password is not valid');
@@ -75,23 +72,21 @@ export class AuthFactory implements AuthAdapter {
         upsertNode: UpsertNodeFn<any>,
         upsertDataInStore: UpsertDataFn<any>,
         context: ContextBlock,
-        securityController: SecurityController,
         options: BFastOptions
     ): Promise<T> {
-        userModel.password = await securityController.hashPlainText(userModel?.password);
+        userModel.password = await hashPlainText(userModel?.password);
         const user = await writeOne(
             this.domainName,
             userModel,
             false,
             upsertNode,
             upsertDataInStore,
-            securityController,
             context,
             {bypassDomainVerification: true},
             options
         );
         delete user.password;
-        user.token = await securityController.getToken({uid: user.id}, options);
+        user.token = await getToken({uid: user.id}, options);
         return user;
     }
 
@@ -105,7 +100,6 @@ export class AuthFactory implements AuthAdapter {
         getDataInStore: GetDataFn,
         upsertNode: UpsertNodeFn<any>,
         upsertDataInStore: UpsertDataFn<any>,
-        securityController: SecurityController,
         context: ContextBlock,
         options: BFastOptions
     ): Promise<T> {
@@ -122,7 +116,6 @@ export class AuthFactory implements AuthAdapter {
             getDataInStore,
             upsertNode,
             upsertDataInStore,
-            securityController,
             context,
             {bypassDomainVerification: true},
             options
@@ -135,11 +128,10 @@ export class AuthFactory implements AuthAdapter {
         getDataInStore: GetDataFn,
         upsertNode: UpsertNodeFn<any>,
         upsertDataInStore: UpsertDataFn<any>,
-        securityController: SecurityController,
         context: ContextBlock,
         options: BFastOptions
     ): Promise<any> {
-        const hashedPassword = await securityController.hashPlainText(password);
+        const hashedPassword = await hashPlainText(password);
         return updateOne(
             this.domainName,
             {
@@ -154,7 +146,6 @@ export class AuthFactory implements AuthAdapter {
             getDataInStore,
             upsertNode,
             upsertDataInStore,
-            securityController,
             context,
             {bypassDomainVerification: true},
             options

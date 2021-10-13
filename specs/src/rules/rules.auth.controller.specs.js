@@ -3,7 +3,6 @@ const {assert, should} = require('chai');
 const {RulesController} = require("../../../dist/index");
 const {AuthFactory} = require("../../../dist/index");
 const {AuthController} = require("../../../dist/index");
-const {SecurityController} = require("../../../dist/index");
 const {purgeDataInStore, getNodes, getNode, getDataInStore, upsertNode, upsertDataInStore} = require("../../../dist");
 
 describe('RulesController::Auth Unit Test', function () {
@@ -31,7 +30,6 @@ describe('RulesController::Auth Unit Test', function () {
                     }
                 }, results,
                 new AuthController(),
-                new SecurityController(),
                 new AuthFactory(),
                 purgeDataInStore,
                 getNodes,
@@ -62,7 +60,6 @@ describe('RulesController::Auth Unit Test', function () {
                 },
                 {errors: {}},
                 new AuthController(),
-                new SecurityController(),
                 new AuthFactory(),
                 purgeDataInStore,
                 getNodes,
@@ -90,7 +87,6 @@ describe('RulesController::Auth Unit Test', function () {
                 },
                 results,
                 new AuthController(),
-                new SecurityController(),
                 new AuthFactory(),
                 purgeDataInStore,
                 getNodes,
@@ -117,7 +113,6 @@ describe('RulesController::Auth Unit Test', function () {
                 },
                 results,
                 new AuthController(),
-                new SecurityController(),
                 new AuthFactory(),
                 purgeDataInStore,
                 getNodes,
@@ -140,7 +135,7 @@ describe('RulesController::Auth Unit Test', function () {
                     }
                 }, results,
                 new AuthController(),
-                new SecurityController(),
+
                 new AuthFactory(),
                 purgeDataInStore,
                 getNodes,
@@ -164,7 +159,7 @@ describe('RulesController::Auth Unit Test', function () {
                     }
                 }, results,
                 new AuthController(),
-                new SecurityController(),
+
                 new AuthFactory(),
                 purgeDataInStore,
                 getNodes,
@@ -188,7 +183,7 @@ describe('RulesController::Auth Unit Test', function () {
                 },
                 results,
                 new AuthController(),
-                new SecurityController(),
+
                 new AuthFactory(),
                 purgeDataInStore,
                 getNodes,
@@ -218,7 +213,7 @@ describe('RulesController::Auth Unit Test', function () {
                 },
                 {errors: {}},
                 new AuthController(),
-                new SecurityController(),
+
                 new AuthFactory(),
                 purgeDataInStore,
                 getNodes,
@@ -243,7 +238,7 @@ describe('RulesController::Auth Unit Test', function () {
                 },
                 {errors: {}},
                 new AuthController(),
-                new SecurityController(),
+
                 purgeDataInStore,
                 getNodes,
                 getNode,
@@ -265,7 +260,7 @@ describe('RulesController::Auth Unit Test', function () {
                 },
                 {errors: {}},
                 new AuthController(),
-                new SecurityController(),
+
                 new AuthFactory(),
                 purgeDataInStore,
                 getNodes,
@@ -293,7 +288,7 @@ describe('RulesController::Auth Unit Test', function () {
                 },
                 {errors: {}},
                 new AuthController(),
-                new SecurityController(),
+
                 new AuthFactory(),
                 purgeDataInStore,
                 getNodes,
@@ -318,7 +313,7 @@ describe('RulesController::Auth Unit Test', function () {
                 },
                 {errors: {}},
                 new AuthController(),
-                new SecurityController(),
+
                 new AuthFactory(),
                 purgeDataInStore,
                 getNodes,
@@ -342,7 +337,7 @@ describe('RulesController::Auth Unit Test', function () {
                 },
                 {errors: {}},
                 new AuthController(),
-                new SecurityController(),
+
                 new AuthFactory(),
                 purgeDataInStore,
                 getNodes,
