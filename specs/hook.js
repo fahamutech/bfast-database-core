@@ -13,7 +13,7 @@ exports.mochaHooks = {
         process.env.PROJECT_ID = config.projectId;
         process.env.MASTER_KEY = config.masterKey;
         process.env.PORT = config.port.toString();
-        process.env.MONGO_URL = config.mongoDbUri;
+        process.env.DATABASE_URI = config.databaseURI;
         process.env.TAARIFA_TOKEN = config.taarifaToken;
         process.env.RSA_PUBLIC_KEY = JSON.stringify(config.rsaPublicKeyInJson);
         process.env.RSA_KEY = JSON.stringify(config.rsaKeyPairInJson);
@@ -21,7 +21,7 @@ exports.mochaHooks = {
         // process.env.LOGS = '0';
         console.log('________  START__________');
         // ySocketServer = await startYJsWebsocketServer();
-        await bfastFs.start();
+        // await bfastFs.start().then(console.log).catch(console.log);
     },
     async afterAll() {
         console.log('________END__________');

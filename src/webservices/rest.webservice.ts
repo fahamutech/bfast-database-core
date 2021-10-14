@@ -6,8 +6,7 @@ import {FilesAdapter} from "../adapters/files.adapter";
 import {
     GetDataFn,
     GetNodeFn,
-    GetNodesFn,
-    PurgeNodeValueFn,
+    GetNodesFn, PurgeNodeFn,
     UpsertDataFn,
     UpsertNodeFn
 } from "../adapters/database.adapter";
@@ -29,7 +28,7 @@ export function rulesRestAPI(
     getDataInStore: GetDataFn,
     upsertNode: UpsertNodeFn<any>,
     upsertDataInStore: UpsertDataFn<any>,
-    purgeNodeValue: PurgeNodeValueFn,
+    purgeNode: PurgeNodeFn,
     options: BFastOptions
 ): { path: string, onRequest: any, method: string } {
     return functions().onPostHttpRequest(`${prefix}v2`, [
@@ -53,13 +52,12 @@ export function rulesRestAPI(
             n,
             authAdapter,
             filesAdapter,
-            purgeNodeValue,
             getNodes,
             getNode,
             getDataInStore,
             upsertNode,
             upsertDataInStore,
-            purgeNodeValue,
+            purgeNode,
             options
         )
     ]);

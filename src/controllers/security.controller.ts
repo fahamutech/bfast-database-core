@@ -44,18 +44,18 @@ export async function getToken(
         sub: host,
         aud: host,
         iat: time,
-        exp: new Date().getTime() + this.dayToMillSecond(expire)
+        exp: new Date().getTime() + dayToMillSecond(expire)
     };
     claims = Object.assign(claims, data);
-    // const jwk = this.getJwk(options.rsaKeyPairInJson);
+    // const jwk = getJwk(options.rsaKeyPairInJson);
     // const keyPEM = jwk.key.toPrivateKeyPEM();
     // const jwt = njwt.create(claims, keyPEM, jwk.alg);
-    // jwt.setExpiration(new Date().getTime() + this.dayToMillSecond(expire));
+    // jwt.setExpiration(new Date().getTime() + dayToMillSecond(expire));
     return _jwt.sign(claims, options.masterKey);
 }
 
 export async function verifyToken(token: string, options: BFastOptions) {
-    // const jwk = this.getJwk(options.rsaPublicKeyInJson);
+    // const jwk = getJwk(options.rsaPublicKeyInJson);
     // const jwt = njwt.verify(token, jwk.key.toPublicKeyPEM(), jwk.alg);
     // return jwt.body.toJSON();
     return _jwt.verify(token,options.masterKey);

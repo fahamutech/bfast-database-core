@@ -12,8 +12,7 @@ import {Request, Response} from 'express'
 import {
     GetDataFn,
     GetNodeFn,
-    GetNodesFn,
-    PurgeNodeValueFn,
+    GetNodesFn, PurgeNodeFn,
     UpsertDataFn,
     UpsertNodeFn
 } from "../adapters/database.adapter";
@@ -191,20 +190,13 @@ export function getFileData(
 export async function listFiles(
     data: { prefix: string, size: number, skip: number, after: string },
     filesAdapter: FilesAdapter,
-    purgeNodeValue: PurgeNodeValueFn,
+    purgeNode: PurgeNodeFn,
     getNodes: GetNodesFn<any>,
     getNode: GetNodeFn,
     getDataInStore: GetDataFn,
     options: BFastOptions
 ): Promise<any[]> {
-    return filesAdapter.listFiles(
-        data,
-        purgeNodeValue,
-        getNodes,
-        getNode,
-        getDataInStore,
-        options
-    );
+    return filesAdapter.listFiles(data, purgeNode, getNodes, getNode, getDataInStore, options);
 }
 
 export async function saveFromBuffer(
@@ -248,7 +240,7 @@ export async function saveFromBuffer(
 export async function deleteFile(
     data: { name: string },
     _: ContextBlock,
-    purgeNodeValue: PurgeNodeValueFn,
+    purgeNode: PurgeNodeFn,
     getNodes: GetNodesFn<any>,
     getNode: GetNodeFn,
     getDataInStore: GetDataFn,
@@ -259,14 +251,7 @@ export async function deleteFile(
     if (!name) {
         throw new Error('Filename required');
     }
-    return filesAdapter.deleteFile(
-        name,
-        purgeNodeValue,
-        getNodes,
-        getNode,
-        getDataInStore,
-        options
-    );
+    return filesAdapter.deleteFile(name, purgeNode, getNodes, getNode, getDataInStore, options);
 }
 
 export function isS3(filesAdapter: FilesAdapter): boolean {
@@ -306,7 +291,8 @@ export function handleGetFileBySignedUrl(
             response.redirect(value);
         }
     }).catch(reason => {
-        response.status(StatusCodes.EXPECTATION_FAILED).send({message: reason && reason.message ? reason.message : reason.toString()});
+        response.status(StatusCodes.EXPECTATION_FAILED)
+            .send({message: reason && reason.message ? reason.message : reason.toString()});
     });
 }
 
@@ -318,20 +304,13 @@ export function fileInfo(
     filesAdapter: FilesAdapter,
     options: BFastOptions
 ) {
-    filesAdapter
-        .fileInfo(
-            request?.params?.filename,
-            getNode,
-            getDataInStore,
-            options
-        ).then(info => {
+    filesAdapter.fileInfo(request?.params?.filename, getNode, getDataInStore, options).then(info => {
         response.status(200);
         response.set('Accept-Ranges', 'bytes');
         response.set('Content-Length', info.size.toString());
         response.end();
-    })
-        .catch(_23 => {
-            response.status(StatusCodes.NOT_FOUND);
-            response.json({message: 'File not found'});
-        });
+    }).catch(_23 => {
+        response.status(StatusCodes.NOT_FOUND);
+        response.json({message: 'File not found'});
+    });
 }

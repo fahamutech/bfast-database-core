@@ -11,7 +11,6 @@ import {
     GetNodeFn,
     GetNodesFn,
     PurgeNodeFn,
-    PurgeNodeValueFn,
     UpsertDataFn,
     UpsertNodeFn
 } from "../adapters/database.adapter";
@@ -30,7 +29,7 @@ export async function handleAuthenticationRule(
     rules: RulesModel,
     ruleResponse: RuleResponse,
     authAdapter: AuthAdapter,
-    purgeNodeValue: PurgeNodeValueFn,
+    purgeNode: PurgeNodeFn,
     getNodes: GetNodesFn<any>,
     getNode: GetNodeFn,
     getDataInStore: GetDataFn,
@@ -43,7 +42,7 @@ export async function handleAuthenticationRule(
             ruleResponse,
             rules,
             authAdapter,
-            purgeNodeValue,
+            purgeNode,
             getNodes,
             getNode,
             getDataInStore,
@@ -65,7 +64,7 @@ export async function processAuthenticationBlock(
     ruleResponse: RuleResponse,
     rules: RulesModel,
     authAdapter: AuthAdapter,
-    purgeNodeValue: PurgeNodeValueFn,
+    purgeNode: PurgeNodeFn,
     getNodes: GetNodesFn<any>,
     getNode: GetNodeFn,
     getDataInStore: GetDataFn,
@@ -87,7 +86,7 @@ export async function processAuthenticationBlock(
                     data,
                     authAdapter,
                     rules.context,
-                    purgeNodeValue,
+                    purgeNode,
                     getNodes,
                     getNode,
                     getDataInStore,
@@ -102,7 +101,7 @@ export async function processAuthenticationBlock(
                     data,
                     authAdapter,
                     rules.context,
-                    purgeNodeValue,
+                    purgeNode,
                     getNodes,
                     getNode,
                     getDataInStore,
@@ -116,11 +115,11 @@ export async function processAuthenticationBlock(
                 // ruleResponse.auth.resetPassword = await authController.resetPassword(data.email ? data.email : data);
             }
         } catch (e) {
-            console.log(e.toString());
+            devLog(e);
             ruleResponse.errors[`auth.${action}`] = {
                 message: e.message ? e.message : e.toString(),
                 path: `auth.${action}`,
-                data
+                data: JSON.stringify(data,null, 2)
             };
         }
     }
@@ -132,7 +131,6 @@ export async function handleAuthorizationRule(
     ruleResponse: RuleResponse,
     upsertNode: UpsertNodeFn<any>,
     upsertDataInStore: UpsertDataFn<any>,
-    purgeNodeValue: PurgeNodeValueFn,
     getNodes: GetNodesFn<any>,
     getNode: GetNodeFn,
     getDataInStore: GetDataFn,
@@ -174,7 +172,7 @@ export async function handleAuthorizationRule(
                 } else if (action === 'list' && typeof data === 'object') {
                     const listResponse = await listPolicyRule(
                         rules.context,
-                        purgeNodeValue,
+                        purgeNode,
                         getNodes,
                         getNode,
                         getDataInStore,
@@ -186,7 +184,6 @@ export async function handleAuthorizationRule(
                     const removeResponse = await removePolicyRule(
                         data.ruleId,
                         rules.context,
-                        purgeNodeValue,
                         getNodes,
                         getNode,
                         getDataInStore,
@@ -225,7 +222,7 @@ export async function handleCreateRules(
     getDataInStore: GetDataFn,
     upsertNode: UpsertNodeFn<any>,
     upsertDataInStore: UpsertDataFn<any>,
-    purgeNodeValue: PurgeNodeValueFn,
+    purgeNode: PurgeNodeFn,
     options: BFastOptions,
     transactionSession: any
 ): Promise<RuleResponse> {
@@ -240,7 +237,7 @@ export async function handleCreateRules(
             const allowed = await hasPermission(
                 `create.${domain}`,
                 rules?.context,
-                purgeNodeValue,
+                purgeNode,
                 getNodes,
                 getNode,
                 getDataInStore,
@@ -314,7 +311,6 @@ export async function handleCreateRules(
 export async function handleDeleteRules(
     rulesBlockModel: RulesModel,
     ruleResultModel: RuleResponse,
-    purgeNodeValue: PurgeNodeValueFn,
     getNodes: GetNodesFn<any>,
     getNode: GetNodeFn,
     getDataInStore: GetDataFn,
@@ -333,7 +329,7 @@ export async function handleDeleteRules(
             const allowed = await hasPermission(
                 `delete.${domain}`,
                 rulesBlockModel?.context,
-                purgeNodeValue,
+                purgeNode,
                 getNodes,
                 getNode,
                 getDataInStore,
@@ -356,7 +352,6 @@ export async function handleDeleteRules(
                     ruleResultModel[deleteRule] = await remove(
                         domain,
                         rulesBlockModelElement,
-                        purgeNodeValue,
                         getNodes,
                         getNode,
                         getDataInStore,
@@ -381,7 +376,6 @@ export async function handleDeleteRules(
                     ruleResultModel[deleteRule] = await remove(
                         domain,
                         rulesBlockModelElement,
-                        purgeNodeValue,
                         getNodes,
                         getNode,
                         getDataInStore,
@@ -427,7 +421,7 @@ export async function handleQueryRules(
     getNodes: GetNodesFn<any>,
     getNode: GetNodeFn,
     getDataInStore: GetDataFn,
-    purgeNodeValue: PurgeNodeValueFn,
+    purgeNode: PurgeNodeFn,
     options: BFastOptions,
     transactionSession: any
 ): Promise<RuleResponse> {
@@ -442,7 +436,7 @@ export async function handleQueryRules(
             const allowed = await hasPermission(
                 `query.${domain}`,
                 rulesBlockModel?.context,
-                purgeNodeValue,
+                purgeNode,
                 getNodes,
                 getNode,
                 getDataInStore,
@@ -468,7 +462,7 @@ export async function handleQueryRules(
                         = await findByFilter(
                         domain,
                         rulesBlockModelElement,
-                        purgeNodeValue,
+                        purgeNode,
                         getNodes,
                         getNode,
                         getDataInStore,
@@ -514,7 +508,6 @@ export async function handleBulkRule(
     getDataInStore: GetDataFn,
     upsertNode: UpsertNodeFn<any>,
     upsertDataInStore: UpsertDataFn<any>,
-    purgeNodeValue: PurgeNodeValueFn,
     purgeNode: PurgeNodeFn,
     options: BFastOptions,
 ): Promise<RuleResponse> {
@@ -536,14 +529,14 @@ export async function handleBulkRule(
                 getDataInStore,
                 upsertNode,
                 upsertDataInStore,
-                purgeNodeValue,
+                purgeNode,
                 options,
                 session
             );
             await handleUpdateRules(
                 transactionOperationRules,
                 resultObject,
-                purgeNodeValue,
+                purgeNode,
                 getNodes,
                 getNode,
                 getDataInStore,
@@ -558,14 +551,13 @@ export async function handleBulkRule(
                 getNodes,
                 getNode,
                 getDataInStore,
-                purgeNodeValue,
+                purgeNode,
                 options,
                 session
             );
             await handleDeleteRules(
                 transactionOperationRules,
                 resultObject,
-                purgeNodeValue,
                 getNodes,
                 getNode,
                 getDataInStore,
@@ -590,7 +582,7 @@ export async function handleBulkRule(
 export async function handleUpdateRules(
     rules: RulesModel,
     ruleResponse: RuleResponse,
-    purgeNodeValue: PurgeNodeValueFn,
+    purgeNode: PurgeNodeFn,
     getNodes: GetNodesFn<any>,
     getNode: GetNodeFn,
     getDataInStore: GetDataFn,
@@ -610,7 +602,7 @@ export async function handleUpdateRules(
             const allowed = await hasPermission(
                 `update.${domain}`,
                 rules.context,
-                purgeNodeValue,
+                purgeNode,
                 getNodes,
                 getNode,
                 getDataInStore,
@@ -631,7 +623,7 @@ export async function handleUpdateRules(
                         const response = await handleUpdateRule(
                             rules,
                             domain,
-                            purgeNodeValue,
+                            purgeNode,
                             getNodes,
                             getNode,
                             getDataInStore,
@@ -648,7 +640,7 @@ export async function handleUpdateRules(
                     ruleResponse[updateRule] = await handleUpdateRule(
                         rules,
                         domain,
-                        purgeNodeValue,
+                        purgeNode,
                         getNodes,
                         getNode,
                         getDataInStore,
@@ -691,7 +683,7 @@ export async function handleStorageRule(
     ruleResultModel: RuleResponse,
     authAdapter: AuthAdapter,
     filesAdapter: FilesAdapter,
-    purgeNodeValue: PurgeNodeValueFn,
+    purgeNode: PurgeNodeFn,
     getNodes: GetNodesFn<any>,
     getNode: GetNodeFn,
     getDataInStore: GetDataFn,
@@ -713,7 +705,7 @@ export async function handleStorageRule(
                     const allowed = await hasPermission(
                         `files.save`,
                         rulesBlockModel.context,
-                        purgeNodeValue,
+                        purgeNode,
                         getNodes,
                         getNode,
                         getDataInStore,
@@ -740,7 +732,7 @@ export async function handleStorageRule(
                     const allowed = await hasPermission(
                         `files.delete`,
                         rulesBlockModel.context,
-                        purgeNodeValue,
+                        purgeNode,
                         getNodes,
                         getNode,
                         getDataInStore,
@@ -757,7 +749,7 @@ export async function handleStorageRule(
                         ruleResultModel.files.delete = await deleteFile(
                             data,
                             rulesBlockModel.context,
-                            purgeNodeValue,
+                            purgeNode,
                             getNodes,
                             getNode,
                             getDataInStore,
@@ -769,7 +761,7 @@ export async function handleStorageRule(
                     const allowed = await hasPermission(
                         `files.list`,
                         rulesBlockModel.context,
-                        purgeNodeValue,
+                        purgeNode,
                         getNodes,
                         getNode,
                         getDataInStore,
@@ -790,7 +782,7 @@ export async function handleStorageRule(
                                 skip: data && data.skip ? data.skip : 0
                             },
                             filesAdapter,
-                            purgeNodeValue,
+                            purgeNode,
                             getNodes,
                             getNode,
                             getDataInStore,

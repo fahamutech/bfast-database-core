@@ -1,18 +1,8 @@
-import {WebServices} from './webservices/index.webservice';
-import {EnvUtil} from './utils/env.util';
-import {AuthAdapter} from './adapters/auth.adapter';
-import {EmailAdapter} from './adapters/email.adapter';
-import {FilesAdapter} from './adapters/files.adapter';
-import {AuthFactory} from "./factory/auth.factory";
-import {IpfsFactory} from "./factory/ipfs.factory";
-import {IpfsStorageFactory} from "./factory/ipfs-storage.factory";
-import {S3StorageFactory} from "./factory/s3-storage.factory";
-
 export {WebServices} from './webservices/index.webservice';
 export * from './webservices/storage.webservice';
 export * from './webservices/changes.webservice';
 export * from './webservices/rest.webservice';
-export {EnvUtil} from './utils/env.util';
+export * from './utils/env.util';
 
 export {AuthAdapter} from './adapters/auth.adapter';
 export {EmailAdapter} from './adapters/email.adapter';

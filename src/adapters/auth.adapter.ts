@@ -1,7 +1,7 @@
 import {BasicUserAttributesModel} from '../model/basic-user-attributes.model';
 import {ContextBlock} from '../model/rules.model';
 import {BFastOptions} from "../bfast-database.option";
-import {GetDataFn, GetNodeFn, GetNodesFn, PurgeNodeValueFn, UpsertDataFn, UpsertNodeFn} from "./database.adapter";
+import {GetDataFn, GetNodeFn, GetNodesFn, PurgeNodeFn, UpsertDataFn, UpsertNodeFn} from "./database.adapter";
 
 export abstract class AuthAdapter {
     abstract signUp<T extends BasicUserAttributesModel>(
@@ -14,7 +14,7 @@ export abstract class AuthAdapter {
 
     abstract signIn<T extends BasicUserAttributesModel>(
         userModel: T,
-        purgeNodeValue: PurgeNodeValueFn,
+        purgeNode: PurgeNodeFn,
         getNodes: GetNodesFn<any>,
         getNode: GetNodeFn,
         getDataInStore: GetDataFn,

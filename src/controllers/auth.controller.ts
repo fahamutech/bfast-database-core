@@ -8,7 +8,6 @@ import {
     GetNodeFn,
     GetNodesFn,
     PurgeNodeFn,
-    PurgeNodeValueFn,
     UpsertDataFn,
     UpsertNodeFn
 } from "../adapters/database.adapter";
@@ -74,7 +73,7 @@ export async function addPolicyRule(
 
 export async function listPolicyRule(
     context: ContextBlock,
-    purgeNodeValue: PurgeNodeValueFn,
+    purgeNode: PurgeNodeFn,
     getNodes: GetNodesFn<any>,
     getNode: GetNodeFn,
     getDataInStore: GetDataFn,
@@ -86,7 +85,7 @@ export async function listPolicyRule(
             filter: {},
             return: []
         },
-        purgeNodeValue,
+        purgeNode,
         getNodes,
         getNode,
         getDataInStore,
@@ -102,7 +101,6 @@ export async function listPolicyRule(
 export async function removePolicyRule(
     ruleId: string,
     context: ContextBlock,
-    purgeNodeValue: PurgeNodeValueFn,
     getNodes: GetNodesFn<any>,
     getNode: GetNodeFn,
     getDataInStore: GetDataFn,
@@ -117,7 +115,6 @@ export async function removePolicyRule(
             },
             return: ['id'],
         },
-        purgeNodeValue,
         getNodes,
         getNode,
         getDataInStore,
@@ -133,7 +130,7 @@ export async function removePolicyRule(
 export async function hasPermission(
     ruleId: string,
     context: ContextBlock,
-    purgeNodeValue: PurgeNodeValueFn,
+    purgeNode: PurgeNodeFn,
     getNodes: GetNodesFn<any>,
     getNode: GetNodeFn,
     getDataInStore: GetDataFn,
@@ -158,7 +155,7 @@ export async function hasPermission(
             return: [],
             filter,
         },
-        purgeNodeValue,
+        purgeNode,
         getNodes,
         getNode,
         getDataInStore,
@@ -189,23 +186,14 @@ export async function deleteUser(context?: ContextBlock): Promise<any> {
     return Promise.resolve(undefined);
 }
 
-export async function resetPassword(
-    authAdapter: AuthAdapter,
-    email: string,
-    context: ContextBlock
-): Promise<any> {
+export async function resetPassword(authAdapter: AuthAdapter, email: string, context: ContextBlock): Promise<any> {
     if (!email) {
         throw {message: 'email required'};
     }
     return authAdapter.resetPassword(email, context);
 }
 
-export async function sendVerificationEmail(
-    email: string,
-    authAdapter: AuthAdapter,
-    context: ContextBlock,
-    options: BFastOptions
-): Promise<any> {
+export async function sendVerificationEmail(email: string, authAdapter: AuthAdapter, context: ContextBlock, options: BFastOptions): Promise<any> {
     if (!email) {
         throw {message: 'email required'};
     }
@@ -216,30 +204,22 @@ export async function signIn<T extends BasicUserAttributesModel>(
     userModel: T,
     authAdapter: AuthAdapter,
     context: ContextBlock,
-    purgeNodeValue: PurgeNodeValueFn,
+    purgeNode: PurgeNodeFn,
     getNodes: GetNodesFn<any>,
     getNode: GetNodeFn,
     getDataInStore: GetDataFn,
     options: BFastOptions
 ): Promise<T> {
     validateData(userModel, true);
-    userModel.return = [];
-    return authAdapter.signIn(
-        userModel,
-        purgeNodeValue,
-        getNodes,
-        getNode,
-        getDataInStore,
-        context,
-        options
-    );
+    // userModel.return = [];
+    return authAdapter.signIn(userModel, purgeNode, getNodes, getNode, getDataInStore, context, options);
 }
 
 export async function signUp<T extends BasicUserAttributesModel>(
     userModel: T,
     authAdapter: AuthAdapter,
     context: ContextBlock,
-    purgeNodeValue: PurgeNodeValueFn,
+    purgeNode: PurgeNodeFn,
     getNodes: GetNodesFn<any>,
     getNode: GetNodeFn,
     getDataInStore,
@@ -259,7 +239,7 @@ export async function signUp<T extends BasicUserAttributesModel>(
             ],
             return: []
         },
-        purgeNodeValue,
+        purgeNode,
         getNodes,
         getNode,
         getDataInStore,

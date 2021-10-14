@@ -1,28 +1,27 @@
 const {
-    BfastDatabaseCore,
-    EnvUtil,
     initDatabase,
     getNodes,
     getNode,
     getDataInStore,
     upsertNode,
     upsertDataInStore,
-    purgeDataInStore
+    initialize,
+    purgeNode,
+    loadEnv
 } = require('../../dist');
 const bfast = require("bfast");
 const {config} = require("../mock.config");
-const envUtil = new EnvUtil();
-let myConfig = envUtil.loadEnv();
+let myConfig = loadEnv();
 myConfig = Object.assign(config, myConfig)
-const bfd = new BfastDatabaseCore();
-const webService = bfd.init(
+console.log(myConfig);
+const webService = initialize(
     initDatabase,
     getNodes,
     getNode,
     getDataInStore,
     upsertNode,
     upsertDataInStore,
-    purgeDataInStore,
+    purgeNode,
     myConfig
 );
 bfast.init({

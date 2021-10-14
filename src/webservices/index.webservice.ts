@@ -6,8 +6,7 @@ import {AuthAdapter} from "../adapters/auth.adapter";
 import {
     GetDataFn,
     GetNodeFn,
-    GetNodesFn,
-    PurgeNodeValueFn,
+    GetNodesFn, PurgeNodeFn,
     UpsertDataFn,
     UpsertNodeFn
 } from "../adapters/database.adapter";
@@ -29,7 +28,7 @@ export class WebServices {
                 private readonly getDataInStore: GetDataFn,
                 private readonly upsertNode: UpsertNodeFn<any>,
                 private readonly upsertDataInStore: UpsertDataFn<any>,
-                private readonly purgeNodeValue: PurgeNodeValueFn,
+                private readonly purgeNode: PurgeNodeFn,
                 private readonly options: BFastOptions) {
     }
 
@@ -38,7 +37,7 @@ export class WebServices {
             fileApi: getFileFromStorage(
                 prefix,
                 this.filesAdapter,
-                this.purgeNodeValue,
+                this.purgeNode,
                 this.getNodes,
                 this.getNode,
                 this.getDataInStore,
@@ -47,7 +46,7 @@ export class WebServices {
             fileThumbnailApi: geThumbnailFromStorage(
                 prefix,
                 this.filesAdapter,
-                this.purgeNodeValue,
+                this.purgeNode,
                 this.getNodes,
                 this.getNode,
                 this.getDataInStore,
@@ -56,7 +55,7 @@ export class WebServices {
             fileListApi: getFilesFromStorage(
                 prefix,
                 this.filesAdapter,
-                this.purgeNodeValue,
+                this.purgeNode,
                 this.getNodes,
                 this.getNode,
                 this.getDataInStore,
@@ -65,7 +64,7 @@ export class WebServices {
             fileUploadApi: uploadMultiPartFile(
                 prefix,
                 this.filesAdapter,
-                this.purgeNodeValue,
+                this.purgeNode,
                 this.getNodes,
                 this.getNode,
                 this.getDataInStore,
@@ -98,7 +97,7 @@ export class WebServices {
                 this.getDataInStore,
                 this.upsertNode,
                 this.upsertDataInStore,
-                this.purgeNodeValue,
+                this.purgeNode,
                 this.options
             ),
             jwk: authJwk(

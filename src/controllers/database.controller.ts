@@ -2,8 +2,10 @@ import {BasicAttributesModel} from '../model/basic-attributes.model';
 import {ContextBlock} from '../model/rules.model';
 import {
     GetDataFn,
-    GetNodeFn, GetNodesFn,
-    InitDatabaseFn, PurgeNodeFn, PurgeNodeValueFn,
+    GetNodeFn,
+    GetNodesFn,
+    InitDatabaseFn,
+    PurgeNodeFn,
     UpsertDataFn,
     UpsertNodeFn
 } from '../adapters/database.adapter';
@@ -19,12 +21,12 @@ import {BFastOptions} from "../bfast-database.option";
 import {TreeController} from "bfast-database-tree";
 import {createHash} from "crypto";
 import {Node} from '../model/node'
-import {Cursor} from "../model/cursor";
 import {DatabaseWriteOptions} from "../model/database-write-options";
 import {DatabaseUpdateOptions} from "../model/database-update-options";
 import {DatabaseBasicOptions} from "../model/database-basic-options";
 import {DatabaseChangesOptions} from "../model/database-changes-options";
 import {TreeQuery} from "../model/tree-query";
+import {NodeValueDeleteQuery} from "../model/node-value-delete-query";
 
 export async function getAllContentsFromTreeTable(
     domain: string,
@@ -34,8 +36,7 @@ export async function getAllContentsFromTreeTable(
     options: BFastOptions
 ): Promise<any[] | number> {
     const nodePathHash = hashOfNodePath(`${domain}/_id`);
-    const cursor: Cursor<Node> = await getNodes(nodePathHash, options);
-    let nodes: Node[] = await cursor.toArray();
+    let nodes = await getNodes(nodePathHash, null, options);
     if (nodes && Array.isArray(nodes)) {
         if (queryModel?.size && queryModel?.size > 0) {
             const skip_ = (queryModel.skip && queryModel.skip >= 1) ? queryModel.skip : 0;
@@ -59,21 +60,21 @@ export async function searchNodeByExpression(
     options,
 ): Promise<Node[]> {
     const pathHash = hashOfNodePath(path);
-    let cursor = await getNodes(pathHash, options);
+    const np: any = {};
     if (nodeId.hasOwnProperty('$orderBy')) {
-        cursor = cursor.sort('_id', nodeId.$orderBy);
+        np.sort = nodeId.$orderBy;
     }
     if (nodeId.hasOwnProperty('$limit')) {
-        cursor = cursor.limit(nodeId.$limit);
+        np.limit = nodeId.$limit;
     }
     if (nodeId.hasOwnProperty('$skip')) {
-        cursor = cursor.skip(nodeId.$skip);
+        np.skip = nodeId.$skip;
     }
+    const ns = await getNodes(pathHash, np, options);
     const nodes: Node[] = [];
-    while (await cursor.hasNext()) {
-        const next: Node = await cursor.next();
+    for (const n of ns) {
         const fn = new Function('it', nodeId.$fn);
-        fn(next._id) === true ? nodes.push(next) : null
+        fn(n._id) === true ? nodes.push(n) : null
     }
     return nodes;
 }
@@ -85,10 +86,10 @@ export async function searchNode(
     getNode: GetNodeFn,
     options: BFastOptions
 ): Promise<Node | Array<Node>> {
-    const pathHash = hashOfNodePath(nodePath);
     if (typeof nodeId === "object" && nodeId?.hasOwnProperty('$fn')) {
         return searchNodeByExpression(nodePath, nodeId, getNodes, options);
     } else {
+        const pathHash = hashOfNodePath(nodePath);
         return getNode(pathHash, nodeId, options);
     }
 }
@@ -103,13 +104,14 @@ export function internalKeys(node: Node): string[] {
     return [];
 }
 
-export async function purgeNodeInStore(
-    path: string, iKey: string,
-    purgeNodeValue: PurgeNodeValueFn,
+export async function purgeNodeInTree(
+    path: string,
+    query: NodeValueDeleteQuery,
+    purgeNode: PurgeNodeFn,
     options: BFastOptions
 ): Promise<{ _id: string }> {
     const pathHash = hashOfNodePath(path);
-    return purgeNodeValue(pathHash, iKey, options);
+    return purgeNode(pathHash, query, options);
 }
 
 export function purgeNodeEntry(node: Node, iKey: string): Node {
@@ -122,7 +124,9 @@ export function purgeNodeEntry(node: Node, iKey: string): Node {
     if (typeof node.value === "string") {
         return node;
     }
-    delete node.value[iKey];
+    if (typeof node.value === "object") {
+        delete node.value[iKey];
+    }
     return node;
 }
 
@@ -157,12 +161,11 @@ export async function internalShake(
     path: string,
     node: Node,
     iKey: string,
-    purgeNodeValue: PurgeNodeValueFn,
+    purgeNode: PurgeNodeFn,
     options: BFastOptions
 ): Promise<Node> {
     node = purgeNodeEntry(node, iKey);
-    await purgeNodeInStore(path, iKey, purgeNodeValue, options)
-        .catch(console.log);
+    await purgeNodeInTree(path, {id: iKey}, purgeNode, options).catch(console.log);
     return node;
 }
 
@@ -172,15 +175,16 @@ export async function externalShake(
     node: Node,
     iKey: string,
     getData: GetDataFn,
-    purgeNodeValue: PurgeNodeValueFn,
+    purgeNode: PurgeNodeFn,
     options: BFastOptions
 ): Promise<Node> {
     const eKey = externalKey(node, iKey);
     const data = await getData(domain, eKey, options);
+    // console.log(data,'external shake data')
     if (data === null || data === undefined) {
-        node = purgeNodeEntryByTree(node, iKey, eKey, data);
-        await purgeNodeInStore(path, iKey, purgeNodeValue, options)
-            .catch(console.log);
+        // node = purgeNodeEntryByTree(node, iKey, eKey, data);
+        node = purgeNodeEntry(node, iKey);
+        await purgeNodeInTree(path, {value: iKey}, purgeNode, options).catch(console.log);
         return node;
     }
     const treeController = new TreeController();
@@ -188,56 +192,61 @@ export async function externalShake(
         nodeHandler: null,
         nodeIdHandler: () => data?._id ? data._id : data?.id
     });
+    // console.log(tree);
     const pathParts = path.split('/');
     for (const pathPart of pathParts) {
         if (pathPart !== domain) {
+            tree = tree[pathPart];
+            // console.log(pathPart,'pathPart');
+            // console.log(tree,'tree');
             if (tree === null || tree === undefined) {
                 node = purgeNodeEntryByTree(node, iKey, eKey, tree);
-                await purgeNodeInStore(path, iKey, purgeNodeValue, options);
-                return;
+                await purgeNodeInTree(path, {value: iKey}, purgeNode, options).catch(console.log);
             }
-            tree = tree[pathPart];
         }
     }
-    return purgeNodeEntryByTree(node, iKey, eKey, tree);
+    return node;
 }
 
 export async function shakeTree(
     node: Node,
     nodePath: string,
     domain: string,
-    purgeNodeValue: PurgeNodeValueFn,
+    purgeNode: PurgeNodeFn,
     getNode: GetNodeFn,
     getData: GetDataFn,
     options: BFastOptions
 ): Promise<Node> {
     const iKeys = internalKeys(node);
+    // console.log(iKeys,'internalKeys');
     for (const iKey of iKeys) {
         const mainNodePathHash = hashOfNodePath(`${domain}/_id`);
         const idNode: Node = await getNode(mainNodePathHash, iKey, options);
-        if (!idNode) {
-            node = await internalShake(nodePath, node, iKey, purgeNodeValue, options);
+        // console.log(idNode,'i node');
+        if (idNode === null || idNode === undefined) {
+            node = await internalShake(nodePath, node, iKey, purgeNode, options);
         } else {
-            node = await externalShake(domain, nodePath, node, iKey, getData, purgeNodeValue, options);
+            node = await externalShake(domain, nodePath, node, iKey, getData, purgeNode, options);
         }
     }
     return node;
 }
 
-export async function extractExternalKeysFromNodes(
+export async function externalKeysFromNodes(
     node: Node,
     domain: string,
     nodePath: string,
-    externalKeyList,
-    externalKeyMap,
-    purgeNodeValue: PurgeNodeValueFn,
+    purgeNode: PurgeNodeFn,
     getNode: GetNodeFn,
     getData: GetDataFn,
     options: BFastOptions
 ): Promise<{ externalKeyList: Array<string>, externalKeyMap: any }> {
+    const externalKeyList = [];
+    const externalKeyMap = {};
     if (node && node.value) {
         if (typeof node.value === "object") {
-            node = await shakeTree(node, nodePath, domain, purgeNodeValue, getNode, getData, options);
+            node = await shakeTree(node, nodePath, domain, purgeNode, getNode, getData, options);
+            // console.log(node,'node after shake')
             for (const eKey of Object.values<string>(node.value)) {
                 externalKeyList.push(eKey);
                 if (externalKeyMap[eKey]) {
@@ -266,7 +275,7 @@ export async function searchExternalKeysFromTree(
     nodePathnodeIdMap: TreeQuery,
     nodePathList: Array<string>,
     domain: string,
-    purgeNodeValue: PurgeNodeValueFn,
+    purgeNode: PurgeNodeFn,
     getData: GetDataFn,
     getNodes: GetNodesFn<Node>,
     getNode: GetNodeFn,
@@ -276,43 +285,19 @@ export async function searchExternalKeysFromTree(
     let externalKeyMap = {};
     for (const nodePath of nodePathList) {
         const nodeId = nodePathnodeIdMap[nodePath];
-        let node: Node | Array<Node> = await searchNode(
-            nodePath,
-            nodeId,
-            getNodes,
-            getNode,
-            options
-        );
+        let node: Node | Array<Node> = await searchNode(nodePath, nodeId, getNodes, getNode, options);
+        // console.log(node, 'node search result');
         if (Array.isArray(node)) {
             for (const n of node) {
-                const r = await extractExternalKeysFromNodes(
-                    n,
-                    domain,
-                    nodePath,
-                    externalKeyList,
-                    externalKeyMap,
-                    purgeNodeValue,
-                    getNode,
-                    getData,
-                    options
-                );
-                externalKeyList = r.externalKeyList;
-                externalKeyMap = r.externalKeyMap;
+                const r = await externalKeysFromNodes(n, domain, nodePath, purgeNode, getNode, getData, options);
+                externalKeyList.push(...r.externalKeyList);
+                externalKeyMap = Object.assign(externalKeyMap, r.externalKeyMap);
             }
         } else {
-            const r = await extractExternalKeysFromNodes(
-                node,
-                domain,
-                nodePath,
-                externalKeyList,
-                externalKeyMap,
-                purgeNodeValue,
-                getNode,
-                getData,
-                options
-            );
-            externalKeyList = r.externalKeyList;
-            externalKeyMap = r.externalKeyMap;
+            const r = await externalKeysFromNodes(node, domain, nodePath, purgeNode, getNode, getData, options);
+            // console.log(r,'externalKeysFromNodes');
+            externalKeyList.push(...r.externalKeyList);
+            externalKeyMap = Object.assign(externalKeyMap, r.externalKeyMap);
         }
     }
     externalKeyList = externalKeyList
@@ -326,7 +311,7 @@ export async function handleQueryObjectTree(
     treeQuery: TreeQuery,
     domain: string,
     queryModel: QueryModel<any>,
-    purgerNodeValue: PurgeNodeValueFn,
+    purgerNode: PurgeNodeFn,
     getNodes: GetNodesFn<Node>,
     getNode: GetNodeFn,
     getData: GetDataFn,
@@ -336,11 +321,12 @@ export async function handleQueryObjectTree(
     if (nodesPathList.length === 0) {
         return getAllContentsFromTreeTable(domain, queryModel, getNodes, getData, options);
     }
-    let externalKeys = await searchExternalKeysFromTree(treeQuery, nodesPathList, domain, purgerNodeValue, getData,
+    let externalKeys = await searchExternalKeysFromTree(treeQuery, nodesPathList, domain, purgerNode, getData,
         getNodes,
         getNode,
         options
     );
+    // console.log(externalKeys, 'external keys');
     if (queryModel?.size && queryModel?.size > 0) {
         const skip = (queryModel.skip && queryModel.skip >= 0) ? queryModel.skip : 0;
         externalKeys = externalKeys.slice(skip, (queryModel.size + skip));
@@ -373,7 +359,7 @@ export async function checkPolicyInDomain(domain: string, options: DatabaseWrite
 }
 
 export function hashOfNodePath(nodePath: string): string {
-    console.log('Before hash ---> ', nodePath);
+    // console.log('Before hash ---> ', nodePath);
     // const l = nodePath.match(new RegExp('[0-9a-f]{40}', 'ig'));
     // if (Array.isArray(l) && l?.length > 0) {
     //     console.log('Its already hashed -----> ', nodePath);
@@ -388,13 +374,13 @@ export function whenWantToSaveADataNodeToATree(eKey: string, upsertNode: UpsertN
             for (const key of Object.keys(node)) {
                 let $setMap: Node = {
                     _id: isNaN(Number(key)) ? key.trim() : Number(key),
-                    value: {}
+                    value: node[key]
                 };
                 if (typeof node[key] === "object") {
                     $setMap = Object.keys(node[key]).reduce((a: Node, b) => {
                         a.value[b] = node[key][b];
                         return a;
-                    }, {_id: null, value: {}});
+                    }, {_id: isNaN(Number(key)) ? key.trim() : Number(key), value: {}});
                 } else {
                     $setMap.value = node[key]
                 }
@@ -526,11 +512,12 @@ function altUpdateModel(updateModel: UpdateRuleRequestModel, context: ContextBlo
     updateModel.update = addUpdateMetadata(updateModel?.update as any, context);
     return updateModel;
 }
+
 export async function searchInternalKeysFromTree(
     nodePathnodeIdMap: Map<string, string>,
     nodePathList: Array<string>,
     domain: string,
-    purgeNodeValue: PurgeNodeValueFn,
+    purgeNode: PurgeNodeFn,
     getNodes: GetNodesFn<any>,
     getNode: GetNodeFn,
     getData: GetDataFn,
@@ -543,24 +530,14 @@ export async function searchInternalKeysFromTree(
         let node: Node | Array<Node> = await searchNode(nodePath, nodeId, getNodes, getNode, options);
         if (Array.isArray(node)) {
             for (const n of node) {
-                const r = await extractInternalKeysFromNodes(n, domain, nodePath, internalKeyList, internalKeyMap,
-                    purgeNodeValue,
-                    getNode,
-                    getData,
-                    options
-                );
-                internalKeyList = r.internalKeyList;
-                internalKeyMap = r.internalKeyMap;
+                const r = await extractInternalKeysFromNodes(n, domain, nodePath, purgeNode, getNode, getData, options);
+                internalKeyList.push(...r.internalKeyList);
+                internalKeyMap = Object.assign(internalKeyMap, r.internalKeyMap);
             }
         } else {
-            const r = await extractInternalKeysFromNodes(node, domain, nodePath, internalKeyList, internalKeyMap,
-                purgeNodeValue,
-                getNode,
-                getData,
-                options
-            );
-            internalKeyList = r.internalKeyList;
-            internalKeyMap = r.internalKeyMap;
+            const r = await extractInternalKeysFromNodes(node, domain, nodePath, purgeNode, getNode, getData, options);
+            internalKeyList.push(...r.internalKeyList);
+            internalKeyMap = Object.assign(internalKeyMap, r.internalKeyMap);
         }
     }
     internalKeyList = internalKeyList
@@ -574,20 +551,16 @@ export async function extractInternalKeysFromNodes(
     node: Node,
     domain: string,
     nodePath: string,
-    internalKeyList: Array<string>,
-    internalKeyMap: Map<any, any>,
-    purgeNodeValue: PurgeNodeValueFn,
+    purgeNode: PurgeNodeFn,
     getNode: GetNodeFn,
     getData: GetDataFn,
     options: BFastOptions
 ): Promise<{ internalKeyList: Array<string>, internalKeyMap: any }> {
+    const internalKeyList: Array<string> = [];
+    const internalKeyMap = {};
     if (node && node.value) {
         if (typeof node.value === "object") {
-            node = await shakeTree(node, nodePath, domain, purgeNodeValue,
-                getNode,
-                getData,
-                options
-            );
+            node = await shakeTree(node, nodePath, domain, purgeNode, getNode, getData, options);
             for (const iKey of Object.keys(node.value)) {
                 internalKeyList.push(iKey);
                 if (internalKeyMap[iKey]) {
@@ -615,7 +588,6 @@ export async function extractInternalKeysFromNodes(
 export async function handleDeleteObjectTree(
     nodePathnodeIdMap: Map<string, string>,
     domain: string,
-    purgeNodeValue: PurgeNodeValueFn,
     getNodes: GetNodesFn<any>,
     getNode: GetNodeFn,
     getData: GetDataFn,
@@ -623,22 +595,21 @@ export async function handleDeleteObjectTree(
     options: BFastOptions
 ): Promise<{ _id: string }[]> {
     const nodePathList = Object.keys(nodePathnodeIdMap);
-    let internalKeyList = await searchInternalKeysFromTree(nodePathnodeIdMap, nodePathList, domain, purgeNodeValue,
+    let internalKeyList = await searchInternalKeysFromTree(nodePathnodeIdMap, nodePathList, domain, purgeNode,
         getNodes,
         getNode,
         getData,
         options
     );
     const pathHash = hashOfNodePath(`${domain}/_id`);
-    return await Promise.all(
-        internalKeyList.map(async iK => purgeNode(pathHash, iK, options))
+    return Promise.all(
+        internalKeyList.map(async iK => purgeNode(pathHash, {id: iK}, options))
     );
 }
 
 export async function remove(
     domain: string,
     deleteModel: DeleteModel<any>,
-    purgeNodeValue: PurgeNodeValueFn,
     getNodes: GetNodesFn<any>,
     getNode: GetNodeFn,
     getData: GetDataFn,
@@ -664,12 +635,12 @@ export async function remove(
     let result = [];
     if (Array.isArray(deleteTree)) {
         for (const _tree of deleteTree) {
-            const r = await handleDeleteObjectTree(_tree, domain, purgeNodeValue, getNodes, getNode, getData,
+            const r = await handleDeleteObjectTree(_tree, domain, getNodes, getNode, getData,
                 purgeNode, options);
             Array.isArray(r) ? result.push(...r) : result.push(r);
         }
     } else {
-        result = await handleDeleteObjectTree(deleteTree, domain, purgeNodeValue, getNodes, getNode, getData, purgeNode, options);
+        result = await handleDeleteObjectTree(deleteTree, domain, getNodes, getNode, getData, purgeNode, options);
     }
 
     return result.map(t => {
@@ -775,7 +746,7 @@ export async function treeQuery(domain: string, data: object): Promise<TreeQuery
 export async function handleOrQueryInTree(
     domain: string,
     queryMode: QueryModel<any>,
-    purgeNodeValue: PurgeNodeValueFn,
+    purgeNode: PurgeNodeFn,
     getNodes: GetNodesFn<any>,
     getNode: GetNodeFn,
     getData: GetDataFn,
@@ -784,7 +755,7 @@ export async function handleOrQueryInTree(
 ) {
     const resultMap = {};
     for (const tQ of treeQuery) {
-        const r = await handleQueryObjectTree(tQ, domain, queryMode, purgeNodeValue, getNodes, getNode, getData, options);
+        const r = await handleQueryObjectTree(tQ, domain, queryMode, purgeNode, getNodes, getNode, getData, options);
         Array.isArray(r) ? (r.forEach(_r1 => {
             resultMap[_r1._id] = _r1
         })) : resultMap[generateUUID()] = r;
@@ -796,7 +767,7 @@ export async function handleOrQueryInTree(
 export async function findByFilter(
     domain: string,
     queryModel: QueryModel<any>,
-    purgeNodeValue: PurgeNodeValueFn,
+    purgeNode: PurgeNodeFn,
     getNodes: GetNodesFn<Node>,
     getNode: GetNodeFn,
     getData: GetDataFn,
@@ -813,9 +784,9 @@ export async function findByFilter(
     const query = await treeQuery(domain, queryModel.filter);
     let result;
     if (Array.isArray(query)) {
-        result = await handleOrQueryInTree(domain, queryModel, purgeNodeValue, getNodes, getNode, getData, query, options);
+        result = await handleOrQueryInTree(domain, queryModel, purgeNode, getNodes, getNode, getData, query, options);
     } else {
-        result = await handleQueryObjectTree(query, domain, queryModel, purgeNodeValue, getNodes, getNode, getData, options);
+        result = await handleQueryObjectTree(query, domain, queryModel, purgeNode, getNodes, getNode, getData, options);
     }
     if (result && Array.isArray(result)) {
         return result.map(v => sanitize4User(v, returnFields));

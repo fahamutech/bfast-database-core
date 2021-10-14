@@ -6,8 +6,7 @@ import {findByFilter, updateOne, writeOne} from "../controllers/database.control
 import {
     GetDataFn,
     GetNodeFn,
-    GetNodesFn,
-    PurgeNodeValueFn,
+    GetNodesFn, PurgeNodeFn,
     UpsertDataFn,
     UpsertNodeFn
 } from "../adapters/database.adapter";
@@ -26,7 +25,7 @@ export class AuthFactory implements AuthAdapter {
 
     async signIn<T extends BasicUserAttributesModel>(
         userModel: T,
-        purgeNodeValue: PurgeNodeValueFn,
+        purgeNode: PurgeNodeFn,
         getNodes: GetNodesFn<any>,
         getNode: GetNodeFn,
         getDataInStore: GetDataFn,
@@ -41,7 +40,7 @@ export class AuthFactory implements AuthAdapter {
                 },
                 return: []
             },
-            purgeNodeValue,
+            purgeNode,
             getNodes,
             getNode,
             getDataInStore,

@@ -14,3 +14,4 @@ db.env.txt
 specs/video.mp4
 syncs_data
 /syncs_data
+.nyc_output

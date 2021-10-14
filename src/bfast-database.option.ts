@@ -8,11 +8,11 @@ export interface BFastOptions {
     applicationId: string;
     projectId: string;
     logs?: boolean;
-    mongoDbUri: string;
+    databaseURI: string;
     taarifaToken?: string;
-    rsaKeyPairInJson: any;
-    rsaPublicKeyInJson: any;
-    web3Token?: string;
+    rsaKeyPairInJson?: any;
+    rsaPublicKeyInJson?: any;
+    web3Token: string;
     adapters?: {
         auth?: (config: BFastOptions) => AuthAdapter;
         email?: (config: BFastOptions) => EmailAdapter;

@@ -13,7 +13,6 @@ import {
     GetNodeFn,
     GetNodesFn,
     PurgeNodeFn,
-    PurgeNodeValueFn,
     UpsertDataFn,
     UpsertNodeFn
 } from "../adapters/database.adapter";
@@ -105,7 +104,7 @@ export function getAllFiles(
     response: Response,
     _: NextFunction,
     filesAdapter: FilesAdapter,
-    purgeNodeValue: PurgeNodeValueFn,
+    purgeNode: PurgeNodeFn,
     getNodes: GetNodesFn<any>,
     getNode: GetNodeFn,
     getDataInStore: GetDataFn,
@@ -118,7 +117,7 @@ export function getAllFiles(
             prefix: request.query.prefix ? request.query.prefix.toString() : '',
         },
         filesAdapter,
-        purgeNodeValue,
+        purgeNode,
         getNodes,
         getNode,
         getDataInStore,
@@ -235,13 +234,14 @@ export function filePolicy(
     request: Request,
     response: Response,
     next: NextFunction,
-    purgeNodeValue: PurgeNodeValueFn,
+    purgeNode: PurgeNodeFn,
     getNodes: GetNodesFn<any>,
     getNode: GetNodeFn,
     getDataInStore: GetDataFn,
     options: BFastOptions
 ): void {
-    hasPermission(request.body.ruleId, request.body.context, purgeNodeValue, getNodes, getNode, getDataInStore, options).then(value => {
+    hasPermission(request.body.ruleId, request.body.context, purgeNode, getNodes, getNode, getDataInStore,
+        options).then(value => {
         if (value === true) {
             next();
         } else {
@@ -321,7 +321,6 @@ export function handleRuleBlocks(
     _: NextFunction,
     authAdapter: AuthAdapter,
     filesAdapter: FilesAdapter,
-    purgeNodeValue: PurgeNodeValueFn,
     getNodes: GetNodesFn<any>,
     getNode: GetNodeFn,
     getDataInStore: GetDataFn,
@@ -336,7 +335,7 @@ export function handleRuleBlocks(
         body,
         results,
         authAdapter,
-        purgeNodeValue,
+        purgeNode,
         getNodes,
         getNode,
         getDataInStore,
@@ -349,7 +348,6 @@ export function handleRuleBlocks(
             results,
             upsertNode,
             upsertDataInStore,
-            purgeNodeValue,
             getNodes,
             getNode,
             getDataInStore,
@@ -365,7 +363,7 @@ export function handleRuleBlocks(
             getDataInStore,
             upsertNode,
             upsertDataInStore,
-            purgeNodeValue,
+            purgeNode,
             options,
             null
         );
@@ -373,7 +371,7 @@ export function handleRuleBlocks(
         return handleUpdateRules(
             body,
             results,
-            purgeNodeValue,
+            purgeNode,
             getNodes,
             getNode,
             getDataInStore,
@@ -386,7 +384,6 @@ export function handleRuleBlocks(
         return handleDeleteRules(
             body,
             results,
-            purgeNodeValue,
             getNodes,
             getNode,
             getDataInStore,
@@ -401,7 +398,7 @@ export function handleRuleBlocks(
             getNodes,
             getNode,
             getDataInStore,
-            purgeNodeValue,
+            purgeNode,
             options,
             null
         );
@@ -414,7 +411,6 @@ export function handleRuleBlocks(
             getDataInStore,
             upsertNode,
             upsertDataInStore,
-            purgeNodeValue,
             purgeNode,
             options
         );
@@ -424,7 +420,7 @@ export function handleRuleBlocks(
             results,
             authAdapter,
             filesAdapter,
-            purgeNodeValue,
+            purgeNode,
             getNodes,
             getNode,
             getDataInStore,

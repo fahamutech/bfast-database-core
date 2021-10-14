@@ -5,8 +5,7 @@ import {Buffer} from "buffer";
 import {
     GetDataFn,
     GetNodeFn,
-    GetNodesFn,
-    PurgeNodeValueFn,
+    GetNodesFn, PurgeNodeFn,
     UpsertDataFn,
     UpsertNodeFn
 } from "../adapters/database.adapter";
@@ -44,7 +43,7 @@ export class IpfsStorageFactory implements FilesAdapter {
 
     async deleteFile(
         name: string,
-        purgeNodeValue: PurgeNodeValueFn,
+        purgeNode: PurgeNodeFn,
         getNodes: GetNodesFn<any>,
         getNode: GetNodeFn,
         getData: GetDataFn,
@@ -53,11 +52,10 @@ export class IpfsStorageFactory implements FilesAdapter {
         const r = await remove(
             this.domain,
             {id: name},
-            purgeNodeValue,
             getNodes,
             getNode,
             getData,
-            purgeNodeValue,
+            purgeNode,
             {},
             {bypassDomainVerification: true},
             options
@@ -223,7 +221,7 @@ export class IpfsStorageFactory implements FilesAdapter {
             size: 20,
             skip: 0
         },
-        purgeNodeValue: PurgeNodeValueFn,
+        purgeNode: PurgeNodeFn,
         getNodes: GetNodesFn<any>,
         getNode: GetNodeFn,
         getDataInStore: GetDataFn,
@@ -237,7 +235,7 @@ export class IpfsStorageFactory implements FilesAdapter {
                 size: query.size,
                 skip: query.skip
             },
-            purgeNodeValue,
+            purgeNode,
             getNodes,
             getNode,
             getDataInStore,

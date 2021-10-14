@@ -2,15 +2,7 @@ import {functions} from 'bfast';
 import {FunctionsModel} from '../model/functions.model';
 import {BFastOptions} from "../bfast-database.option";
 import {FilesAdapter} from "../adapters/files.adapter";
-import {
-    GetDataFn,
-    GetNodeFn,
-    GetNodesFn,
-    PurgeDataFn,
-    PurgeNodeValueFn,
-    UpsertDataFn,
-    UpsertNodeFn
-} from "../adapters/database.adapter";
+import {GetDataFn, GetNodeFn, GetNodesFn, PurgeNodeFn, UpsertDataFn, UpsertNodeFn} from "../adapters/database.adapter";
 import {
     filePolicy,
     getAllFiles,
@@ -23,7 +15,7 @@ import {
 
 export function handleGetFile(
     filesAdapter: FilesAdapter,
-    purgeDataInStore: PurgeDataFn,
+    purgeNode: PurgeNodeFn,
     getNodes: GetNodesFn<any>,
     getNode,
     getDataInStore,
@@ -37,14 +29,14 @@ export function handleGetFile(
         },
         (rq, rs, n) => verifyApplicationId(rq, rs, n, options),
         (rq, rs, n) => verifyRequestToken(rq, rs, n, options),
-        (rq, rs, n) => filePolicy(rq, rs, n, purgeDataInStore, getNodes, getNode, getDataInStore, options),
+        (rq, rs, n) => filePolicy(rq, rs, n,purgeNode, getNodes, getNode, getDataInStore, options),
         (rq, rs, n) => getFile(rq, rs, n, filesAdapter, getNode, getDataInStore, options)
     ];
 }
 
 export function handleUploadFile(
     filesAdapter: FilesAdapter,
-    purgeNodeValue: PurgeNodeValueFn,
+    purgeNode: PurgeNodeFn,
     getNodes: GetNodesFn<any>,
     getNode: GetNodeFn,
     getDataInStore: GetDataFn,
@@ -60,14 +52,14 @@ export function handleUploadFile(
         },
         (rq, rs, n) => verifyApplicationId(rq, rs, n, options),
         (rq, rs, n) => verifyRequestToken(rq, rs, n, options),
-        (rq, rs, n) => filePolicy(rq, rs, n, purgeNodeValue, getNodes, getNode, getDataInStore, options),
+        (rq, rs, n) => filePolicy(rq, rs, n, purgeNode, getNodes, getNode, getDataInStore, options),
         (rq, rs, n) => multipartForm(rq, rs, n, filesAdapter, upsertNode, upsertDataInStore, options)
     ];
 }
 
 export function handleGetThumbnail(
     filesAdapter: FilesAdapter,
-    purgeNodeValue: PurgeNodeValueFn,
+    purgeNode: PurgeNodeFn,
     getNodes: GetNodesFn<any>,
     getNode: GetNodeFn,
     getDataInStore: GetDataFn,
@@ -81,14 +73,14 @@ export function handleGetThumbnail(
         },
         (rq, rs, n) => verifyApplicationId(rq, rs, n, options),
         (rq, rs, n) => verifyRequestToken(rq, rs, n, options),
-        (rq, rs, n) => filePolicy(rq, rs, n, purgeNodeValue, getNodes, getNode, getDataInStore, options),
+        (rq, rs, n) => filePolicy(rq, rs, n, purgeNode, getNodes, getNode, getDataInStore, options),
         (rq, rs, n) => getThumbnail(rq, rs, n, filesAdapter, getNode, getDataInStore, options)
     ];
 }
 
 export function handleListFiles(
     filesAdapter: FilesAdapter,
-    purgeNodeValue: PurgeNodeValueFn,
+    purgeNode: PurgeNodeFn,
     getNodes: GetNodesFn<any>,
     getNode: GetNodeFn,
     getDataInStore: GetDataFn,
@@ -102,8 +94,8 @@ export function handleListFiles(
         },
         (rq, rs, n) => verifyApplicationId(rq, rs, n, options),
         (rq, rs, n) => verifyRequestToken(rq, rs, n, options),
-        (rq, rs, n) => filePolicy(rq, rs, n, purgeNodeValue, getNodes, getNode, getDataInStore, options),
-        (rq, rs, n) => getAllFiles(rq, rs, n, filesAdapter, purgeNodeValue, getNodes, getNode, getDataInStore, options)
+        (rq, rs, n) => filePolicy(rq, rs, n, purgeNode, getNodes, getNode, getDataInStore, options),
+        (rq, rs, n) => getAllFiles(rq, rs, n, filesAdapter, purgeNode, getNodes, getNode, getDataInStore, options)
     ];
 }
 
@@ -126,7 +118,7 @@ export function getUploadFileV2(prefix = '/'): FunctionsModel {
 export function getFileFromStorage(
     prefix = '/',
     filesAdapter: FilesAdapter,
-    purgeNodeValue: PurgeNodeValueFn,
+    purgeNode: PurgeNodeFn,
     getNodes: GetNodesFn<any>,
     getNode: GetNodeFn,
     getDataInStore: GetDataFn,
@@ -134,7 +126,7 @@ export function getFileFromStorage(
 ): FunctionsModel {
     return functions().onHttpRequest(`${prefix}storage/:appId/file/:filename`, this.handleGetFile(
         filesAdapter,
-        purgeNodeValue,
+        purgeNode,
         getNodes,
         getNode,
         getDataInStore,
@@ -145,7 +137,7 @@ export function getFileFromStorage(
 export function geThumbnailFromStorage(
     prefix = '/',
     filesAdapter: FilesAdapter,
-    purgeNodeValue: PurgeNodeValueFn,
+    purgeNode: PurgeNodeFn,
     getNodes: GetNodesFn<any>,
     getNode: GetNodeFn,
     getDataInStore: GetDataFn,
@@ -153,7 +145,7 @@ export function geThumbnailFromStorage(
 ): FunctionsModel {
     return functions().onGetHttpRequest(`${prefix}storage/:appId/file/:filename/thumbnail`, this.handleGetThumbnail(
         filesAdapter,
-        purgeNodeValue,
+        purgeNode,
         getNodes,
         getNode,
         getDataInStore,

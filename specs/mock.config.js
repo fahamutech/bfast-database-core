@@ -1,5 +1,4 @@
-const {BfastDatabaseCore} = require("../dist/index");
-const {EnvUtil} = require('../dist/index')
+const {getEnv} = require('../dist/index')
 const mongodb = require('mongodb');
 const axios = require("axios");
 const {expect} = require('chai');
@@ -18,28 +17,21 @@ const mongoMemoryReplSet = () => {
     }
 }
 
-/**
- * @return {Promise<BfastDatabaseCore>}
- */
-const daas = async () => {
-    return new BfastDatabaseCore();
-}
-
 exports.serverUrl = 'http://localhost:3111/v2';
 exports.mongoRepSet = mongoMemoryReplSet;
-exports.daas = daas;
+
 exports.config = {
     applicationId: 'bfast_test',
     projectId: 'bfast_test',
     port: '3111',
     logs: false,
-    web3Token: new EnvUtil().getEnv(process.env['WEB_3_TOKEN']),
+    web3Token: getEnv(process.env['WEB_3_TOKEN']),
     adapters: {
         s3Storage: undefined
     },
     masterKey: 'bfast_test',
     taarifaToken: undefined,
-    mongoDbUri: 'mongodb://localhost/_test',
+    databaseURI: 'mongodb://localhost/_test',
     rsaKeyPairInJson: {},
     rsaPublicKeyInJson: {}
 }

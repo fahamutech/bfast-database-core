@@ -6,8 +6,7 @@ import {Buffer} from "buffer";
 import {
     GetDataFn,
     GetNodeFn,
-    GetNodesFn,
-    PurgeNodeValueFn,
+    GetNodesFn, PurgeNodeFn,
     UpsertDataFn,
     UpsertNodeFn
 } from "../adapters/database.adapter";
@@ -44,7 +43,8 @@ export class S3StorageFactory implements FilesAdapter {
     }
 
     async deleteFile(
-        filename: string, purgeNodeValue: PurgeNodeValueFn,
+        filename: string,
+        purgeNode: PurgeNodeFn,
         getNodes: GetNodesFn<any>,
         getNode: GetNodeFn,
         getData: GetDataFn,
@@ -122,7 +122,7 @@ export class S3StorageFactory implements FilesAdapter {
             after: undefined,
             size: 20
         },
-        purgeNodeValue: PurgeNodeValueFn,
+        purgeNode: PurgeNodeFn,
         getNodes: GetNodesFn<any>,
         getNode: GetNodeFn,
         getDataInStore: GetDataFn,

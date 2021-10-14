@@ -1,5 +1,5 @@
 import {BFastOptions} from '../bfast-database.option';
-import {GetDataFn, GetNodeFn, GetNodesFn, PurgeNodeValueFn, UpsertDataFn, UpsertNodeFn} from "./database.adapter";
+import {GetDataFn, GetNodeFn, GetNodesFn, PurgeNodeFn, UpsertDataFn, UpsertNodeFn} from "./database.adapter";
 import {Buffer} from "buffer";
 
 export abstract class FilesAdapter {
@@ -20,7 +20,8 @@ export abstract class FilesAdapter {
     ): Promise<string>;
 
     abstract deleteFile(
-        filename: string, purgeNodeValue: PurgeNodeValueFn,
+        filename: string,
+        purgeNode: PurgeNodeFn,
         getNodes: GetNodesFn<any>,
         getNode: GetNodeFn,
         getData: GetDataFn,
@@ -55,7 +56,7 @@ export abstract class FilesAdapter {
 
     abstract listFiles(
         query: { prefix: string, size: number, skip: number, after: string },
-        purgeNodeValue: PurgeNodeValueFn,
+        purgeNode: PurgeNodeFn,
         getNodes: GetNodesFn<any>,
         getNode: GetNodeFn,
         getDataInStore: GetDataFn,

@@ -9,8 +9,7 @@ import {
     GetDataFn,
     GetNodeFn,
     GetNodesFn,
-    InitDatabaseFn,
-    PurgeNodeValueFn,
+    InitDatabaseFn, PurgeNodeFn,
     UpsertDataFn,
     UpsertNodeFn
 } from "./adapters/database.adapter";
@@ -27,9 +26,7 @@ function getFilesFactory(options: BFastOptions): FilesAdapter {
         : new IpfsStorageFactory()
 }
 
-function validateOptions(
-    options: BFastOptions
-): { valid: boolean, message: string } {
+function validateOptions(options: BFastOptions): { valid: boolean, message: string } {
     if (!options.rsaPublicKeyInJson) {
         return {
             valid: false,
@@ -51,10 +48,10 @@ function validateOptions(
             message: 'MasterKey required'
         };
     } else {
-        if (!options.mongoDbUri) {
+        if (!options.databaseURI) {
             return {
                 valid: false,
-                message: 'mongoDbUri required, or supply database adapters instead'
+                message: 'database uri required, or supply database adapters instead'
             };
         }
         return {
@@ -75,7 +72,7 @@ export function initialize(
     getDataInStore: GetDataFn,
     upsertNode: UpsertNodeFn<any>,
     upsertDataInStore: UpsertDataFn<any>,
-    purgeNodeValue: PurgeNodeValueFn,
+    purgeNode: PurgeNodeFn,
     options: BFastOptions
 ): WebServices {
     options = Object.assign(options, {
@@ -106,7 +103,7 @@ export function initialize(
             getDataInStore,
             upsertNode,
             upsertDataInStore,
-            purgeNodeValue,
+            purgeNode,
             options
         );
     } else {
