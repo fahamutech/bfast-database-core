@@ -54,9 +54,12 @@ export async function getToken(
     return _jwt.sign(claims, options.masterKey);
 }
 
-export async function verifyToken(token: string, options: BFastOptions) {
+export async function verifyToken(token: string, options: BFastOptions): Promise<any> {
     // const jwk = getJwk(options.rsaPublicKeyInJson);
     // const jwt = njwt.verify(token, jwk.key.toPublicKeyPEM(), jwk.alg);
     // return jwt.body.toJSON();
-    return _jwt.verify(token,options.masterKey);
+    if (token === null || token === undefined) {
+        throw {message: 'token is null or undefined'};
+    }
+    return _jwt.verify(token, options.masterKey);
 }
