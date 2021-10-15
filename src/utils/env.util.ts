@@ -51,11 +51,11 @@ export function getEnv(name: string): string {
 
 export function loadEnv(): BFastOptions {
     let isS3Configured = true;
-    const s3Bucket = this.getEnv(process.env[EnvNames.S3_BUCKET.toString()]);
-    const s3AccessKey = this.getEnv(process.env[EnvNames.S3_ACCESS_KEY.toString()]);
-    const s3SecretKey = this.getEnv(process.env[EnvNames.S3_SECRET_KEY.toString()]);
-    const s3Endpoint = this.getEnv(process.env[EnvNames.S3_ENDPOINT.toString()]);
-    const s3Region = this.getEnv(process.env[EnvNames.S3_REGION.toString()]);
+    const s3Bucket = getEnv(process.env[EnvNames.S3_BUCKET.toString()]);
+    const s3AccessKey = getEnv(process.env[EnvNames.S3_ACCESS_KEY.toString()]);
+    const s3SecretKey = getEnv(process.env[EnvNames.S3_SECRET_KEY.toString()]);
+    const s3Endpoint = getEnv(process.env[EnvNames.S3_ENDPOINT.toString()]);
+    const s3Region = getEnv(process.env[EnvNames.S3_REGION.toString()]);
     let checker = [];
     checker.push(s3Bucket, s3AccessKey, s3SecretKey, s3Endpoint, s3Region);
     checker = checker.filter(x => {
@@ -84,17 +84,17 @@ export function loadEnv(): BFastOptions {
     }
     // @ts-ignore
     const options: BFastOptions = {};
-    options.useLocalIpfs = this.getEnv(process.env[EnvNames.USE_LOCAL_IPFS])?.toString()?.toLowerCase() === 'true';
-    options.applicationId = this.getEnv(process.env[EnvNames.APPLICATION_ID]);
-    options.projectId = this.getEnv(process.env[EnvNames.PROJECT_ID]);
-    options.port = this.getEnv(process.env[EnvNames.PORT]);
-    options.masterKey = this.getEnv(process.env[EnvNames.MASTER_KEY]);
-    options.web3Token = this.getEnv(process.env[EnvNames.WEB_3_TOKEN]);
-    options.logs = this.getEnv(process.env[EnvNames.LOGS]) === '1';
-    options.databaseURI = this.getEnv(process.env[EnvNames.DATABASE_URI]);
-    options.taarifaToken = this.getEnv(process.env[EnvNames.TAARIFA_TOKEN]);
-    options.rsaPublicKeyInJson = this.getEnv(process.env[EnvNames.RSA_PUBLIC_KEY]);
-    options.rsaKeyPairInJson = this.getEnv(process.env[EnvNames.RSA_KEY]);
+    options.useLocalIpfs = getEnv(process.env[EnvNames.USE_LOCAL_IPFS])?.toString()?.toLowerCase() === 'true';
+    options.applicationId = getEnv(process.env[EnvNames.APPLICATION_ID]);
+    options.projectId = getEnv(process.env[EnvNames.PROJECT_ID]);
+    options.port = getEnv(process.env[EnvNames.PORT]);
+    options.masterKey = getEnv(process.env[EnvNames.MASTER_KEY]);
+    options.web3Token = getEnv(process.env[EnvNames.WEB_3_TOKEN]);
+    options.logs = getEnv(process.env[EnvNames.LOGS]) === '1';
+    options.databaseURI = getEnv(process.env[EnvNames.DATABASE_URI]);
+    options.taarifaToken = getEnv(process.env[EnvNames.TAARIFA_TOKEN]);
+    options.rsaPublicKeyInJson = getEnv(process.env[EnvNames.RSA_PUBLIC_KEY]);
+    options.rsaKeyPairInJson = getEnv(process.env[EnvNames.RSA_KEY]);
     options.adapters = {
         s3Storage: isS3Configured ? {
             bucket: s3Bucket,

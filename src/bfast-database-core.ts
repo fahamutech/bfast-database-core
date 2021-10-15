@@ -5,14 +5,7 @@ import {AuthAdapter} from "./adapters/auth.adapter";
 import {FilesAdapter} from "./adapters/files.adapter";
 import {S3StorageFactory} from "./factory/s3-storage.factory";
 import {IpfsStorageFactory} from "./factory/ipfs-storage.factory";
-import {
-    GetDataFn,
-    GetNodeFn,
-    GetNodesFn,
-    InitDatabaseFn, PurgeNodeFn,
-    UpsertDataFn,
-    UpsertNodeFn
-} from "./adapters/database.adapter";
+import {_init} from "./factory/database-factory-resolver";
 
 function getAuthFactory(options: BFastOptions): AuthAdapter {
     return (options && options.adapters && options.adapters.auth)
@@ -61,49 +54,34 @@ function validateOptions(options: BFastOptions): { valid: boolean, message: stri
     }
 }
 
-async function setUpDatabase(init: InitDatabaseFn, options: BFastOptions): Promise<any> {
-    return await init(options);
+async function setUpDatabase(options: BFastOptions): Promise<any> {
+    return await _init(options);
 }
 
-export function initialize(
-    initDb: InitDatabaseFn,
-    getNodes: GetNodesFn<any>,
-    getNode: GetNodeFn,
-    getDataInStore: GetDataFn,
-    upsertNode: UpsertNodeFn<any>,
-    upsertDataInStore: UpsertDataFn<any>,
-    purgeNode: PurgeNodeFn,
-    options: BFastOptions
-): WebServices {
+export function initialize(options: BFastOptions): WebServices {
     options = Object.assign(options, {
         rsaKeyPairInJson: {},
         rsaPublicKeyInJson: {}
     });
     if (validateOptions(options).valid) {
         if (options && options.rsaKeyPairInJson && typeof options.rsaKeyPairInJson === "object") {
-            options.rsaKeyPairInJson.alg = 'RS256';
-            options.rsaKeyPairInJson.use = 'sig';
+            // options.rsaKeyPairInJson.alg = 'RS256';
+            // options.rsaKeyPairInJson.use = 'sig';
         }
         if (options && options.rsaPublicKeyInJson && typeof options.rsaPublicKeyInJson === "object") {
-            options.rsaPublicKeyInJson.alg = 'RS256';
-            options.rsaPublicKeyInJson.use = 'sig';
+            // options.rsaPublicKeyInJson.alg = 'RS256';
+            // options.rsaPublicKeyInJson.use = 'sig';
         }
         if (!options.adapters) {
             options.adapters = {};
         }
-        setUpDatabase(initDb, options).catch(_ => {
+        setUpDatabase(options).catch(_ => {
             console.error(_);
             process.exit(-1);
         });
         return new WebServices(
             getAuthFactory(options),
             getFilesFactory(options),
-            getNodes,
-            getNode,
-            getDataInStore,
-            upsertNode,
-            upsertDataInStore,
-            purgeNode,
             options
         );
     } else {

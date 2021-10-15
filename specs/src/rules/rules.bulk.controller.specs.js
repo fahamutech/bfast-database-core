@@ -1,15 +1,9 @@
 const {mongoRepSet, config} = require('../../mock.config');
 const {before, after} = require('mocha');
 const {should, expect} = require('chai');
-const {RulesController} = require("../../../dist/index");
-const {DatabaseFactory} = require("../../../dist/index");
-const {AuthController} = require("../../../dist/index");
-const {DatabaseController} = require("../../../dist/index");
-const {SecurityController} = require("../../../dist/index");
-const {UpdateRuleController} = require("../../../dist/index");
+const {handleCreateRules, handleBulkRule} = require("../../../dist/cjs");
 
 describe('Bulk', function () {
-    let _rulesController = new RulesController();
     let mongoMemoryReplSet;
     before(async function () {
         mongoMemoryReplSet = mongoRepSet();
@@ -20,7 +14,7 @@ describe('Bulk', function () {
     });
     describe('compound', function () {
         before(async function () {
-            await _rulesController.handleCreateRules({
+            await handleCreateRules({
                     createProduct: [
                         {name: 'xyz', price: 50, status: 'new', id: 'xyz-id', createdAt: 'leo', updatedAt: 'leo'},
                         {name: 'zyx', price: 50, status: 'new', id: 'zyx-id', createdAt: 'leo', updatedAt: 'leo'},
@@ -28,15 +22,11 @@ describe('Bulk', function () {
                     ]
                 },
                 {errors: {}},
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory(),
                 config,
                 null);
         });
         it('should perform bulk', async function () {
-            const results = await _rulesController.handleBulkRule({
+            const results = await handleBulkRule({
                     transaction: {
                         commit: {
                             createProduct: [
@@ -64,11 +54,6 @@ describe('Bulk', function () {
                         }
                     }
                 }, {errors: {}},
-                new UpdateRuleController(),
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory(),
                 config
             );
             // console.log(results.bulk.commit)
@@ -110,7 +95,7 @@ describe('Bulk', function () {
             expect(results.transaction.commit.queryProduct).length(5);
         });
         it('should perform bulk when update block is array', async function () {
-            const results = await _rulesController.handleBulkRule({
+            const results = await handleBulkRule({
                     transaction: {
                         commit: {
                             createProduct: [
@@ -150,11 +135,6 @@ describe('Bulk', function () {
                     }
                 },
                 {errors: {}},
-                new UpdateRuleController(),
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory(),
                 config
             );
             should().exist(results.transaction);
@@ -179,7 +159,7 @@ describe('Bulk', function () {
             expect(results.transaction.commit.queryProduct).length(6);
         });
         it('should perform bulk if save to already exist documents', async function () {
-            const results = await _rulesController.handleBulkRule({
+            const results = await handleBulkRule({
                     transaction: {
                         commit: {
                             createProduct: [
@@ -204,11 +184,6 @@ describe('Bulk', function () {
                         }
                     },
                 }, {errors: {}},
-                new UpdateRuleController(),
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory(),
                 config
             );
             should().exist(results.transaction);
@@ -227,7 +202,7 @@ describe('Bulk', function () {
     });
     describe('delete', function () {
         before(async function () {
-            await _rulesController.handleCreateRules({
+            await handleCreateRules({
                 createProduct: [
                     {
                         name: 'xps',
@@ -251,16 +226,12 @@ describe('Bulk', function () {
                     }
                 ]
             }, {errors: {}},
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory(),
                 config,
                 null
             );
         });
         it('should delete only matches', async function () {
-            const results = await _rulesController.handleBulkRule({
+            const results = await handleBulkRule({
                 transaction: {
                     commit: {
                         deleteProduct: {
@@ -274,11 +245,6 @@ describe('Bulk', function () {
                     }
                 }
             }, {errors: {}},
-                new UpdateRuleController(),
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory(),
                 config
             );
             should().exist(results.transaction);

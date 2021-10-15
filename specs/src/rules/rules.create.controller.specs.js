@@ -1,15 +1,8 @@
 const {mongoRepSet, config} = require('../../mock.config');
 const {should, expect} = require("chai");
-const {
-    RulesController,
-    DatabaseFactory,
-    AuthController,
-    DatabaseController,
-    SecurityController
-} = require("../../../dist");
+const {handleCreateRules, handleQueryRules, handleAuthorizationRule} = require("../../../dist/cjs");
 
 describe('RulesController', function () {
-    let _rulesController = new RulesController();
     let mongoMemoryReplSet
     before(async function () {
         mongoMemoryReplSet = mongoRepSet();
@@ -21,17 +14,14 @@ describe('RulesController', function () {
 
     describe('Create::Anonymous', function () {
         it('should save single document', async function () {
-            const results = await _rulesController.handleCreateRules({
+            const results = await handleCreateRules({
                     createTest: {
                         name: 'doe',
                         age: 20,
                         return: []
                     }
-                }, {errors: {}},
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory,
+                },
+                {errors: {}},
                 config
             );
             should().exist(results.createTest);
@@ -41,18 +31,15 @@ describe('RulesController', function () {
             expect(results.createTest['age']).equal(20);
         });
         it('should save single document with custom id', async function () {
-            const results = await _rulesController.handleCreateRules({
+            const results = await handleCreateRules({
                     createTest: {
                         id: 'doedoedoe',
                         name: 'doe',
                         age: 20,
                         return: []
                     }
-                }, {errors: {}},
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory,
+                },
+                {errors: {}},
                 config
             );
             should().exist(results.createTest);
@@ -63,7 +50,7 @@ describe('RulesController', function () {
             expect(results.createTest['age']).equal(20);
         });
         it('should save many document', async function () {
-            const results = await _rulesController.handleCreateRules({
+            const results = await handleCreateRules({
                     createTest: [
                         {
                             name: 'doe2',
@@ -75,11 +62,8 @@ describe('RulesController', function () {
                             age: 30,
                         },
                     ]
-                }, {errors: {}},
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory,
+                },
+                {errors: {}},
                 config
             );
             should().exist(results.createTest);
@@ -91,7 +75,7 @@ describe('RulesController', function () {
             expect(typeof results.createTest[1]['id']).equal("string");
         });
         it('should save document and return only specified fields', async function () {
-            const results = await _rulesController.handleCreateRules({
+            const results = await handleCreateRules({
                     createTest: {
                         name: 'john',
                         age: 20,
@@ -100,10 +84,6 @@ describe('RulesController', function () {
                         return: ['name', 'home']
                     }
                 }, {errors: {}},
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory,
                 config
             );
             should().exist(results.createTest);
@@ -113,7 +93,7 @@ describe('RulesController', function () {
             expect(results.createTest['home']).equal("mars");
         });
         it('should return same document if saved multiple times', async function () {
-            await _rulesController.handleCreateRules({
+            await handleCreateRules({
                     createTest: {
                         id: 'doe',
                         name: 'doe',
@@ -122,13 +102,9 @@ describe('RulesController', function () {
                         car: 'monster',
                     }
                 }, {errors: {}},
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory,
                 config
             );
-            const results = await _rulesController.handleCreateRules({
+            const results = await handleCreateRules({
                     createTest: {
                         id: 'doe',
                         name: 'doe',
@@ -138,13 +114,9 @@ describe('RulesController', function () {
                         return: []
                     }
                 }, {errors: {}},
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory,
                 config
             );
-            const _results = await _rulesController.handleQueryRules({
+            const _results = await handleQueryRules({
                     queryTest: {
                         filter: {
                             _id: 'doe'
@@ -152,10 +124,6 @@ describe('RulesController', function () {
                         count: true
                     }
                 }, {errors: {}},
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory,
                 config
             );
             should().exist(results.createTest);
@@ -167,7 +135,7 @@ describe('RulesController', function () {
 
     describe('Create::Secured', function () {
         before(async function () {
-            const r = await _rulesController.handleAuthorizationRule(
+            const r = await handleAuthorizationRule(
                 {
                     context: {
                         useMasterKey: true
@@ -180,16 +148,12 @@ describe('RulesController', function () {
                     }
                 },
                 {errors: {}},
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory(),
                 config
             );
             should().not.exist(r.errors['policy.add']);
         });
         after(async function () {
-            await _rulesController.handleAuthorizationRule({
+            await handleAuthorizationRule({
                     context: {
                         useMasterKey: true
                     },
@@ -199,12 +163,8 @@ describe('RulesController', function () {
                         }
                     }
                 }, {errors: {}},
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory()
             );
-            await _rulesController.handleAuthorizationRule({
+            await handleAuthorizationRule({
                     context: {
                         useMasterKey: true
                     },
@@ -214,25 +174,17 @@ describe('RulesController', function () {
                         }
                     }
                 }, {errors: {}},
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory()
             );
         });
 
         it('should return error message when write to protect domain', async function () {
-            const results = await _rulesController.handleCreateRules({
+            const results = await handleCreateRules({
                     createProduct: {
                         name: 'xyz',
                         price: 40,
                         return: []
                     }
                 }, {errors: {}},
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory(),
                 config,
                 null
             );
@@ -244,7 +196,7 @@ describe('RulesController', function () {
                 .equal("object");
         });
         it('should return saved data when have access to domain domain', async function () {
-            const results = await _rulesController.handleCreateRules({
+            const results = await handleCreateRules({
                     context: {
                         auth: true
                     },
@@ -254,10 +206,6 @@ describe('RulesController', function () {
                         return: []
                     }
                 }, {errors: {}},
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory(),
                 config,
                 null
             );

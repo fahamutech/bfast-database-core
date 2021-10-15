@@ -5,18 +5,11 @@ import {BFastOptions} from '../bfast-database.option';
 import {devLog} from "../utils/debug.util";
 import {AuthAdapter} from "../adapters/auth.adapter";
 import {FilesAdapter} from "../adapters/files.adapter";
-import {bulk, findByFilter, remove, writeMany, writeOne} from "./database.controller";
-import {
-    GetDataFn,
-    GetNodeFn,
-    GetNodesFn,
-    PurgeNodeFn,
-    UpsertDataFn,
-    UpsertNodeFn
-} from "../adapters/database.adapter";
+import {bulk, findByFilter, findById, remove, writeMany, writeOne} from "./database.controller";
 import {handleUpdateRule} from "./update.rule.controller";
 import {addPolicyRule, hasPermission, listPolicyRule, removePolicyRule, signIn, signUp} from "./auth.controller";
 import {deleteFile, listFiles, saveFile} from "./storage.controller";
+import del from "del";
 
 export function getRulesKey(rules: RulesModel): string[] {
     if (rules) {
@@ -29,12 +22,6 @@ export async function handleAuthenticationRule(
     rules: RulesModel,
     ruleResponse: RuleResponse,
     authAdapter: AuthAdapter,
-    purgeNode: PurgeNodeFn,
-    getNodes: GetNodesFn<any>,
-    getNode: GetNodeFn,
-    getDataInStore: GetDataFn,
-    upsertNode: UpsertNodeFn<any>,
-    upsertDataInStore: UpsertDataFn<any>,
     options: BFastOptions,
 ): Promise<RuleResponse> {
     try {
@@ -42,12 +29,6 @@ export async function handleAuthenticationRule(
             ruleResponse,
             rules,
             authAdapter,
-            purgeNode,
-            getNodes,
-            getNode,
-            getDataInStore,
-            upsertNode,
-            upsertDataInStore,
             options
         );
     } catch (e) {
@@ -64,12 +45,6 @@ export async function processAuthenticationBlock(
     ruleResponse: RuleResponse,
     rules: RulesModel,
     authAdapter: AuthAdapter,
-    purgeNode: PurgeNodeFn,
-    getNodes: GetNodesFn<any>,
-    getNode: GetNodeFn,
-    getDataInStore: GetDataFn,
-    upsertNode: UpsertNodeFn<any>,
-    upsertDataInStore: UpsertDataFn<any>,
     options: BFastOptions,
 ) {
     const authenticationRules = getRulesKey(rules).filter(rule => rule.startsWith('auth'));
@@ -86,12 +61,6 @@ export async function processAuthenticationBlock(
                     data,
                     authAdapter,
                     rules.context,
-                    purgeNode,
-                    getNodes,
-                    getNode,
-                    getDataInStore,
-                    upsertNode,
-                    upsertDataInStore,
                     options
                 );
                 ruleResponse.auth = {};
@@ -101,10 +70,6 @@ export async function processAuthenticationBlock(
                     data,
                     authAdapter,
                     rules.context,
-                    purgeNode,
-                    getNodes,
-                    getNode,
-                    getDataInStore,
                     options
                 );
                 ruleResponse.auth = {};
@@ -119,7 +84,7 @@ export async function processAuthenticationBlock(
             ruleResponse.errors[`auth.${action}`] = {
                 message: e.message ? e.message : e.toString(),
                 path: `auth.${action}`,
-                data: JSON.stringify(data,null, 2)
+                data: JSON.stringify(data, null, 2)
             };
         }
     }
@@ -129,12 +94,6 @@ export async function processAuthenticationBlock(
 export async function handleAuthorizationRule(
     rules: RulesModel,
     ruleResponse: RuleResponse,
-    upsertNode: UpsertNodeFn<any>,
-    upsertDataInStore: UpsertDataFn<any>,
-    getNodes: GetNodesFn<any>,
-    getNode: GetNodeFn,
-    getDataInStore: GetDataFn,
-    purgeNode: PurgeNodeFn,
     options: BFastOptions,
 ): Promise<RuleResponse> {
     try {
@@ -162,8 +121,6 @@ export async function handleAuthorizationRule(
                             rule,
                             data[rule],
                             rules.context,
-                            upsertNode,
-                            upsertDataInStore,
                             options
                         );
                     }
@@ -172,10 +129,6 @@ export async function handleAuthorizationRule(
                 } else if (action === 'list' && typeof data === 'object') {
                     const listResponse = await listPolicyRule(
                         rules.context,
-                        purgeNode,
-                        getNodes,
-                        getNode,
-                        getDataInStore,
                         options
                     );
                     ruleResponse.policy = {};
@@ -184,10 +137,6 @@ export async function handleAuthorizationRule(
                     const removeResponse = await removePolicyRule(
                         data.ruleId,
                         rules.context,
-                        getNodes,
-                        getNode,
-                        getDataInStore,
-                        purgeNode,
                         options
                     );
                     ruleResponse.policy = {};
@@ -217,12 +166,6 @@ export async function handleAuthorizationRule(
 export async function handleCreateRules(
     rules: RulesModel,
     ruleResponse: RuleResponse,
-    getNodes: GetNodesFn<any>,
-    getNode: GetNodeFn,
-    getDataInStore: GetDataFn,
-    upsertNode: UpsertNodeFn<any>,
-    upsertDataInStore: UpsertDataFn<any>,
-    purgeNode: PurgeNodeFn,
     options: BFastOptions,
     transactionSession: any
 ): Promise<RuleResponse> {
@@ -237,10 +180,6 @@ export async function handleCreateRules(
             const allowed = await hasPermission(
                 `create.${domain}`,
                 rules?.context,
-                purgeNode,
-                getNodes,
-                getNode,
-                getDataInStore,
                 options
             );
             if (allowed !== true) {
@@ -258,8 +197,6 @@ export async function handleCreateRules(
                         domain,
                         createRuleRequest,
                         false,
-                        upsertNode,
-                        upsertDataInStore,
                         rules?.context,
                         {
                             bypassDomainVerification: rules?.context?.useMasterKey === true,
@@ -271,8 +208,6 @@ export async function handleCreateRules(
                         domain,
                         createRuleRequest,
                         false,
-                        upsertNode,
-                        upsertDataInStore,
                         rules?.context,
                         {
                             bypassDomainVerification: rules?.context?.useMasterKey === true,
@@ -311,10 +246,6 @@ export async function handleCreateRules(
 export async function handleDeleteRules(
     rulesBlockModel: RulesModel,
     ruleResultModel: RuleResponse,
-    getNodes: GetNodesFn<any>,
-    getNode: GetNodeFn,
-    getDataInStore: GetDataFn,
-    purgeNode: PurgeNodeFn,
     options: BFastOptions,
     transactionSession: any
 ): Promise<RuleResponse> {
@@ -329,10 +260,6 @@ export async function handleDeleteRules(
             const allowed = await hasPermission(
                 `delete.${domain}`,
                 rulesBlockModel?.context,
-                purgeNode,
-                getNodes,
-                getNode,
-                getDataInStore,
                 options
             );
             if (allowed !== true) {
@@ -352,10 +279,6 @@ export async function handleDeleteRules(
                     ruleResultModel[deleteRule] = await remove(
                         domain,
                         rulesBlockModelElement,
-                        getNodes,
-                        getNode,
-                        getDataInStore,
-                        purgeNode,
                         rulesBlockModel?.context,
                         {
                             bypassDomainVerification: rulesBlockModel?.context?.useMasterKey === true,
@@ -376,10 +299,6 @@ export async function handleDeleteRules(
                     ruleResultModel[deleteRule] = await remove(
                         domain,
                         rulesBlockModelElement,
-                        getNodes,
-                        getNode,
-                        getDataInStore,
-                        purgeNode,
                         rulesBlockModel?.context,
                         {
                             bypassDomainVerification: rulesBlockModel?.context?.useMasterKey === true,
@@ -418,10 +337,6 @@ export async function handleDeleteRules(
 export async function handleQueryRules(
     rulesBlockModel: RulesModel,
     ruleResultModel: RuleResponse,
-    getNodes: GetNodesFn<any>,
-    getNode: GetNodeFn,
-    getDataInStore: GetDataFn,
-    purgeNode: PurgeNodeFn,
     options: BFastOptions,
     transactionSession: any
 ): Promise<RuleResponse> {
@@ -436,10 +351,6 @@ export async function handleQueryRules(
             const allowed = await hasPermission(
                 `query.${domain}`,
                 rulesBlockModel?.context,
-                purgeNode,
-                getNodes,
-                getNode,
-                getDataInStore,
                 options
             );
             if (allowed !== true) {
@@ -458,20 +369,40 @@ export async function handleQueryRules(
                         data: rulesBlockModelElement,
                     };
                 } else {
-                    ruleResultModel[queryRule]
-                        = await findByFilter(
-                        domain,
-                        rulesBlockModelElement,
-                        purgeNode,
-                        getNodes,
-                        getNode,
-                        getDataInStore,
-                        rulesBlockModel?.context,
-                        {
-                            bypassDomainVerification: rulesBlockModel?.context?.useMasterKey === true,
-                            transaction: transactionSession
-                        },
-                        options);
+                    if (rulesBlockModelElement.hasOwnProperty('id')) {
+                        rulesBlockModelElement._id = rulesBlockModelElement.id;
+                        ruleResultModel[queryRule] = await findById(
+                            domain,
+                            rulesBlockModelElement,
+                            {
+                                bypassDomainVerification: rulesBlockModel?.context?.useMasterKey === true,
+                                transaction: transactionSession
+                            },
+                            options
+                        );
+                    } else if (rulesBlockModelElement.hasOwnProperty('_id')) {
+                        delete rulesBlockModelElement.id;
+                        ruleResultModel[queryRule] = await findById(
+                            domain,
+                            rulesBlockModelElement,
+                            {
+                                bypassDomainVerification: rulesBlockModel?.context?.useMasterKey === true,
+                                transaction: transactionSession
+                            },
+                            options
+                        );
+                    } else {
+                        ruleResultModel[queryRule] = await findByFilter(
+                            domain,
+                            rulesBlockModelElement,
+                            rulesBlockModel?.context,
+                            {
+                                bypassDomainVerification: rulesBlockModel?.context?.useMasterKey === true,
+                                transaction: transactionSession
+                            },
+                            options
+                        );
+                    }
                 }
             } catch (e) {
                 devLog(e);
@@ -503,12 +434,6 @@ export async function handleQueryRules(
 export async function handleBulkRule(
     rulesBlockModel: RulesModel,
     ruleResultModel: RuleResponse,
-    getNodes: GetNodesFn<any>,
-    getNode: GetNodeFn,
-    getDataInStore: GetDataFn,
-    upsertNode: UpsertNodeFn<any>,
-    upsertDataInStore: UpsertDataFn<any>,
-    purgeNode: PurgeNodeFn,
     options: BFastOptions,
 ): Promise<RuleResponse> {
     try {
@@ -524,44 +449,24 @@ export async function handleBulkRule(
             await handleCreateRules(
                 transactionOperationRules,
                 resultObject,
-                getNodes,
-                getNode,
-                getDataInStore,
-                upsertNode,
-                upsertDataInStore,
-                purgeNode,
                 options,
                 session
             );
             await handleUpdateRules(
                 transactionOperationRules,
                 resultObject,
-                purgeNode,
-                getNodes,
-                getNode,
-                getDataInStore,
-                upsertNode,
-                upsertDataInStore,
                 options,
                 session
             );
             await handleQueryRules(
                 transactionOperationRules,
                 resultObject,
-                getNodes,
-                getNode,
-                getDataInStore,
-                purgeNode,
                 options,
                 session
             );
             await handleDeleteRules(
                 transactionOperationRules,
                 resultObject,
-                getNodes,
-                getNode,
-                getDataInStore,
-                purgeNode,
                 options,
                 session
             );
@@ -582,12 +487,6 @@ export async function handleBulkRule(
 export async function handleUpdateRules(
     rules: RulesModel,
     ruleResponse: RuleResponse,
-    purgeNode: PurgeNodeFn,
-    getNodes: GetNodesFn<any>,
-    getNode: GetNodeFn,
-    getDataInStore: GetDataFn,
-    upsertNode: UpsertNodeFn<any>,
-    upsertDataInStore: UpsertDataFn<any>,
     options: BFastOptions,
     transactionSession: any
 ): Promise<RuleResponse> {
@@ -602,10 +501,6 @@ export async function handleUpdateRules(
             const allowed = await hasPermission(
                 `update.${domain}`,
                 rules.context,
-                purgeNode,
-                getNodes,
-                getNode,
-                getDataInStore,
                 options
             );
             if (allowed !== true) {
@@ -623,12 +518,6 @@ export async function handleUpdateRules(
                         const response = await handleUpdateRule(
                             rules,
                             domain,
-                            purgeNode,
-                            getNodes,
-                            getNode,
-                            getDataInStore,
-                            upsertNode,
-                            upsertDataInStore,
                             value,
                             null,
                             options
@@ -640,19 +529,13 @@ export async function handleUpdateRules(
                     ruleResponse[updateRule] = await handleUpdateRule(
                         rules,
                         domain,
-                        purgeNode,
-                        getNodes,
-                        getNode,
-                        getDataInStore,
-                        upsertNode,
-                        upsertDataInStore,
                         updateRuleRequests,
                         null,
                         options
                     );
                 }
             } catch (e) {
-                devLog(e);
+                // console.log(e);
                 ruleResponse.errors[`${transactionSession ? 'transaction.' : ''}update.${domain}`] = {
                     message: e.message ? e.message : e.toString(),
                     path: `${transactionSession ? 'transaction.' : ''}update.${domain}`,
@@ -683,12 +566,6 @@ export async function handleStorageRule(
     ruleResultModel: RuleResponse,
     authAdapter: AuthAdapter,
     filesAdapter: FilesAdapter,
-    purgeNode: PurgeNodeFn,
-    getNodes: GetNodesFn<any>,
-    getNode: GetNodeFn,
-    getDataInStore: GetDataFn,
-    upsertNode: UpsertNodeFn<any>,
-    upsertDataInStore: UpsertDataFn<any>,
     options: BFastOptions,
 ): Promise<RuleResponse> {
     try {
@@ -705,10 +582,6 @@ export async function handleStorageRule(
                     const allowed = await hasPermission(
                         `files.save`,
                         rulesBlockModel.context,
-                        purgeNode,
-                        getNodes,
-                        getNode,
-                        getDataInStore,
                         options
                     );
                     if (allowed !== true) {
@@ -723,8 +596,6 @@ export async function handleStorageRule(
                             data,
                             rulesBlockModel.context,
                             filesAdapter,
-                            upsertNode,
-                            upsertDataInStore,
                             options
                         );
                     }
@@ -732,10 +603,6 @@ export async function handleStorageRule(
                     const allowed = await hasPermission(
                         `files.delete`,
                         rulesBlockModel.context,
-                        purgeNode,
-                        getNodes,
-                        getNode,
-                        getDataInStore,
                         options
                     );
                     if (allowed !== true) {
@@ -749,10 +616,6 @@ export async function handleStorageRule(
                         ruleResultModel.files.delete = await deleteFile(
                             data,
                             rulesBlockModel.context,
-                            purgeNode,
-                            getNodes,
-                            getNode,
-                            getDataInStore,
                             filesAdapter,
                             options
                         );
@@ -761,10 +624,6 @@ export async function handleStorageRule(
                     const allowed = await hasPermission(
                         `files.list`,
                         rulesBlockModel.context,
-                        purgeNode,
-                        getNodes,
-                        getNode,
-                        getDataInStore,
                         options
                     );
                     if (allowed !== true) {
@@ -782,10 +641,6 @@ export async function handleStorageRule(
                                 skip: data && data.skip ? data.skip : 0
                             },
                             filesAdapter,
-                            purgeNode,
-                            getNodes,
-                            getNode,
-                            getDataInStore,
                             options
                         );
                     }

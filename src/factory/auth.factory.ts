@@ -3,13 +3,6 @@ import {BasicUserAttributesModel} from '../model/basic-user-attributes.model';
 import {ContextBlock} from '../model/rules.model';
 import {BFastOptions} from "../bfast-database.option";
 import {findByFilter, updateOne, writeOne} from "../controllers/database.controller";
-import {
-    GetDataFn,
-    GetNodeFn,
-    GetNodesFn, PurgeNodeFn,
-    UpsertDataFn,
-    UpsertNodeFn
-} from "../adapters/database.adapter";
 
 import {comparePassword, getToken, hashPlainText} from "../controllers/security.controller";
 
@@ -25,10 +18,6 @@ export class AuthFactory implements AuthAdapter {
 
     async signIn<T extends BasicUserAttributesModel>(
         userModel: T,
-        purgeNode: PurgeNodeFn,
-        getNodes: GetNodesFn<any>,
-        getNode: GetNodeFn,
-        getDataInStore: GetDataFn,
         context: ContextBlock,
         options: BFastOptions
     ): Promise<T> {
@@ -40,10 +29,6 @@ export class AuthFactory implements AuthAdapter {
                 },
                 return: []
             },
-            purgeNode,
-            getNodes,
-            getNode,
-            getDataInStore,
             context,
             {bypassDomainVerification: true},
             options
@@ -68,8 +53,6 @@ export class AuthFactory implements AuthAdapter {
 
     async signUp<T extends BasicUserAttributesModel>(
         userModel: T,
-        upsertNode: UpsertNodeFn<any>,
-        upsertDataInStore: UpsertDataFn<any>,
         context: ContextBlock,
         options: BFastOptions
     ): Promise<T> {
@@ -78,8 +61,6 @@ export class AuthFactory implements AuthAdapter {
             this.domainName,
             userModel,
             false,
-            upsertNode,
-            upsertDataInStore,
             context,
             {bypassDomainVerification: true},
             options
@@ -95,10 +76,6 @@ export class AuthFactory implements AuthAdapter {
 
     async update<T extends BasicUserAttributesModel>(
         userModel: T,
-        getNode: GetNodeFn,
-        getDataInStore: GetDataFn,
-        upsertNode: UpsertNodeFn<any>,
-        upsertDataInStore: UpsertDataFn<any>,
         context: ContextBlock,
         options: BFastOptions
     ): Promise<T> {
@@ -111,10 +88,6 @@ export class AuthFactory implements AuthAdapter {
                     $set: userModel
                 }
             },
-            getNode,
-            getDataInStore,
-            upsertNode,
-            upsertDataInStore,
             context,
             {bypassDomainVerification: true},
             options
@@ -123,10 +96,6 @@ export class AuthFactory implements AuthAdapter {
 
     async updatePassword(
         password: string,
-        getNode: GetNodeFn,
-        getDataInStore: GetDataFn,
-        upsertNode: UpsertNodeFn<any>,
-        upsertDataInStore: UpsertDataFn<any>,
         context: ContextBlock,
         options: BFastOptions
     ): Promise<any> {
@@ -141,10 +110,6 @@ export class AuthFactory implements AuthAdapter {
                     }
                 }
             },
-            getNode,
-            getDataInStore,
-            upsertNode,
-            upsertDataInStore,
             context,
             {bypassDomainVerification: true},
             options

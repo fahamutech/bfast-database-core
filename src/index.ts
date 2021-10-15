@@ -21,5 +21,7 @@ export {S3StorageFactory} from './factory/s3-storage.factory';
 
 export * from './adapters/database.adapter';
 export * from './controllers/database.controller';
-export * from './factory/database.factory';
-export * from './bfast-database-core'
+// export * from './factory/database.factory';
+export * from './bfast-database-core';
+export * from './model/factory-identifier';
+export * from './factory/index';

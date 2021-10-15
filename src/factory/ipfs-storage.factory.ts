@@ -2,15 +2,19 @@ import {FilesAdapter} from '../adapters/files.adapter';
 import {pipeline} from 'stream';
 import {BFastOptions} from '../bfast-database.option';
 import {Buffer} from "buffer";
-import {
-    GetDataFn,
-    GetNodeFn,
-    GetNodesFn, PurgeNodeFn,
-    UpsertDataFn,
-    UpsertNodeFn
-} from "../adapters/database.adapter";
 import {IpfsFactory} from "./ipfs.factory";
 import {findByFilter, findById, remove, writeOne} from "../controllers/database.controller";
+import {generateUUID} from "../controllers/security.controller";
+import * as mime from "mime";
+import {Storage} from "../model/storage";
+import {Request, Response} from "express";
+
+function removeDot(name: string) {
+    if (name === null || name === undefined) {
+        return null;
+    }
+    return name.toString().replace('.', '');
+}
 
 export class IpfsStorageFactory implements FilesAdapter {
     private domain = '_Storage';
@@ -22,64 +26,25 @@ export class IpfsStorageFactory implements FilesAdapter {
     isS3 = false;
 
     async createFile(
-        name: string,
-        size: number,
-        data: Buffer,
-        contentType: string,
-        upsertNode: UpsertNodeFn<any>,
-        upsertDataInStore: UpsertDataFn<any>,
-        options: BFastOptions
-    ): Promise<string> {
+        name: string, size: number, data: Buffer, contentType: string, pN: boolean, options: BFastOptions
+    ): Promise<Storage> {
         await this.validateFilename(name);
-        return this._saveFile(name,
-            size,
-            data,
-            contentType,
-            upsertNode,
-            upsertDataInStore,
-            options
+        return this._saveFile(name, size, data, contentType, pN, options);
+    }
+
+    async deleteFile(id: string, options: BFastOptions): Promise<any> {
+        return await remove(
+            this.domain, {id: id}, {}, {bypassDomainVerification: true}, options
         );
     }
 
-    async deleteFile(
-        name: string,
-        purgeNode: PurgeNodeFn,
-        getNodes: GetNodesFn<any>,
-        getNode: GetNodeFn,
-        getData: GetDataFn,
-        options: BFastOptions
-    ): Promise<any> {
-        const r = await remove(
-            this.domain,
-            {id: name},
-            getNodes,
-            getNode,
-            getData,
-            purgeNode,
-            {},
-            {bypassDomainVerification: true},
-            options
-        );
-        return r.map(x => IpfsStorageFactory.sanitize4User(x));
-    }
-
-    async fileInfo(
-        name: string,
-        getNode: GetNodeFn,
-        getDataInStore: GetDataFn,
-        options: BFastOptions,
-    ): Promise<{ name: string; size: number }> {
-        const fObj = IpfsStorageFactory.sanitize4Saving({
-            _id: name
-        });
-        const file = await findById(
+    async fileInfo(id: string, options: BFastOptions): Promise<Storage> {
+        const file: Storage = await findById(
             this.domain,
             {
-                _id: fObj._id,
+                id: id,
                 return: []
             },
-            getNode,
-            getDataInStore,
             {bypassDomainVerification: true},
             options
         );
@@ -91,75 +56,35 @@ export class IpfsStorageFactory implements FilesAdapter {
     }
 
     async getFileData(
-        name: string,
-        asStream,
-        getNode: GetNodeFn,
-        getDataInStore: GetDataFn,
-        options: BFastOptions
-    ): Promise<{
-        size: number,
-        data: Buffer | ReadableStream,
-        type: string
-    }> {
-        const fObj = IpfsStorageFactory.sanitize4Saving({
-            _id: name
-        });
-        let file = await findById(
-            this.domain,
-            {
-                _id: fObj._id,
-                return: []
-            },
-            getNode,
-            getDataInStore,
-            {bypassDomainVerification: true},
-            options
+        id: string, asStream: boolean, options: BFastOptions
+    ): Promise<Storage> {
+        let file: Storage = await findById(
+            this.domain, {id: id, return: []}, {bypassDomainVerification: true}, options
         );
-        file = IpfsStorageFactory.sanitize4User(file);
         if (file && file.cid) {
             const ipfs = await IpfsFactory.getInstance(options);
-            const data = await ipfs.generateDataFromCid(
+            const data: any = await ipfs.generateDataFromCid(
                 file.cid,
                 {
                     json: false,
                     stream: asStream
                 },
                 options);
-            return {
-                data: data,
-                ...file
-            }
+            return {data: data, ...file}
         } else {
             throw 'file not found, maybe its deleted';
         }
     }
 
-    async getFileLocation(name: string, configAdapter: BFastOptions): Promise<string> {
-        return '/storage/' + configAdapter.applicationId + '/file/' + encodeURIComponent(name);
+    async getFileLocation(id: string, configAdapter: BFastOptions): Promise<string> {
+        return '/storage/' + configAdapter.applicationId + '/file/' + encodeURIComponent(id);
     }
 
     async handleFileStream(
-        name: string,
-        req: any,
-        res: any,
-        getNode: GetNodeFn,
-        getDataInStore: GetDataFn,
-        contentType,
-        options: BFastOptions
+        id: string, req: Request, res: Response, contentType: string, options: BFastOptions
     ): Promise<any> {
-        const fObj = IpfsStorageFactory.sanitize4Saving({
-            _id: name
-        });
-        const file = await findById(
-            this.domain,
-            {
-                id: fObj._id,
-                return: []
-            },
-            getNode,
-            getDataInStore,
-            {bypassDomainVerification: true},
-            options
+        const file: Storage = await findById(
+            this.domain, {id: id, return: []}, {bypassDomainVerification: true}, options
         );
         if (file && file.cid && file.type && file.size) {
             const size = file.size;
@@ -192,14 +117,7 @@ export class IpfsStorageFactory implements FilesAdapter {
             });
             const ipfs = await IpfsFactory.getInstance(options);
             const buffer = await ipfs.generateDataFromCid(
-                file.cid,
-                {
-                    json: false,
-                    stream: true,
-                    start: start,
-                    end: end
-                },
-                options
+                file.cid, {json: false, stream: true, start: start, end: end}, options
             );
             // @ts-ignore
             pipeline(buffer, res, err => {
@@ -216,16 +134,7 @@ export class IpfsStorageFactory implements FilesAdapter {
     }
 
     async listFiles(
-        query: { prefix: string, size: number, skip: number } = {
-            prefix: '',
-            size: 20,
-            skip: 0
-        },
-        purgeNode: PurgeNodeFn,
-        getNodes: GetNodesFn<any>,
-        getNode: GetNodeFn,
-        getDataInStore: GetDataFn,
-        options: BFastOptions
+        query: { prefix: string, size: number, skip: number } = {prefix: '', size: 20, skip: 0}, options: BFastOptions
     ): Promise<any[]> {
         let r = await findByFilter(
             this.domain,
@@ -235,17 +144,12 @@ export class IpfsStorageFactory implements FilesAdapter {
                 size: query.size,
                 skip: query.skip
             },
-            purgeNode,
-            getNodes,
-            getNode,
-            getDataInStore,
             {useMasterKey: true},
             {bypassDomainVerification: true},
             options
         );
         if (Array.isArray(r)) {
-            r = r.filter(x => x?.name?.toString()?.includes(query.prefix)).map(x => IpfsStorageFactory.sanitize4User(x));
-            return r;
+            return r.filter(x => x?.name?.toString()?.includes(query.prefix));
         } else {
             return [];
         }
@@ -262,57 +166,31 @@ export class IpfsStorageFactory implements FilesAdapter {
         return null;
     }
 
-    async signedUrl(name: string, options: BFastOptions): Promise<string> {
-        return this.getFileLocation(name, options);
+    async signedUrl(id: string, options: BFastOptions): Promise<string> {
+        return this.getFileLocation(id, options);
     }
 
     private async _saveFile(
-        name: string,
-        size: number,
-        data: Buffer,
-        contentType: string,
-        upsertNode: UpsertNodeFn<any>,
-        upsertDataInStore: UpsertDataFn<any>,
-        options: BFastOptions
-    ): Promise<string> {
-        const _obj = IpfsStorageFactory.sanitize4Saving({
-            _id: name,
-            name: name,
+        name: string, size: number, data: Buffer, contentType: string, pN: boolean, options: BFastOptions
+    ): Promise<Storage> {
+        const _obj: Storage = {
+            id: pN ? removeDot(name) : generateUUID(),
+            name: pN ? removeDot(name + generateUUID()): removeDot(name),
+            // @ts-ignore
+            extension: mime.getExtension(contentType),
             type: contentType,
-            cid: null
-        });
+            cid: null,
+            size: null,
+        };
         const ipfs = await IpfsFactory.getInstance(options);
         const dataRes = await ipfs.generateCidFromData(_obj, data, this.domain, options);
         _obj.cid = dataRes.cid;
         _obj.size = size;
-        IpfsStorageFactory.sanitize4User(await writeOne(
-            this.domain,
-            _obj,
-            false,
-            upsertNode,
-            upsertDataInStore,
-            {},
-            {bypassDomainVerification: true},
-            options
-        ));
-        return name;
-    }
-
-    private static sanitize4Saving(data: { [k: string]: any }) {
-        if (data && JSON.stringify(data).startsWith('{')) {
-            data._id = data?._id?.replace('.', '%')?.concat('-id');
-            data.id = data?.id?.replace('.', '%')?.concat('-id');
-            data.name = data?.name?.replace('.', '%');
-        }
-        return data;
-    }
-
-    private static sanitize4User(x: { [k: string]: any }) {
-        if (x && JSON.stringify(x).startsWith('{')) {
-            x._id = x?._id?.replace(new RegExp('%', 'ig'), '.')?.replace(new RegExp('-id', 'ig'), '');
-            x.name = x?.name?.replace(new RegExp('%', 'ig'), '.');
-        }
-        return x;
+        // @ts-ignore
+        _obj.return = [];
+        return await writeOne(
+            this.domain, _obj, false, {}, {bypassDomainVerification: true}, options
+        );
     }
 
     async init(options: BFastOptions): Promise<void> {

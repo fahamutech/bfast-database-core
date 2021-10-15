@@ -3,20 +3,12 @@ import {FileModel} from '../model/file-model';
 import {ContextBlock} from '../model/rules.model';
 import mime from 'mime';
 import {StatusCodes} from 'http-status-codes';
-import {Stream} from 'stream';
 import {BFastOptions} from '../bfast-database.option';
-import bfast from 'bfast';
 import sharp from 'sharp';
 import {Buffer} from "buffer";
 import {Request, Response} from 'express'
-import {
-    GetDataFn,
-    GetNodeFn,
-    GetNodesFn, PurgeNodeFn,
-    UpsertDataFn,
-    UpsertNodeFn
-} from "../adapters/database.adapter";
-import {generateUUID} from "./security.controller";
+import {Storage} from "../model/storage";
+import {request as httpsRequest} from "https";
 
 export function getSource(base64: string, type: string): any {
     let data: string;
@@ -51,8 +43,6 @@ export async function saveFile(
     fileModel: FileModel,
     _: ContextBlock,
     filesAdapter: FilesAdapter,
-    upsertNode: UpsertNodeFn<any>,
-    upsertDataInStore: UpsertDataFn<any>,
     options: BFastOptions
 ): Promise<string> {
     const {name, base64} = fileModel;
@@ -85,18 +75,17 @@ export async function saveFile(
         dataToSave.type = source.type;
     }
     const isBase64 = Buffer.from(dataToSave.data, 'base64').toString('base64') === dataToSave.data;
-    const file = await filesAdapter.createFile(
+    const file: Storage = await filesAdapter.createFile(
         dataToSave.name,
         dataToSave?.data?.length,
         isBase64 === true ?
             Buffer.from(dataToSave.data, 'base64')
             : dataToSave.data,
         dataToSave?.type,
-        upsertNode,
-        upsertDataInStore,
+        false,
         options
     );
-    return filesAdapter.getFileLocation(file, options);
+    return filesAdapter.getFileLocation(file.id, options);
 }
 
 export function checkStreamCapability(req: Request, filesController: FilesAdapter): boolean {
@@ -112,8 +101,6 @@ export function handleGetFileRequest(
     response: Response,
     thumbnail: boolean,
     filesAdapter: FilesAdapter,
-    getNode: GetNodeFn,
-    getDataInStore: GetDataFn,
     options: BFastOptions
 ): void {
     const name = request.params.filename;
@@ -123,8 +110,6 @@ export function handleGetFileRequest(
         filesAdapter.getFileData(
             name,
             true,
-            getNode,
-            getDataInStore,
             options
         ).then(value => {
             const width = parseInt(request.query.width ? request.query.width.toString() : '100');
@@ -133,10 +118,10 @@ export function handleGetFileRequest(
             // @ts-ignore
             value.data.pipe(sharp().resize(width, height !== 0 ? height : null)).pipe(response);
         }).catch(_ => {
-            this.getFileData(name, contentType, request, response, filesAdapter, getNode, getDataInStore, options);
+            getFileData(name, contentType, request, response, filesAdapter, options);
         });
     } else {
-        this.getFileData(name, contentType, request, response, filesAdapter, getNode, getDataInStore, options);
+        getFileData(name, contentType, request, response, filesAdapter, options);
     }
 }
 
@@ -146,38 +131,20 @@ export function getFileData(
     request,
     response,
     filesAdapter: FilesAdapter,
-    getNode: GetNodeFn,
-    getDataInStore: GetDataFn,
     options: BFastOptions
 ) {
-    if (this.checkStreamCapability(request, filesAdapter)) {
-        filesAdapter
-            .handleFileStream(
-                name,
-                request,
-                response,
-                getNode,
-                getDataInStore,
-                contentType,
-                options
-            ).catch(_43 => {
+    if (checkStreamCapability(request, filesAdapter)) {
+        filesAdapter.handleFileStream(name, request, response, contentType, options).catch(_43 => {
             response.status(StatusCodes.NOT_FOUND);
-            // response.set('Content-Type', 'text/plain');
             response.json({message: 'File not found'});
         });
     } else {
-        filesAdapter
-            .getFileData(
-                name,
-                false,
-                getNode,
-                getDataInStore,
-                options
-            ).then(data => {
+        filesAdapter.getFileData(name, false, options).then(data => {
             response.status(StatusCodes.OK);
             response.set({
                 'Content-Type': data.type,
-                'Content-Length': data.size
+                'Content-Length': data.size,
+                'Content-Disposition': `attachment; filename="${data.name}.${data.extension}"`,
             });
             return response.send(data.data);
         }).catch(_12 => {
@@ -190,22 +157,14 @@ export function getFileData(
 export async function listFiles(
     data: { prefix: string, size: number, skip: number, after: string },
     filesAdapter: FilesAdapter,
-    purgeNode: PurgeNodeFn,
-    getNodes: GetNodesFn<any>,
-    getNode: GetNodeFn,
-    getDataInStore: GetDataFn,
     options: BFastOptions
 ): Promise<any[]> {
-    return filesAdapter.listFiles(data, purgeNode, getNodes, getNode, getDataInStore, options);
+    return filesAdapter.listFiles(data, options);
 }
 
 export async function saveFromBuffer(
     fileModel: { data: Buffer; name: string; type: string, size: number },
-    context: ContextBlock,
-    filesAdapter: FilesAdapter,
-    upsertNode: UpsertNodeFn<any>,
-    upsertDataInStore: UpsertDataFn<any>,
-    options: BFastOptions
+    context: ContextBlock, filesAdapter: FilesAdapter, options: BFastOptions
 ): Promise<string> {
     let {type} = fileModel;
     const {name, data, size} = fileModel;
@@ -222,36 +181,21 @@ export async function saveFromBuffer(
         // @ts-ignore
         type = mime.getType(name);
     }
-    const newFilename = (context && context.storage && context.storage.preserveName === true)
-        ? name
-        : generateUUID() + '-' + name;
-    const file = await filesAdapter.createFile(
-        newFilename,
-        size,
-        data,
-        type,
-        upsertNode,
-        upsertDataInStore,
-        options
+    const pN = !!(context && context.storage && context.storage.preserveName === true);
+    const file: Storage = await filesAdapter.createFile(
+        name, size, data, type, pN, options
     );
-    return filesAdapter.getFileLocation(file, options);
+    return filesAdapter.getFileLocation(file.id, options);
 }
 
 export async function deleteFile(
-    data: { name: string },
-    _: ContextBlock,
-    purgeNode: PurgeNodeFn,
-    getNodes: GetNodesFn<any>,
-    getNode: GetNodeFn,
-    getDataInStore: GetDataFn,
-    filesAdapter: FilesAdapter,
-    options: BFastOptions
-): Promise<string> {
+    data: { name: string }, _: ContextBlock, filesAdapter: FilesAdapter, options: BFastOptions
+): Promise<{ id: string }> {
     const {name} = data;
     if (!name) {
         throw new Error('Filename required');
     }
-    return filesAdapter.deleteFile(name, purgeNode, getNodes, getNode, getDataInStore, options);
+    return filesAdapter.deleteFile(name, options);
 }
 
 export function isS3(filesAdapter: FilesAdapter): boolean {
@@ -259,39 +203,30 @@ export function isS3(filesAdapter: FilesAdapter): boolean {
 }
 
 export function handleGetFileBySignedUrl(
-    request: any,
-    response: any,
-    thumbnail,
-    filesAdapter: FilesAdapter,
-    options: BFastOptions
+    request: any, response: any, thumbnail: boolean, filesAdapter: FilesAdapter, options: BFastOptions
 ): void {
     const name = request.params.filename;
     // @ts-ignore
     const contentType = mime.getType(name);
     filesAdapter.signedUrl(name, options).then(value => {
-        if (thumbnail === true && contentType && contentType.toString().startsWith('image')) {
-            // response.send('image thumbnail');
-            const width = parseInt(request.query.width ? request.query.width : 100);
-            const height = parseInt(request.query.height ? request.query.height : 0);
-            // find a way remove this
-            bfast.init({projectId: '_bfast_core_', applicationId: '_bfast_core_'}, '_bfast_core_');
-            bfast.functions('_bfast_core_').request(value).get<Stream>({
-                // @ts-ignore
-                responseType: 'stream'
-            }).then(value1 => {
-                value1
-                    .pipe(sharp().resize(width, height !== 0 ? height : null))
-                    .pipe(response);
-            }).catch(_ => {
-                console.log(_);
+        return new Promise((resolve, reject) => {
+            if (thumbnail === true && contentType && contentType.toString().startsWith('image')) {
+                const width = parseInt(request.query.width ? request.query.width : 100);
+                const height = parseInt(request.query.height ? request.query.height : 0);
+                httpsRequest(value, res => {
+                    res.pipe(
+                        sharp().resize(width, height !== 0 ? height : null)
+                    ).pipe(response);
+                }).on("close", resolve).on("error", err => {
+                    reject(err);
+                }).end();
+            } else {
                 response.redirect(value);
-            });
-        } else {
-            // response.send('not image thumbnail');
-            response.redirect(value);
-        }
+            }
+        });
     }).catch(reason => {
-        response.status(StatusCodes.EXPECTATION_FAILED)
+        response
+            .status(StatusCodes.EXPECTATION_FAILED)
             .send({message: reason && reason.message ? reason.message : reason.toString()});
     });
 }
@@ -299,12 +234,10 @@ export function handleGetFileBySignedUrl(
 export function fileInfo(
     request: Request,
     response: Response,
-    getNode: GetNodeFn,
-    getDataInStore: GetDataFn,
     filesAdapter: FilesAdapter,
     options: BFastOptions
 ) {
-    filesAdapter.fileInfo(request?.params?.filename, getNode, getDataInStore, options).then(info => {
+    filesAdapter.fileInfo(request?.params?.filename, options).then(info => {
         response.status(200);
         response.set('Accept-Ranges', 'bytes');
         response.set('Content-Length', info.size.toString());

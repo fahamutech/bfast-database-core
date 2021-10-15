@@ -1,4 +1,4 @@
-const {getEnv} = require('../dist/index')
+const {getEnv} = require('../dist/cjs')
 const mongodb = require('mongodb');
 const axios = require("axios");
 const {expect} = require('chai');
@@ -22,6 +22,7 @@ exports.mongoRepSet = mongoMemoryReplSet;
 
 exports.config = {
     applicationId: 'bfast_test',
+    useLocalIpfs: true,
     projectId: 'bfast_test',
     port: '3111',
     logs: false,

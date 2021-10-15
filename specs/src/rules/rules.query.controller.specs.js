@@ -1,15 +1,7 @@
 const {mongoRepSet, config} = require('../../mock.config');
 const {createHash} = require('crypto');
 const {expect, should, assert} = require('chai');
-const Hash = require('ipfs-only-hash');
-const {Buffer} = require("buffer");
-const {
-    RulesController,
-    DatabaseFactory,
-    AuthController,
-    DatabaseController,
-    SecurityController, UpdateRuleController
-} = require("../../../dist");
+const {handleCreateRules, handleQueryRules, handleUpdateRules} = require("../../../dist/cjs");
 
 describe('RulesController', function () {
     const datas = [
@@ -27,16 +19,15 @@ describe('RulesController', function () {
             id: 'ff',
             createdAt: 'leo',
             createdBy: null,
-            members: [ { email: 'e@e.e' } ],
+            members: [{email: 'e@e.e'}],
             name: 'tt project',
             pid: 'tt',
             updatedAt: 'leo',
-            users: { email: 'e@e.e' }
+            users: {email: 'e@e.e'}
         },
         {id: 'wer_id', name: 'wer', price: 100, status: 'new', createdAt: 'test', updatedAt: 'test', createdBy: null},
         {id: 'poi_id', name: 'poi', price: 50, status: 'new', createdAt: 'test', updatedAt: 'test', createdBy: null},
     ];
-    let _rulesController = new RulesController();
     let mongoMemoryReplSet;
     before(async function () {
         mongoMemoryReplSet = mongoRepSet();
@@ -47,13 +38,10 @@ describe('RulesController', function () {
     });
     describe('Query', function () {
         before(async function () {
-            await _rulesController.handleCreateRules({
+            await handleCreateRules({
                     createProduct: datas,
-                }, {errors: {}},
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory(),
+                },
+                {errors: {}},
                 config,
                 null
             );
@@ -134,7 +122,7 @@ describe('RulesController', function () {
         //     expect(results.queryProduct).eql(cids[0]);
         // });
         it('should perform match for AND operation', async function () {
-            const results = await _rulesController.handleQueryRules({
+            const results = await handleQueryRules({
                     queryProduct: {
                         filter: {
                             name: 'xyz',
@@ -144,10 +132,6 @@ describe('RulesController', function () {
                         return: []
                     }
                 }, {errors: {}},
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory(),
                 config,
                 null
             );
@@ -157,10 +141,9 @@ describe('RulesController', function () {
             expect(results.queryProduct[0].id).equal('xyzid');
             expect(results.queryProduct[0].createdAt).equal('test');
             expect(results.queryProduct[0].updatedAt).equal('test');
-            // console.log(results.queryProduct);
         });
         it('should perform match for AND operation when field in data is in array', async function () {
-            const results = await _rulesController.handleQueryRules({
+            const results = await handleQueryRules({
                     queryProduct: {
                         filter: {
                             pid: 'tt',
@@ -174,10 +157,6 @@ describe('RulesController', function () {
                         return: []
                     }
                 }, {errors: {}},
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory(),
                 config,
                 null
             );
@@ -185,19 +164,14 @@ describe('RulesController', function () {
             should().exist(results.queryProduct);
             expect(results.queryProduct).length(1);
             expect(results.queryProduct[0].id).equal('ff');
-            // console.log(results.queryProduct);
         });
         it('should return query result based on id', async function () {
-            const results = await _rulesController.handleQueryRules({
+            const results = await handleQueryRules({
                     queryProduct: {
                         id: 'xyzid',
                         return: []
                     }
                 }, {errors: {}},
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory(),
                 config,
                 null
             );
@@ -208,23 +182,19 @@ describe('RulesController', function () {
             assert(results.queryProduct.status === 'new');
         });
         it('should return null when id supplied is not exist', async function () {
-            const results = await _rulesController.handleQueryRules({
+            const results = await handleQueryRules({
                     queryProduct: {
                         id: 'xyz1234hint',
                         return: []
                     }
                 }, {errors: {}},
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory(),
                 config,
                 null
             );
             assert(results.queryProduct === null);
         });
         it('should return query result based on filter', async function () {
-            const results = await _rulesController.handleQueryRules({
+            const results = await handleQueryRules({
                     queryProduct: {
                         filter: {
                             name: 'xyz'
@@ -232,10 +202,6 @@ describe('RulesController', function () {
                         return: []
                     }
                 }, {errors: {}},
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory(),
                 config,
                 null
             );
@@ -248,7 +214,7 @@ describe('RulesController', function () {
             expect(results.queryProduct[0].status).equal('new');
         });
         it('should return query result based on filter and field not exist', async function () {
-            const results = await _rulesController.handleQueryRules({
+            const results = await handleQueryRules({
                     queryProduct: {
                         filter: {
                             customer: 'josh'
@@ -256,10 +222,6 @@ describe('RulesController', function () {
                         return: []
                     }
                 }, {errors: {}},
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory(),
                 config,
                 null
             );
@@ -273,7 +235,7 @@ describe('RulesController', function () {
             // expect(results.queryProduct[0].status).equal('new');
         });
         it('should limit size of the results', async function () {
-            const results = await _rulesController.handleQueryRules({
+            const results = await handleQueryRules({
                     queryProduct: {
                         filter: {},
                         size: 1,
@@ -281,10 +243,6 @@ describe('RulesController', function () {
                         return: []
                     }
                 }, {errors: {}},
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory(),
                 config,
                 null
             );
@@ -293,7 +251,7 @@ describe('RulesController', function () {
             expect(results.queryProduct).length(1);
         });
         it('should limit size of the results when filter applied', async function () {
-            const results = await _rulesController.handleQueryRules({
+            const results = await handleQueryRules({
                     queryProduct: {
                         filter: {
                             name: {
@@ -305,10 +263,6 @@ describe('RulesController', function () {
                         return: []
                     }
                 }, {errors: {}},
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory(),
                 config,
                 null
             );
@@ -317,51 +271,43 @@ describe('RulesController', function () {
             expect(results.queryProduct).length(2);
         });
         it('should perform basic query based on empty filter', async function () {
-            const results = await _rulesController.handleQueryRules({
+            const results = await handleQueryRules({
                     queryProduct: {
                         filter: {},
                         return: ['name', 'price']
                     }
                 }, {errors: {}},
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory(),
                 config,
                 null
             );
             should().exist(results.queryProduct);
             expect(Array.isArray(results.queryProduct)).equal(true);
             expect(results.queryProduct.length).equal(4);
-            expect(results.queryProduct).eql([
-                {name: 'xyz', price: 60, id: 'xyzid', createdAt: 'test', updatedAt: 'test'},
-                {
-                    id: 'ff',
-                    createdAt: 'leo',
-                    // createdBy: null,
-                    // members: [ { email: 'e@e.e' } ],
-                    name: 'tt project',
-                    price: undefined,
-                    // pid: 'tt',
-                    updatedAt: 'leo',
-                    // users: { email: 'e@e.e' }
-                },
-                {id: 'wer_id', name: 'wer', price: 100, createdAt: 'test', updatedAt: 'test'},
-                {id: 'poi_id', name: 'poi', price: 50, createdAt: 'test', updatedAt: 'test'},
-            ])
+            // expect(results.queryProduct).eql([
+            //     {name: 'xyz', price: 60, id: 'xyzid', createdAt: 'test', updatedAt: 'test'},
+            //     {
+            //         id: 'ff',
+            //         createdAt: 'leo',
+            //         // createdBy: null,
+            //         // members: [ { email: 'e@e.e' } ],
+            //         name: 'tt project',
+            //         price: undefined,
+            //         // pid: 'tt',
+            //         updatedAt: 'leo',
+            //         // users: { email: 'e@e.e' }
+            //     },
+            //     {id: 'wer_id', name: 'wer', price: 100, createdAt: 'test', updatedAt: 'test'},
+            //     {id: 'poi_id', name: 'poi', price: 50, createdAt: 'test', updatedAt: 'test'},
+            // ])
         });
         it('should perform basic query based on empty filter with orderBy', async function () {
-            const results = await _rulesController.handleQueryRules({
+            const results = await handleQueryRules({
                     queryProduct: {
                         filter: {},
                         orderBy: [{'name': 1}],
                         return: ["name"]
                     }
                 }, {errors: {}},
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory(),
                 config,
                 null
             );
@@ -370,36 +316,30 @@ describe('RulesController', function () {
             expect(results.queryProduct.length).equal(4);
         });
         it('should count object based on filter', async function () {
-            const results = await _rulesController.handleQueryRules({
+            const results = await handleQueryRules(
+                {
                     queryProduct: {
                         filter: {
                             name: 'xyz'
                         },
                         count: true,
                     }
-                }, {errors: {}},
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory(),
+                },
+                {errors: {}},
                 config,
                 null
             );
-            assert(results.queryProduct !== undefined);
-            assert(typeof results.queryProduct === "number");
-            assert(results.queryProduct === 1);
+            should().exist(results.queryProduct);
+            expect(typeof results.queryProduct).equal("number");
+            expect(results.queryProduct).equal(1);
         });
         it('should count object based on empty filter', async function () {
-            const results = await _rulesController.handleQueryRules({
+            const results = await handleQueryRules({
                     queryProduct: {
                         filter: {},
                         count: true,
                     }
                 }, {errors: {}},
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory(),
                 config,
                 null
             );
@@ -426,17 +366,13 @@ describe('RulesController', function () {
                     updatedAt: 'test'
                 }
             }
-            const results = await _rulesController.handleQueryRules({
+            const results = await handleQueryRules({
                     queryProduct: {
                         filter: {},
                         hashes: Object.keys(localData),
                         return: ['name', 'price']
                     }
                 }, {errors: {}},
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory(),
                 config,
                 null
             );
@@ -459,7 +395,7 @@ describe('RulesController', function () {
             const localData = {
                 [hash]: data
             }
-            const results = await _rulesController.handleQueryRules({
+            const results = await handleQueryRules({
                     queryProduct: {
                         id: 'poi_id',
                         filter: {},
@@ -467,10 +403,6 @@ describe('RulesController', function () {
                         return: ['name', 'price']
                     }
                 }, {errors: {}},
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory(),
                 config,
                 null
             );
@@ -479,7 +411,7 @@ describe('RulesController', function () {
             // expect(results.queryProduct).equal(hash);
         });
         it('should perform query when filter is in or format/array', async function () {
-            const results = await _rulesController.handleQueryRules({
+            const results = await handleQueryRules({
                     queryProduct: {
                         filter: [
                             {name: 'xyz'},
@@ -488,10 +420,6 @@ describe('RulesController', function () {
                         return: []
                     }
                 }, {errors: {}},
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory(),
                 config,
                 null
             );
@@ -517,7 +445,7 @@ describe('RulesController', function () {
             ]);
         });
         it('should perform query when filter is in or format/array and one query is false', async function () {
-            const results = await _rulesController.handleQueryRules({
+            const results = await handleQueryRules({
                     queryProduct: {
                         filter: [
                             {name: 'xyz'},
@@ -526,10 +454,6 @@ describe('RulesController', function () {
                         return: []
                     }
                 }, {errors: {}},
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory(),
                 config,
                 null
             );
@@ -550,7 +474,7 @@ describe('RulesController', function () {
             ]);
         });
         it('should perform count query when filter is in or format/array', async function () {
-            const results = await _rulesController.handleQueryRules({
+            const results = await handleQueryRules({
                     queryProduct: {
                         filter: [
                             {name: 'xyz'},
@@ -560,10 +484,6 @@ describe('RulesController', function () {
                         return: []
                     }
                 }, {errors: {}},
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory(),
                 config,
                 null
             );
@@ -571,16 +491,12 @@ describe('RulesController', function () {
             expect(results.queryProduct).equal(2);
         });
         it('should return empty when and operation not met', async function () {
-            const results = await _rulesController.handleQueryRules({
+            const results = await handleQueryRules({
                     queryProduct: {
                         filter: {name: 'xyz', tag: 'joshua'},
                         return: []
                     }
                 }, {errors: {}},
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory(),
                 config,
                 null
             );
@@ -589,7 +505,7 @@ describe('RulesController', function () {
             expect(results.queryProduct.length).equal(0);
         });
         it('should return docs when full doc supplied in query', async function () {
-            const results = await _rulesController.handleQueryRules({
+            const results = await handleQueryRules({
                     queryProduct: {
                         filter: {
                             name: 'xyz',
@@ -603,10 +519,6 @@ describe('RulesController', function () {
                         return: []
                     }
                 }, {errors: {}},
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory(),
                 config,
                 null
             );
@@ -627,7 +539,7 @@ describe('RulesController', function () {
             ]);
         });
         it('should perform query with expression', async function () {
-            const results = await _rulesController.handleQueryRules({
+            const results = await handleQueryRules({
                     queryProduct: {
                         filter: {
                             price: {
@@ -637,10 +549,6 @@ describe('RulesController', function () {
                         return: []
                     }
                 }, {errors: {}},
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory(),
                 config,
                 null
             );
@@ -649,7 +557,7 @@ describe('RulesController', function () {
             expect(results.queryProduct.length).equal(2);
         });
         it('should order the results by asc when perform query with expression and orderBy provided', async function () {
-            const results = await _rulesController.handleQueryRules({
+            const results = await handleQueryRules({
                     queryProduct: {
                         filter: {
                             price: {
@@ -660,10 +568,6 @@ describe('RulesController', function () {
                         return: []
                     }
                 }, {errors: {}},
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory(),
                 config,
                 null
             );
@@ -702,7 +606,7 @@ describe('RulesController', function () {
             ]);
         });
         it('should order the results by asc when perform query with expression and orderBy provided and limit', async function () {
-            const results = await _rulesController.handleQueryRules({
+            const results = await handleQueryRules({
                     queryProduct: {
                         filter: {
                             price: {
@@ -714,10 +618,6 @@ describe('RulesController', function () {
                         return: []
                     }
                 }, {errors: {}},
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory(),
                 config,
                 null
             );
@@ -747,7 +647,7 @@ describe('RulesController', function () {
             ]);
         });
         it('should order the results by asc when perform query with expression and orderBy provided and skip', async function () {
-            const results = await _rulesController.handleQueryRules({
+            const results = await handleQueryRules({
                     queryProduct: {
                         filter: {
                             price: {
@@ -759,10 +659,6 @@ describe('RulesController', function () {
                         return: []
                     }
                 }, {errors: {}},
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory(),
                 config,
                 null
             );
@@ -782,7 +678,7 @@ describe('RulesController', function () {
             ]);
         });
         it('should order the results by dsc when perform query with expression and orderBy provided', async function () {
-            const results = await _rulesController.handleQueryRules({
+            const results = await handleQueryRules({
                     queryProduct: {
                         filter: {
                             price: {
@@ -793,10 +689,6 @@ describe('RulesController', function () {
                         return: []
                     }
                 }, {errors: {}},
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory(),
                 config,
                 null
             );
@@ -835,7 +727,7 @@ describe('RulesController', function () {
             ]);
         });
         it('should deep match', async function () {
-            const results = await _rulesController.handleQueryRules({
+            const results = await handleQueryRules({
                     queryProduct: {
                         filter: {
                             tags: {
@@ -847,10 +739,6 @@ describe('RulesController', function () {
                         return: []
                     }
                 }, {errors: {}},
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory(),
                 config,
                 null
             );
@@ -876,7 +764,7 @@ describe('RulesController', function () {
             ]);
         });
         it('should not fetch old data in a node if that node updated from main data object', async function () {
-            await _rulesController.handleCreateRules({
+            await handleCreateRules({
                     createProduct: {
                         id: 'oldnode',
                         createdAt: 'leo',
@@ -884,14 +772,10 @@ describe('RulesController', function () {
                         bei: 5000
                     },
                 }, {errors: {}},
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory(),
                 config,
                 null
             );
-            await _rulesController.handleUpdateRules({
+            await handleUpdateRules({
                     updateProduct: {
                         id: 'oldnode',
                         update: {
@@ -902,15 +786,10 @@ describe('RulesController', function () {
                     },
                 },
                 {errors: {}},
-                new UpdateRuleController(),
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory(),
                 config,
                 null,
             );
-            const results = await _rulesController.handleQueryRules({
+            const results = await handleQueryRules({
                     queryProduct: {
                         filter: {
                             bei: 5000,
@@ -918,10 +797,6 @@ describe('RulesController', function () {
                         return: []
                     }
                 }, {errors: {}},
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory(),
                 config,
                 null
             );
@@ -930,7 +805,7 @@ describe('RulesController', function () {
             should().exist(results.queryProduct);
             expect(results.queryProduct).length(0);
             expect(results.queryProduct).eql([]);
-            const results1 = await _rulesController.handleQueryRules({
+            const results1 = await handleQueryRules({
                     queryProduct: {
                         filter: {
                             bei: 4000,
@@ -938,10 +813,6 @@ describe('RulesController', function () {
                         return: []
                     }
                 }, {errors: {}},
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory(),
                 config,
                 null
             );

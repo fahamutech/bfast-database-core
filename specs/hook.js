@@ -20,8 +20,10 @@ exports.mochaHooks = {
         process.env.USE_LOCAL_IPFS = 'true';
         // process.env.LOGS = '0';
         console.log('________  START__________');
+        // const r = require('./functions/serve');
+        // console.log(r);
         // ySocketServer = await startYJsWebsocketServer();
-        // await bfastFs.start().then(console.log).catch(console.log);
+        await bfastFs.start().catch(console.log);
     },
     async afterAll() {
         console.log('________END__________');

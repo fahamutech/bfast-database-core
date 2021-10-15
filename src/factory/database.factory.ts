@@ -11,7 +11,6 @@ import {MongoClient} from 'mongodb';
 import {BFastOptions} from '../bfast-database.option';
 import {Node} from "../model/node";
 import {Data} from "../model/data";
-import {Cursor} from "../model/cursor";
 
 async function withMongoClient(fn: (conn: MongoClient) => Promise<any>, options: BFastOptions) {
     const conn = await MongoClient.connect(options.databaseURI);
@@ -24,7 +23,7 @@ async function withMongoClient(fn: (conn: MongoClient) => Promise<any>, options:
     }
 }
 
-export const upsertDataInStore: UpsertDataFn<any> = async (table: string, data: Data, options: BFastOptions) => {
+export const upsertDataInStore: UpsertDataFn = async (table: string, data: Data, options: BFastOptions) => {
     return withMongoClient(async conn => {
         await conn.db().collection(table).updateOne(
             {_id: data?._id},
@@ -68,7 +67,7 @@ export const purgeNode: PurgeNodeFn = (table, query, options) => {
     }, options);
 }
 
-export const upsertNode: UpsertNodeFn<any> = async (path, node, options) => {
+export const upsertNode: UpsertNodeFn = async (path, node, options) => {
     // console.log(node,'upsert node')
     const set = {};
     if (node && node.value && typeof node.value === "object"){
@@ -98,7 +97,7 @@ export const getNode: GetNodeFn = async (path, id, options) => {
     }, options);
 }
 
-export const getNodes: GetNodesFn<Node> = (path, nodePage, options): Promise<Node[]> => {
+export const getNodes: GetNodesFn = (path, nodePage, options): Promise<Node[]> => {
     return withMongoClient(async conn => {
         let cursor = conn.db().collection(path).find<Node>({});
         if (nodePage === null || nodePage === undefined) {

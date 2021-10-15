@@ -1,9 +1,6 @@
 const {mongoRepSet, config} = require('../../mock.config');
 const {assert, should, expect} = require('chai');
-const {
-    getNodes, getNode, getDataInStore, upsertNode, upsertDataInStore, handleAuthenticationRule, AuthFactory,
-    purgeNode, handleDeleteRules
-} = require("../../../dist");
+const {handleAuthenticationRule, AuthFactory, handleDeleteRules} = require("../../../dist/cjs");
 
 describe('Auth Rule', function () {
     let mongoMemoryReplSet
@@ -29,12 +26,6 @@ describe('Auth Rule', function () {
                 },
                 results,
                 new AuthFactory(),
-                purgeNode,
-                getNodes,
-                getNode,
-                getDataInStore,
-                upsertNode,
-                upsertDataInStore,
                 config
             );
             assert(results.auth['signUp'] !== undefined);
@@ -58,12 +49,6 @@ describe('Auth Rule', function () {
                 },
                 {errors: {}},
                 new AuthFactory(),
-                purgeNode,
-                getNodes,
-                getNode,
-                getDataInStore,
-                upsertNode,
-                upsertDataInStore,
                 config
             );
             should().not.exist(results.auth);
@@ -84,12 +69,6 @@ describe('Auth Rule', function () {
                 },
                 results,
                 new AuthFactory(),
-                purgeNode,
-                getNodes,
-                getNode,
-                getDataInStore,
-                upsertNode,
-                upsertDataInStore,
                 config
             )
             should().not.exist(results.auth);
@@ -109,12 +88,6 @@ describe('Auth Rule', function () {
                 },
                 results,
                 new AuthFactory(),
-                purgeNode,
-                getNodes,
-                getNode,
-                getDataInStore,
-                upsertNode,
-                upsertDataInStore,
                 config
             );
             should().not.exist(results.auth);
@@ -130,12 +103,6 @@ describe('Auth Rule', function () {
                     }
                 }, results,
                 new AuthFactory(),
-                purgeNode,
-                getNodes,
-                getNode,
-                getDataInStore,
-                upsertNode,
-                upsertDataInStore,
                 config
             );
             should().not.exist(results.auth);
@@ -151,12 +118,6 @@ describe('Auth Rule', function () {
                     }
                 }, results,
                 new AuthFactory(),
-                purgeNode,
-                getNodes,
-                getNode,
-                getDataInStore,
-                upsertNode,
-                upsertDataInStore,
                 config
             );
             should().not.exist(results.auth);
@@ -172,12 +133,6 @@ describe('Auth Rule', function () {
                 },
                 results,
                 new AuthFactory(),
-                purgeNode,
-                getNodes,
-                getNode,
-                getDataInStore,
-                upsertNode,
-                upsertDataInStore,
                 config
             );
             should().not.exist(results.auth);
@@ -199,12 +154,6 @@ describe('Auth Rule', function () {
                 },
                 {errors: {}},
                 new AuthFactory(),
-                purgeNode,
-                getNodes,
-                getNode,
-                getDataInStore,
-                upsertNode,
-                upsertDataInStore,
                 config
             );
             should().exist(r.auth.signUp);
@@ -221,10 +170,6 @@ describe('Auth Rule', function () {
                     }
                 },
                 {errors: {}},
-                getNodes,
-                getNode,
-                getDataInStore,
-                purgeNode,
                 config,
                 null
             );
@@ -240,12 +185,6 @@ describe('Auth Rule', function () {
                 },
                 {errors: {}},
                 new AuthFactory(),
-                purgeNode,
-                getNodes,
-                getNode,
-                getDataInStore,
-                upsertNode,
-                upsertDataInStore,
                 config
             );
             should().exist(results.auth.signIn);
@@ -265,12 +204,6 @@ describe('Auth Rule', function () {
                 },
                 {errors: {}},
                 new AuthFactory(),
-                purgeNode,
-                getNodes,
-                getNode,
-                getDataInStore,
-                upsertNode,
-                upsertDataInStore,
                 config
             );
             should().not.exist(results.auth);
@@ -288,12 +221,6 @@ describe('Auth Rule', function () {
                 },
                 {errors: {}},
                 new AuthFactory(),
-                purgeNode,
-                getNodes,
-                getNode,
-                getDataInStore,
-                upsertNode,
-                upsertDataInStore,
                 config
             );
             should().not.exist(results.auth);
@@ -310,12 +237,6 @@ describe('Auth Rule', function () {
                 },
                 {errors: {}},
                 new AuthFactory(),
-                purgeNode,
-                getNodes,
-                getNode,
-                getDataInStore,
-                upsertNode,
-                upsertDataInStore,
                 config
             );
             should().not.exist(results.auth);

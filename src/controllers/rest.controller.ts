@@ -8,14 +8,6 @@ import {BFastOptions} from "../bfast-database.option";
 import {NextFunction, Request, Response} from 'express'
 import {AuthAdapter} from "../adapters/auth.adapter";
 import {FilesAdapter} from "../adapters/files.adapter";
-import {
-    GetDataFn,
-    GetNodeFn,
-    GetNodesFn,
-    PurgeNodeFn,
-    UpsertDataFn,
-    UpsertNodeFn
-} from "../adapters/database.adapter";
 import {verifyToken} from './security.controller';
 import {hasPermission} from "./auth.controller";
 import {
@@ -42,12 +34,10 @@ export function getFile(
     response: Response,
     _: NextFunction,
     filesAdapter: FilesAdapter,
-    getNode: GetNodeFn,
-    getDataInStore: GetDataFn,
     options
 ): void {
     if (request?.method?.toString()?.toLowerCase() === 'head') {
-        fileInfo(request, response, getNode, getDataInStore, filesAdapter, options);
+        fileInfo(request, response, filesAdapter, options);
     } else if (isS3(filesAdapter) === true) {
         handleGetFileBySignedUrl(
             request,
@@ -62,8 +52,6 @@ export function getFile(
             response,
             false,
             filesAdapter,
-            getNode,
-            getDataInStore,
             options
         );
     }
@@ -74,8 +62,6 @@ export function getThumbnail(
     response: Response,
     _: NextFunction,
     filesAdapter: FilesAdapter,
-    getNode: GetNodeFn,
-    getDataInStore: GetDataFn,
     options: BFastOptions
 ): void {
     if (isS3(filesAdapter) === true) {
@@ -92,8 +78,6 @@ export function getThumbnail(
             response,
             true,
             filesAdapter,
-            getNode,
-            getDataInStore,
             options
         );
     }
@@ -104,10 +88,6 @@ export function getAllFiles(
     response: Response,
     _: NextFunction,
     filesAdapter: FilesAdapter,
-    purgeNode: PurgeNodeFn,
-    getNodes: GetNodesFn<any>,
-    getNode: GetNodeFn,
-    getDataInStore: GetDataFn,
     options: BFastOptions
 ): void {
     listFiles({
@@ -117,10 +97,6 @@ export function getAllFiles(
             prefix: request.query.prefix ? request.query.prefix.toString() : '',
         },
         filesAdapter,
-        purgeNode,
-        getNodes,
-        getNode,
-        getDataInStore,
         options
     ).then(value => {
         response.json(value);
@@ -134,8 +110,6 @@ export function multipartForm(
     response: Response,
     _: NextFunction,
     filesAdapter: FilesAdapter,
-    upsertNode: UpsertNodeFn<any>,
-    upsertDataInStore: UpsertDataFn<any>,
     options: BFastOptions
 ): void {
     const contentType = request.get('content-type').split(';')[0].toString().trim();
@@ -155,10 +129,8 @@ export function multipartForm(
                 return;
             }
             const urls = [];
-            if (request
-                && request.query
-                && request.query.pn
-                && request.query.pn.toString().trim().toLowerCase() === 'true'
+            if (
+                request && request.query && request.query.pn && request.query.pn.toString().trim().toLowerCase() === 'true'
             ) {
                 request.body.context.storage = {preserveName: true};
             } else {
@@ -176,10 +148,9 @@ export function multipartForm(
                         type: fileMeta.type,
                         size: file.size,
                         name: fileMeta.name
-                    }, request.body.context,
+                    },
+                    request.body.context,
                     filesAdapter,
-                    upsertNode,
-                    upsertDataInStore,
                     options);
                 urls.push(result);
             }
@@ -199,8 +170,6 @@ export function multipartForm(
                     },
                     request.body.context,
                     filesAdapter,
-                    upsertNode,
-                    upsertDataInStore,
                     options
                 );
                 urls.push(result);
@@ -234,14 +203,9 @@ export function filePolicy(
     request: Request,
     response: Response,
     next: NextFunction,
-    purgeNode: PurgeNodeFn,
-    getNodes: GetNodesFn<any>,
-    getNode: GetNodeFn,
-    getDataInStore: GetDataFn,
     options: BFastOptions
 ): void {
-    hasPermission(request.body.ruleId, request.body.context, purgeNode, getNodes, getNode, getDataInStore,
-        options).then(value => {
+    hasPermission(request.body.ruleId, request.body.context, options).then(value => {
         if (value === true) {
             next();
         } else {
@@ -321,12 +285,6 @@ export function handleRuleBlocks(
     _: NextFunction,
     authAdapter: AuthAdapter,
     filesAdapter: FilesAdapter,
-    getNodes: GetNodesFn<any>,
-    getNode: GetNodeFn,
-    getDataInStore: GetDataFn,
-    upsertNode: UpsertNodeFn<any>,
-    upsertDataInStore: UpsertDataFn<any>,
-    purgeNode: PurgeNodeFn,
     options: BFastOptions,
 ): void {
     const body = request.body;
@@ -335,35 +293,17 @@ export function handleRuleBlocks(
         body,
         results,
         authAdapter,
-        purgeNode,
-        getNodes,
-        getNode,
-        getDataInStore,
-        upsertNode,
-        upsertDataInStore,
         options
     ).then(_1 => {
         return handleAuthorizationRule(
             body,
             results,
-            upsertNode,
-            upsertDataInStore,
-            getNodes,
-            getNode,
-            getDataInStore,
-            purgeNode,
             options
         );
     }).then(_2 => {
         return handleCreateRules(
             body,
             results,
-            getNodes,
-            getNode,
-            getDataInStore,
-            upsertNode,
-            upsertDataInStore,
-            purgeNode,
             options,
             null
         );
@@ -371,12 +311,6 @@ export function handleRuleBlocks(
         return handleUpdateRules(
             body,
             results,
-            purgeNode,
-            getNodes,
-            getNode,
-            getDataInStore,
-            upsertNode,
-            upsertDataInStore,
             options,
             null
         );
@@ -384,10 +318,6 @@ export function handleRuleBlocks(
         return handleDeleteRules(
             body,
             results,
-            getNodes,
-            getNode,
-            getDataInStore,
-            purgeNode,
             options,
             null
         );
@@ -395,10 +325,6 @@ export function handleRuleBlocks(
         return handleQueryRules(
             body,
             results,
-            getNodes,
-            getNode,
-            getDataInStore,
-            purgeNode,
             options,
             null
         );
@@ -406,12 +332,6 @@ export function handleRuleBlocks(
         return handleBulkRule(
             body,
             results,
-            getNodes,
-            getNode,
-            getDataInStore,
-            upsertNode,
-            upsertDataInStore,
-            purgeNode,
             options
         );
     }).then(_8 => {
@@ -420,12 +340,6 @@ export function handleRuleBlocks(
             results,
             authAdapter,
             filesAdapter,
-            purgeNode,
-            getNodes,
-            getNode,
-            getDataInStore,
-            upsertNode,
-            upsertDataInStore,
             options
         );
     }).then(_9 => {

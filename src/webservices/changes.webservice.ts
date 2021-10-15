@@ -1,4 +1,3 @@
-import {functions} from 'bfast';
 import {ChangesDocModel} from "../model/changes-doc.model";
 import {changes} from '../controllers/database.controller';
 
@@ -6,9 +5,9 @@ export function changesRestAPI(
     config: { applicationId: string, masterKey: string },
     prefix = '/',
 ): { name: string, onEvent: any } {
-    return functions().onEvent(
-        `${prefix}v2/__changes__`,
-        (request, response) => {
+    return {
+        name: `${prefix}v2/__changes__`,
+        onEvent: (request, response) => {
             if (request.auth.applicationId === config.applicationId) {
                 const bypassDomainVerification: boolean = config.masterKey === request.auth.masterKey;
                 if (request.body.pipeline && Array.isArray(request.body.pipeline) && request.body.domain) {
@@ -41,7 +40,7 @@ export function changesRestAPI(
             } else {
                 response.emit({error: 'unauthorized'});
             }
-        }
-    );
+        },
+    };
 }
 

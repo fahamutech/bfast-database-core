@@ -1,29 +1,9 @@
-const {
-    initDatabase,
-    getNodes,
-    getNode,
-    getDataInStore,
-    upsertNode,
-    upsertDataInStore,
-    initialize,
-    purgeNode,
-    loadEnv
-} = require('../../dist');
+const {initialize, loadEnv} = require('../../dist/cjs');
 const bfast = require("bfast");
 const {config} = require("../mock.config");
 let myConfig = loadEnv();
 myConfig = Object.assign(config, myConfig)
-console.log(myConfig);
-const webService = initialize(
-    initDatabase,
-    getNodes,
-    getNode,
-    getDataInStore,
-    upsertNode,
-    upsertDataInStore,
-    purgeNode,
-    myConfig
-);
+const webService = initialize(myConfig);
 bfast.init({
     applicationId: myConfig.applicationId,
     projectId: myConfig.projectId,
@@ -35,6 +15,7 @@ bfast.init({
 module.exports.rests = webService.rest().rules;
 module.exports.restsjwk = webService.rest().jwk;
 module.exports.changes = webService.realtime(myConfig).changes;
-for (const fR of Object.keys(webService.storage())) {
-    module.exports[fR] = webService.storage()[fR];
+const storages = webService.storage();
+for (const fR of Object.keys(storages)) {
+    module.exports[fR] = storages[fR];
 }

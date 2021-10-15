@@ -4,13 +4,6 @@ import {FilesAdapter} from "../adapters/files.adapter";
 import {BFastOptions} from "../bfast-database.option";
 import {AuthAdapter} from "../adapters/auth.adapter";
 import {
-    GetDataFn,
-    GetNodeFn,
-    GetNodesFn, PurgeNodeFn,
-    UpsertDataFn,
-    UpsertNodeFn
-} from "../adapters/database.adapter";
-import {
     getFileFromStorage,
     getFilesFromStorage,
     geThumbnailFromStorage,
@@ -23,63 +16,21 @@ import {authJwk, rulesRestAPI} from "./rest.webservice";
 export class WebServices {
     constructor(private readonly authAdapter: AuthAdapter,
                 private readonly filesAdapter: FilesAdapter,
-                private readonly getNodes: GetNodesFn<any>,
-                private readonly getNode: GetNodeFn,
-                private readonly getDataInStore: GetDataFn,
-                private readonly upsertNode: UpsertNodeFn<any>,
-                private readonly upsertDataInStore: UpsertDataFn<any>,
-                private readonly purgeNode: PurgeNodeFn,
                 private readonly options: BFastOptions) {
     }
 
     storage(prefix = '/'): StorageApiModel {
         return {
-            fileApi: getFileFromStorage(
-                prefix,
-                this.filesAdapter,
-                this.purgeNode,
-                this.getNodes,
-                this.getNode,
-                this.getDataInStore,
-                this.options
-            ),
-            fileThumbnailApi: geThumbnailFromStorage(
-                prefix,
-                this.filesAdapter,
-                this.purgeNode,
-                this.getNodes,
-                this.getNode,
-                this.getDataInStore,
-                this.options
-            ),
-            fileListApi: getFilesFromStorage(
-                prefix,
-                this.filesAdapter,
-                this.purgeNode,
-                this.getNodes,
-                this.getNode,
-                this.getDataInStore,
-                this.options
-            ),
-            fileUploadApi: uploadMultiPartFile(
-                prefix,
-                this.filesAdapter,
-                this.purgeNode,
-                this.getNodes,
-                this.getNode,
-                this.getDataInStore,
-                this.upsertNode,
-                this.upsertDataInStore,
-                this.options
-            ),
-            getUploadFileV2: getUploadFileV2(prefix),
+            fileApi: getFileFromStorage(prefix, this.filesAdapter, this.options),
+            fileThumbnailApi: geThumbnailFromStorage(prefix, this.filesAdapter, this.options),
+            fileListApi: getFilesFromStorage(prefix, this.filesAdapter, this.options),
+            fileUploadApi: uploadMultiPartFile(prefix, this.filesAdapter, this.options),
+            getUploadFileV2: getUploadFileV2(prefix)
         };
     }
 
     realtime(config: { applicationId: string, masterKey: string }, prefix = '/'): {
         changes: { name: string, onEvent: any },
-        // syncs: { name: string, onEvent: any },
-        // syncsEndpoint: { name: string, onEvent: any }
     } {
         return {
             changes: changesRestAPI(config, prefix)
@@ -92,12 +43,6 @@ export class WebServices {
                 prefix,
                 this.authAdapter,
                 this.filesAdapter,
-                this.getNodes,
-                this.getNode,
-                this.getDataInStore,
-                this.upsertNode,
-                this.upsertDataInStore,
-                this.purgeNode,
                 this.options
             ),
             jwk: authJwk(

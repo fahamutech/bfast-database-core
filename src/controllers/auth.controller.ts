@@ -3,14 +3,6 @@ import {BasicUserAttributesModel} from '../model/basic-user-attributes.model';
 import {BFastOptions} from "../bfast-database.option";
 import {AuthAdapter} from "../adapters/auth.adapter";
 import {findByFilter, remove, writeOne} from "./database.controller";
-import {
-    GetDataFn,
-    GetNodeFn,
-    GetNodesFn,
-    PurgeNodeFn,
-    UpsertDataFn,
-    UpsertNodeFn
-} from "../adapters/database.adapter";
 
 const policyDomainName = '_Policy';
 
@@ -44,12 +36,7 @@ export function sanitizePolicy(_p1) {
 }
 
 export async function addPolicyRule(
-    ruleId: string,
-    rule: string,
-    context: ContextBlock,
-    upsertNode: UpsertNodeFn<any>,
-    upsertDataInStore: UpsertDataFn<any>,
-    options: BFastOptions
+    ruleId: string, rule: string, context: ContextBlock, options: BFastOptions
 ): Promise<any> {
     const _p1 = await writeOne(
         policyDomainName,
@@ -60,8 +47,6 @@ export async function addPolicyRule(
             return: []
         },
         false,
-        upsertNode,
-        upsertDataInStore,
         context,
         {
             bypassDomainVerification: context && context.useMasterKey === true
@@ -71,24 +56,13 @@ export async function addPolicyRule(
     return sanitizePolicy(_p1);
 }
 
-export async function listPolicyRule(
-    context: ContextBlock,
-    purgeNode: PurgeNodeFn,
-    getNodes: GetNodesFn<any>,
-    getNode: GetNodeFn,
-    getDataInStore: GetDataFn,
-    options: BFastOptions
-) {
+export async function listPolicyRule(context: ContextBlock, options: BFastOptions) {
     const _j1 = await findByFilter(
         '_Policy',
         {
             filter: {},
             return: []
         },
-        purgeNode,
-        getNodes,
-        getNode,
-        getDataInStore,
         context,
         {
             bypassDomainVerification: true
@@ -98,15 +72,7 @@ export async function listPolicyRule(
     return _j1.map(x => sanitizePolicy(x));
 }
 
-export async function removePolicyRule(
-    ruleId: string,
-    context: ContextBlock,
-    getNodes: GetNodesFn<any>,
-    getNode: GetNodeFn,
-    getDataInStore: GetDataFn,
-    purgeNode: PurgeNodeFn,
-    options: BFastOptions
-) {
+export async function removePolicyRule(ruleId: string, context: ContextBlock, options: BFastOptions) {
     const _y89 = await remove(
         '_Policy',
         {
@@ -115,10 +81,6 @@ export async function removePolicyRule(
             },
             return: ['id'],
         },
-        getNodes,
-        getNode,
-        getDataInStore,
-        purgeNode,
         context,
         {
             bypassDomainVerification: true
@@ -127,15 +89,7 @@ export async function removePolicyRule(
     return _y89.map(z => sanitizePolicy(z));
 }
 
-export async function hasPermission(
-    ruleId: string,
-    context: ContextBlock,
-    purgeNode: PurgeNodeFn,
-    getNodes: GetNodesFn<any>,
-    getNode: GetNodeFn,
-    getDataInStore: GetDataFn,
-    options: BFastOptions
-): Promise<boolean> {
+export async function hasPermission(ruleId: string, context: ContextBlock, options: BFastOptions): Promise<boolean> {
     if (context && context?.useMasterKey === true) {
         return true;
     }
@@ -155,10 +109,6 @@ export async function hasPermission(
             return: [],
             filter,
         },
-        purgeNode,
-        getNodes,
-        getNode,
-        getDataInStore,
         context,
         {
             bypassDomainVerification: true
@@ -204,27 +154,17 @@ export async function signIn<T extends BasicUserAttributesModel>(
     userModel: T,
     authAdapter: AuthAdapter,
     context: ContextBlock,
-    purgeNode: PurgeNodeFn,
-    getNodes: GetNodesFn<any>,
-    getNode: GetNodeFn,
-    getDataInStore: GetDataFn,
     options: BFastOptions
 ): Promise<T> {
     validateData(userModel, true);
     // userModel.return = [];
-    return authAdapter.signIn(userModel, purgeNode, getNodes, getNode, getDataInStore, context, options);
+    return authAdapter.signIn(userModel, context, options);
 }
 
 export async function signUp<T extends BasicUserAttributesModel>(
     userModel: T,
     authAdapter: AuthAdapter,
     context: ContextBlock,
-    purgeNode: PurgeNodeFn,
-    getNodes: GetNodesFn<any>,
-    getNode: GetNodeFn,
-    getDataInStore,
-    upsertNode: UpsertNodeFn<any>,
-    upsertDataInStore: UpsertDataFn<any>,
     options: BFastOptions
 ): Promise<T> {
     validateData(userModel);
@@ -239,10 +179,6 @@ export async function signUp<T extends BasicUserAttributesModel>(
             ],
             return: []
         },
-        purgeNode,
-        getNodes,
-        getNode,
-        getDataInStore,
         context,
         {bypassDomainVerification: true},
         options
@@ -250,23 +186,13 @@ export async function signUp<T extends BasicUserAttributesModel>(
     if (Array.isArray(oldUser) && oldUser.length > 0) {
         throw {message: 'User already exist'};
     }
-    return await authAdapter.signUp(
-        userModel,
-        upsertNode,
-        upsertDataInStore,
-        context,
-        options
-    );
+    return await authAdapter.signUp(userModel, context, options);
 }
 
 export async function update<T extends BasicUserAttributesModel>(
     userModel: T,
     authAdapter: AuthAdapter,
     context: ContextBlock,
-    getNode: GetNodeFn,
-    getDataInStore: GetDataFn,
-    upsertNode: UpsertNodeFn<any>,
-    upsertDataInStore: UpsertDataFn<any>,
     options: BFastOptions
 ): Promise<T> {
     if (context.auth === true && context.uid && typeof context.uid === 'string') {
@@ -274,15 +200,7 @@ export async function update<T extends BasicUserAttributesModel>(
         delete userModel.password;
         delete userModel._hashed_password;
         delete userModel.emailVerified;
-        return authAdapter.update(
-            userModel,
-            getNode,
-            getDataInStore,
-            upsertNode,
-            upsertDataInStore,
-            context,
-            options
-        );
+        return authAdapter.update(userModel, context, options);
     } else {
         return Promise.reject({message: 'please authenticate yourself'});
     }
@@ -292,22 +210,10 @@ export async function updatePassword(
     password: string,
     authAdapter: AuthAdapter,
     context: ContextBlock,
-    getNode: GetNodeFn,
-    getDataInStore: GetDataFn,
-    upsertNode: UpsertNodeFn<any>,
-    upsertDataInStore: UpsertDataFn<any>,
     options: BFastOptions
 ): Promise<any> {
     if (context.uid && typeof context.uid === 'string') {
-        return authAdapter.updatePassword(
-            password,
-            getNode,
-            getDataInStore,
-            upsertNode,
-            upsertDataInStore,
-            context,
-            options
-        );
+        return authAdapter.updatePassword(password, context, options);
     } else {
         return Promise.reject({message: 'Fails to updated password of unknown user id'});
     }
