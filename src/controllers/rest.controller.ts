@@ -28,6 +28,7 @@ import {
     listFiles,
     saveFromBuffer
 } from "./storage.controller";
+import {devLog} from "../utils/debug.util";
 
 export function getFile(
     request: Request,
@@ -285,7 +286,7 @@ export function handleRuleBlocks(
 ): void {
     const body = request.body;
     try {
-        request.query.rules = JSON.stringify(body);
+       devLog(JSON.stringify(body));
     } catch (e) {
         console.log(e);
     }
