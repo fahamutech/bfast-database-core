@@ -1,9 +1,8 @@
 {
   "name": "bfast-database-core",
-  "version": "2.2.0-alpha.0",
+  "version": "2.2.0-alpha.1",
   "main": "dist/cjs/index.js",
   "module": "dist/es5/index.js",
-  "types": "dist/es5/index.d.ts",
   "license": "MIT",
   "author": {
     "name": "FahamuTech",
