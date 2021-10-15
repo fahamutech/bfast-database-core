@@ -1,7 +1,7 @@
 const {mongoRepSet, config} = require('../../mock.config');
 const {before, after} = require('mocha');
 const {should, expect} = require('chai');
-const {handleCreateRules, handleBulkRule} = require("../../../dist/cjs");
+const {handleCreateRules, handleBulkRule} = require("../../../dist");
 
 describe('Bulk', function () {
     let mongoMemoryReplSet;

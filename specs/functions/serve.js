@@ -1,4 +1,4 @@
-const {initialize, loadEnv} = require('../../dist/cjs');
+const {initialize, loadEnv} = require('../../dist');
 const bfast = require("bfast");
 const {config} = require("../mock.config");
 let myConfig = loadEnv();

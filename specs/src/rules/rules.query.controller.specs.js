@@ -1,7 +1,7 @@
 const {mongoRepSet, config} = require('../../mock.config');
 const {createHash} = require('crypto');
 const {expect, should, assert} = require('chai');
-const {handleCreateRules, handleQueryRules, handleUpdateRules} = require("../../../dist/cjs");
+const {handleCreateRules, handleQueryRules, handleUpdateRules} = require("../../../dist");
 
 describe('RulesController', function () {
     const datas = [

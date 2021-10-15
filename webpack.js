@@ -2,6 +2,9 @@ const path = require('path');
 
 const clientConfig = {
     target: "node",
+    node: {
+        __dirname: false,
+    },
     entry: './src/index.ts',
     mode: 'production',
     module: {
@@ -15,7 +18,11 @@ const clientConfig = {
                     }
                 ],
                 exclude: /node_modules/,
-            }
+            },
+            {
+                test: /\.node$/,
+                loader: "node-loader",
+            },
         ]
     },
     resolve: {

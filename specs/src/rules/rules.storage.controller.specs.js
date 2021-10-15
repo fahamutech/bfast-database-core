@@ -1,7 +1,7 @@
 const {mongoRepSet, config} = require('../../mock.config');
 const {before, after} = require('mocha');
 const {assert, should, expect} = require('chai');
-const {handleStorageRule, AuthFactory, IpfsStorageFactory} = require("../../../dist/cjs");
+const {handleStorageRule, AuthFactory, IpfsStorageFactory} = require("../../../dist");
 
 describe('Storage', function () {
 

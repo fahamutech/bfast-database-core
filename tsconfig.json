@@ -1,21 +1,21 @@
 {
   "compilerOptions": {
-    "experimentalDecorators": true,
-    "declaration": true,
-    "target": "es5",
-    "module": "es2015",
-    "outDir": "./dist/es5",
+//    "experimentalDecorators": true,
+//    "declaration": true,
+//    "target": "es5",
+//    "module": "es2015",
+//    "outDir": "./dist/es5",
     "rootDir": "./src",
     "removeComments": true,
     "strict": false,
     "esModuleInterop": true,
     "moduleResolution": "Node",
     "skipLibCheck": true,
-    "lib": [
-      "dom",
-      "es5",
-      "scripthost",
-      "es2015.collection"
-    ]
+//    "lib": [
+//      "dom",
+//      "es5",
+//      "scripthost",
+//      "es2015.collection"
+//    ]
   }
 }

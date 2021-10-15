@@ -1,6 +1,6 @@
 const {mongoRepSet, config} = require('../../mock.config');
 const {assert, should, expect} = require('chai');
-const {handleAuthenticationRule, AuthFactory, handleDeleteRules} = require("../../../dist/cjs");
+const {handleAuthenticationRule, AuthFactory, handleDeleteRules} = require("../../../dist");
 
 describe('Auth Rule', function () {
     let mongoMemoryReplSet

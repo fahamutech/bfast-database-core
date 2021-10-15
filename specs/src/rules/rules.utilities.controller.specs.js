@@ -1,7 +1,7 @@
 const {mongoRepSet} = require('../../mock.config');
 const {before, after} = require('mocha');
 const {assert} = require('chai');
-const {getRulesKey, extractDomain} = require("../../../dist/cjs");
+const {getRulesKey, extractDomain} = require("../../../dist");
 
 describe('RulesController::Utilities Unit Test', function () {
     let mongoMemoryReplSet

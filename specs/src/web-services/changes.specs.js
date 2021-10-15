@@ -1,7 +1,7 @@
 const bfast = require("bfast");
 const {expect, should} = require('chai');
 const {config} = require("../../mock.config");
-const {AppEventsFactory} = require("../../../dist/cjs/factory/app-events.factory");
+const {AppEventsFactory} = require("../../../dist/factory/app-events.factory");
 
 
 describe('Changes', function () {

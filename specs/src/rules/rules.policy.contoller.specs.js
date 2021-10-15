@@ -1,7 +1,7 @@
 const {mongoRepSet, config} = require('../../mock.config');
 const {before, after} = require('mocha');
 const {assert, expect, should} = require('chai');
-const {handleAuthorizationRule} = require("../../../dist/cjs");
+const {handleAuthorizationRule} = require("../../../dist");
 
 describe('policy', function () {
 

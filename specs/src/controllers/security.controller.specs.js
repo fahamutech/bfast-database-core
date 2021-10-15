@@ -1,6 +1,6 @@
 const {config} = require('../../mock.config');
 const {assert} = require('chai');
-const {getToken, verifyToken} = require("../../../dist/cjs/controllers/security.controller");
+const {getToken, verifyToken} = require("../../../dist");
 
 describe('SecurityController Integration Test', function () {
     it('should generate signed token', async function () {

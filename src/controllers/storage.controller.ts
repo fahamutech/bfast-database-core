@@ -40,10 +40,7 @@ export function getSource(base64: string, type: string): any {
 }
 
 export async function saveFile(
-    fileModel: FileModel,
-    _: ContextBlock,
-    filesAdapter: FilesAdapter,
-    options: BFastOptions
+    fileModel: FileModel, _: ContextBlock, filesAdapter: FilesAdapter, options: BFastOptions
 ): Promise<string> {
     const {name, base64} = fileModel;
     let {type} = fileModel;

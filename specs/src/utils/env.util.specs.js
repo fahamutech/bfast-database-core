@@ -1,4 +1,4 @@
-const {getEnv, loadEnv} = require("../../../dist/cjs");
+const {getEnv, loadEnv} = require("../../../dist");
 
 const {assert, expect, should} = require('chai');
 const {config} = require("../../mock.config");

@@ -1,4 +1,4 @@
-const {getEnv} = require('../dist/cjs')
+const {getEnv} = require('../dist')
 const mongodb = require('mongodb');
 const axios = require("axios");
 const {expect} = require('chai');
