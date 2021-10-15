@@ -1,5 +1,5 @@
-import {BasicUserAttributesModel} from '../model/basic-user-attributes.model';
-import {ContextBlock} from '../model/rules.model';
+import {BasicUserAttributesModel} from '../models/basic-user-attributes.model';
+import {ContextBlock} from '../models/rules.model';
 import {BFastOptions} from "../bfast-database.option";
 
 export abstract class AuthAdapter {

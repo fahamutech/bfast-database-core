@@ -1,5 +1,5 @@
-import {FunctionsModel} from '../model/functions.model';
-import {StorageApiModel} from '../model/storage-api.model';
+import {FunctionsModel} from '../models/functions.model';
+import {StorageApiModel} from '../models/storage-api.model';
 import {FilesAdapter} from "../adapters/files.adapter";
 import {BFastOptions} from "../bfast-database.option";
 import {AuthAdapter} from "../adapters/auth.adapter";

@@ -6,7 +6,7 @@ import {IpfsFactory} from "./ipfs.factory";
 import {findByFilter, findById, remove, writeOne} from "../controllers/database.controller";
 import {generateUUID} from "../controllers/security.controller";
 import * as mime from "mime";
-import {Storage} from "../model/storage";
+import {Storage} from "../models/storage";
 import {Request, Response} from "express";
 
 function removeDot(name: string) {

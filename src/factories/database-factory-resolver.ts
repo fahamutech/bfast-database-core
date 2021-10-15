@@ -1,6 +1,6 @@
-import {NodePage} from "../model/node-page";
+import {NodePage} from "../models/node-page";
 import {BFastOptions} from "../bfast-database.option";
-import {Factory} from "./index";
+import {Factory} from "./factory";
 import {
     GetDataFn,
     GetNodeFn,
@@ -10,7 +10,7 @@ import {
     UpsertDataFn,
     UpsertNodeFn
 } from "../adapters/database.adapter";
-import {FactoryIdentifier} from "../model/factory-identifier";
+import {FactoryIdentifier} from "../models/factory-identifier";
 import {
     getDataInStore,
     getNode,
@@ -20,7 +20,7 @@ import {
     upsertDataInStore,
     upsertNode
 } from "./database.factory";
-import {NodeValueDeleteQuery} from "../model/node-value-delete-query";
+import {NodeValueDeleteQuery} from "../models/node-value-delete-query";
 
 export const _getNode = async (pathHash: string, iKey, options: BFastOptions) => {
     const userGetNode = Factory.get<GetNodeFn>(FactoryIdentifier.GetNodesFn);

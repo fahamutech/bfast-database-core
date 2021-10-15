@@ -1,5 +1,5 @@
-import {RulesModel} from '../model/rules.model';
-import {UpdateRuleRequestModel} from '../model/update-rule-request.model';
+import {RulesModel} from '../models/rules.model';
+import {UpdateRuleRequestModel} from '../models/update-rule-request.model';
 import {BFastOptions} from "../bfast-database.option";
 import {findByFilter, updateMany, updateOne} from "./database.controller";
 

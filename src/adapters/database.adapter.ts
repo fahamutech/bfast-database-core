@@ -1,8 +1,8 @@
 import {BFastOptions} from "../bfast-database.option";
-import {Data} from "../model/data";
-import {Node} from "../model/node";
-import {NodeValueDeleteQuery} from "../model/node-value-delete-query";
-import {NodePage} from "../model/node-page";
+import {Data} from "../models/data";
+import {Node} from "../models/node";
+import {NodeValueDeleteQuery} from "../models/node-value-delete-query";
+import {NodePage} from "../models/node-page";
 
 export type InitDatabaseFn = (options: BFastOptions) => Promise<any>;
 

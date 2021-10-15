@@ -1,13 +1,13 @@
 import {FilesAdapter} from '../adapters/files.adapter';
-import {FileModel} from '../model/file-model';
-import {ContextBlock} from '../model/rules.model';
+import {FileModel} from '../models/file-model';
+import {ContextBlock} from '../models/rules.model';
 import mime from 'mime';
 import {StatusCodes} from 'http-status-codes';
 import {BFastOptions} from '../bfast-database.option';
 import sharp from 'sharp';
 import {Buffer} from "buffer";
 import {Request, Response} from 'express'
-import {Storage} from "../model/storage";
+import {Storage} from "../models/storage";
 import {request as httpsRequest} from "https";
 
 export function getSource(base64: string, type: string): any {

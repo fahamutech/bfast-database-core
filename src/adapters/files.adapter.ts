@@ -1,6 +1,6 @@
 import {BFastOptions} from '../bfast-database.option';
 import {Buffer} from "buffer";
-import {Storage} from "../model/storage";
+import {Storage} from "../models/storage";
 import {Request, Response} from 'express'
 
 export abstract class FilesAdapter {

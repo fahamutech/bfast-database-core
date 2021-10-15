@@ -1,4 +1,4 @@
-import {FunctionsModel} from '../model/functions.model';
+import {FunctionsModel} from '../models/functions.model';
 import {BFastOptions} from "../bfast-database.option";
 import {FilesAdapter} from "../adapters/files.adapter";
 import {

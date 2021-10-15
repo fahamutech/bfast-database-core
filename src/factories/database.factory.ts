@@ -9,8 +9,8 @@ import {
 } from '../adapters/database.adapter';
 import {MongoClient} from 'mongodb';
 import {BFastOptions} from '../bfast-database.option';
-import {Node} from "../model/node";
-import {Data} from "../model/data";
+import {Node} from "../models/node";
+import {Data} from "../models/data";
 
 async function withMongoClient(fn: (conn: MongoClient) => Promise<any>, options: BFastOptions) {
     const conn = await MongoClient.connect(options.databaseURI);

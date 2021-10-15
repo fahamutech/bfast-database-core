@@ -1,5 +1,5 @@
-import {ContextBlock} from '../model/rules.model';
-import {BasicUserAttributesModel} from '../model/basic-user-attributes.model';
+import {ContextBlock} from '../models/rules.model';
+import {BasicUserAttributesModel} from '../models/basic-user-attributes.model';
 import {BFastOptions} from "../bfast-database.option";
 import {AuthAdapter} from "../adapters/auth.adapter";
 import {findByFilter, remove, writeOne} from "./database.controller";

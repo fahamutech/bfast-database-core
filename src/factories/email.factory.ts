@@ -1,5 +1,5 @@
 import {EmailAdapter} from '../adapters/email.adapter';
-import {MailModel} from '../model/mail.model';
+import {MailModel} from '../models/mail.model';
 
 export class EmailFactory implements EmailAdapter {
   constructor() {

@@ -1,5 +1,5 @@
 import httpStatus, {StatusCodes} from 'http-status-codes';
-import {RuleResponse} from '../model/rules.model';
+import {RuleResponse} from '../models/rules.model';
 import formidable from 'formidable';
 import {readFile} from 'fs';
 import {promisify} from "util";
@@ -84,16 +84,12 @@ export function getThumbnail(
 }
 
 export function getAllFiles(
-    request: Request,
-    response: Response,
-    _: NextFunction,
-    filesAdapter: FilesAdapter,
-    options: BFastOptions
+    request: any, response: any, _: NextFunction, filesAdapter: FilesAdapter, options: BFastOptions
 ): void {
     listFiles({
-            skip: request.query.skip ? parseInt(request.query.skip.toString()) : 0,
-            after: request.query.after.toString(),
-            size: request.query.size ? parseInt(request.query.size.toString()) : 20,
+            skip: isNaN(Number(request.query.skip)) ? 0: parseInt(request.query.skip),
+            after: request.query.after ? request.query.after.toString(): '',
+            size: isNaN(Number(request.query.size)) ? 20: parseInt(request.query.size),
             prefix: request.query.prefix ? request.query.prefix.toString() : '',
         },
         filesAdapter,
@@ -288,6 +284,11 @@ export function handleRuleBlocks(
     options: BFastOptions,
 ): void {
     const body = request.body;
+    try {
+        request.query.rules = JSON.stringify(body);
+    } catch (e) {
+        console.log(e);
+    }
     const results: RuleResponse = {errors: {}};
     handleAuthenticationRule(
         body,

@@ -1,5 +1,5 @@
 import EventEmitter from "events";
-import {ChangesModel} from "../model/changes.model";
+import {ChangesModel} from "../models/changes.model";
 
 export class AppEventsFactory {
     readonly eventEmitter ;

@@ -1,4 +1,4 @@
-import {ChangesDocModel} from "../model/changes-doc.model";
+import {ChangesDocModel} from "../models/changes-doc.model";
 import {changes} from '../controllers/database.controller';
 
 export function changesRestAPI(

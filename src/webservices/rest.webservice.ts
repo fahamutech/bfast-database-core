@@ -9,7 +9,7 @@ import {
     verifyMethod,
     verifyRequestToken
 } from "../controllers/rest.controller";
-import {FunctionsModel} from "../model/functions.model";
+import {FunctionsModel} from "../models/functions.model";
 
 
 export function rulesRestAPI(

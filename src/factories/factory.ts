@@ -1,4 +1,4 @@
-import {FactoryIdentifier} from "../model/factory-identifier";
+import {FactoryIdentifier} from "../models/factory-identifier";
 
 class FactoryHouse {
     private factories = {};

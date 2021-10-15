@@ -1,11 +1,11 @@
 import {BFastOptions} from './bfast-database.option';
 import {WebServices} from './webservices/index.webservice';
-import {AuthFactory} from "./factory/auth.factory";
+import {AuthFactory} from "./factories/auth.factory";
 import {AuthAdapter} from "./adapters/auth.adapter";
 import {FilesAdapter} from "./adapters/files.adapter";
-import {S3StorageFactory} from "./factory/s3-storage.factory";
-import {IpfsStorageFactory} from "./factory/ipfs-storage.factory";
-import {_init} from "./factory/database-factory-resolver";
+import {S3StorageFactory} from "./factories/s3-storage.factory";
+import {IpfsStorageFactory} from "./factories/ipfs-storage.factory";
+import {_init} from "./factories/database-factory-resolver";
 
 function getAuthFactory(options: BFastOptions): AuthAdapter {
     return (options && options.adapters && options.adapters.auth)

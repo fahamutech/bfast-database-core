@@ -1,23 +1,23 @@
-import {BasicAttributesModel} from '../model/basic-attributes.model';
-import {ContextBlock} from '../model/rules.model';
-import {UpdateRuleRequestModel} from '../model/update-rule-request.model';
-import {DeleteModel} from '../model/delete-model';
-import {QueryModel} from '../model/query-model';
+import {BasicAttributesModel} from '../models/basic-attributes.model';
+import {ContextBlock} from '../models/rules.model';
+import {UpdateRuleRequestModel} from '../models/update-rule-request.model';
+import {DeleteModel} from '../models/delete-model';
+import {QueryModel} from '../models/query-model';
 import {generateUUID} from './security.controller';
-import {ChangesModel} from '../model/changes.model';
-import {ChangesDocModel} from "../model/changes-doc.model";
-import {AppEventsFactory} from "../factory/app-events.factory";
+import {ChangesModel} from '../models/changes.model';
+import {ChangesDocModel} from "../models/changes-doc.model";
+import {AppEventsFactory} from "../factories/app-events.factory";
 import {ConstUtil} from "../utils/const.util";
 import {BFastOptions} from "../bfast-database.option";
 import {TreeController} from "bfast-database-tree";
 import {createHash} from "crypto";
-import {Node} from '../model/node'
-import {DatabaseWriteOptions} from "../model/database-write-options";
-import {DatabaseUpdateOptions} from "../model/database-update-options";
-import {DatabaseBasicOptions} from "../model/database-basic-options";
-import {DatabaseChangesOptions} from "../model/database-changes-options";
-import {TreeQuery} from "../model/tree-query";
-import {NodeValueDeleteQuery} from "../model/node-value-delete-query";
+import {Node} from '../models/node'
+import {DatabaseWriteOptions} from "../models/database-write-options";
+import {DatabaseUpdateOptions} from "../models/database-update-options";
+import {DatabaseBasicOptions} from "../models/database-basic-options";
+import {DatabaseChangesOptions} from "../models/database-changes-options";
+import {TreeQuery} from "../models/tree-query";
+import {NodeValueDeleteQuery} from "../models/node-value-delete-query";
 import {
     _getData,
     _getNode,
@@ -25,8 +25,8 @@ import {
     _purgeNode,
     _upsertData,
     _upsertNode
-} from "../factory/database-factory-resolver";
-import {Data} from "../model/data";
+} from "../factories/database-factory-resolver";
+import {Data} from "../models/data";
 
 export async function getAllContentsFromTreeTable(
     domain: string, queryModel: QueryModel<any>, options: BFastOptions
