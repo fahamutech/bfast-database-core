@@ -1,546 +1,854 @@
 import {BasicAttributesModel} from '../model/basic-attributes.model';
 import {ContextBlock} from '../model/rules.model';
-import {
-    DatabaseAdapter,
-    DatabaseBasicOptions,
-    DatabaseChangesOptions,
-    DatabaseUpdateOptions,
-    DatabaseWriteOptions
-} from '../adapters/database.adapter';
 import {UpdateRuleRequestModel} from '../model/update-rule-request.model';
 import {DeleteModel} from '../model/delete-model';
 import {QueryModel} from '../model/query-model';
-import {SecurityController} from './security.controller';
+import {generateUUID} from './security.controller';
 import {ChangesModel} from '../model/changes.model';
 import {ChangesDocModel} from "../model/changes-doc.model";
 import {AppEventsFactory} from "../factory/app-events.factory";
 import {ConstUtil} from "../utils/const.util";
-import {BFastDatabaseOptions} from "../bfast-database.option";
+import {BFastOptions} from "../bfast-database.option";
+import {TreeController} from "bfast-database-tree";
+import {createHash} from "crypto";
+import {Node} from '../model/node'
+import {DatabaseWriteOptions} from "../model/database-write-options";
+import {DatabaseUpdateOptions} from "../model/database-update-options";
+import {DatabaseBasicOptions} from "../model/database-basic-options";
+import {DatabaseChangesOptions} from "../model/database-changes-options";
+import {TreeQuery} from "../model/tree-query";
+import {NodeValueDeleteQuery} from "../model/node-value-delete-query";
+import {
+    _getData,
+    _getNode,
+    _getNodes, _init,
+    _purgeNode,
+    _upsertData,
+    _upsertNode
+} from "../factory/database-factory-resolver";
+import {Data} from "../model/data";
 
-export class DatabaseController {
-
-    constructor() {
-    }
-
-    async handleDomainValidation(domain: string): Promise<any> {
-        if (!this.validDomain(domain)) {
-            throw {
-                message: `${domain} is not a valid domain name`
-            };
+export async function getAllContentsFromTreeTable(
+    domain: string, queryModel: QueryModel<any>, options: BFastOptions
+): Promise<any[] | number> {
+    const nodePathHash = hashOfNodePath(`${domain}/_id`);
+    let nodes = await _getNodes(nodePathHash, null, options);
+    if (nodes && Array.isArray(nodes)) {
+        if (queryModel?.size && queryModel?.size > 0) {
+            const skip_ = (queryModel.skip && queryModel.skip >= 1) ? queryModel.skip : 0;
+            nodes = nodes.slice(skip_, (queryModel.size + skip_));
         }
-        return true;
-    }
-
-    async init(
-        database: DatabaseAdapter,
-        options: BFastDatabaseOptions
-    ): Promise<any> {
-        return database.init(options);
-    }
-
-    async writeOne<T extends BasicAttributesModel>(
-        domain: string,
-        data: T,
-        cids: boolean,
-        database: DatabaseAdapter,
-        security: SecurityController,
-        context: ContextBlock,
-        options: DatabaseWriteOptions = {bypassDomainVerification: false},
-        configs: BFastDatabaseOptions
-    ): Promise<T> {
-        if (options && options.bypassDomainVerification === false) {
-            await this.handleDomainValidation(domain);
+        if (queryModel?.count === true) {
+            return nodes.length;
         }
-        const returnFields = this.getReturnFields<T>(data);
-        const sanitizedDataWithCreateMetadata = this.addCreateMetadata(data, security, context);
-        const sanitizedData = this.sanitize4Db(sanitizedDataWithCreateMetadata);
-        const doc = await database.writeOne<T>(
-            domain,
-            sanitizedData,
-            cids,
-            context,
-            configs
-        );
-        const cleanDoc = this.sanitize4User<T>(doc, returnFields, [], false, security) as T;
-        this.publishChanges(domain, {
-            _id: doc?._id,
-            fullDocument: doc,
-            documentKey: doc?._id,
-            operationType: "create"
-        });
-        return cleanDoc;
+        const all_p = nodes.map(x => _getData(domain, x?.value as string, options));
+        const all = await Promise.all(all_p);
+        return all.filter(b => b !== null);
     }
+    return [];
+}
 
-    async writeMany<T extends BasicAttributesModel>(
-        domain: string,
-        data: T[],
-        cids: boolean,
-        database: DatabaseAdapter,
-        security: SecurityController,
-        context: ContextBlock,
-        options: DatabaseWriteOptions = {bypassDomainVerification: false},
-        configs: BFastDatabaseOptions
-    ): Promise<any[]> {
-        if (options && options.bypassDomainVerification === false) {
-            await this.handleDomainValidation(domain);
-        }
-        const freshData = data.map(value => this.addCreateMetadata(value, security, context));
-        const returnFieldsMap = freshData.reduce((a, b) => {
-            a[b._id] = b.return;
-            return a;
-        }, {});
-        const sanitizedData = freshData.map(value => this.sanitize4Db(value));
-        const docs = await database.writeMany<any>(domain, sanitizedData, cids, context, configs);
-        return docs.map(x1 => {
-            const cleanDoc = this.sanitize4User(x1, returnFieldsMap[x1._id], [], false, security);
-            this.publishChanges(domain, {
-                _id: x1?._id,
-                fullDocument: x1,
-                documentKey: x1?._id,
-                operationType: "create"
-            });
-            return cleanDoc;
-        });
+export async function searchNodeByExpression(path: string, iKey: any, options: BFastOptions): Promise<Node[]> {
+    const pathHash = hashOfNodePath(path);
+    const np: any = {};
+    if (iKey.hasOwnProperty('$orderBy')) {
+        np.sort = iKey.$orderBy;
     }
+    if (iKey.hasOwnProperty('$limit')) {
+        np.limit = iKey.$limit;
+    }
+    if (iKey.hasOwnProperty('$skip')) {
+        np.skip = iKey.$skip;
+    }
+    const ns = await _getNodes(pathHash, np, options);
+    const nodes: Node[] = [];
+    for (const n of ns) {
+        const fn = new Function('it', iKey.$fn);
+        fn(n._id) === true ? nodes.push(n) : null
+    }
+    return nodes;
+}
 
-    async updateOne(
-        domain: string,
-        updateModel: UpdateRuleRequestModel,
-        database: DatabaseAdapter,
-        security: SecurityController,
-        context: ContextBlock,
-        options: DatabaseUpdateOptions = {bypassDomainVerification: false},
-        configs: BFastDatabaseOptions
-    ): Promise<any> {
-        if (options && options.bypassDomainVerification === false) {
-            await this.handleDomainValidation(domain);
-        }
-        if (updateModel.upsert === true) {
-            if (!updateModel.update.hasOwnProperty('$set')) {
-                updateModel.update.$set = {id: security.generateUUID()}
+export async function searchNode(nodePath: string, iKey: any, options: BFastOptions): Promise<Node | Array<Node>> {
+    if (typeof iKey === "object" && iKey?.hasOwnProperty('$fn')) {
+        return searchNodeByExpression(nodePath, iKey, options);
+    } else {
+        const pathHash = hashOfNodePath(nodePath);
+        return _getNode(pathHash, iKey, options);
+    }
+}
+
+export function internalKeys(node: Node): string[] {
+    if (node && node.value && typeof node.value === "object") {
+        return Object.keys(node.value);
+    }
+    if (node && node.value && typeof node.value === "string" && node._id) {
+        return [node._id as string];
+    }
+    return [];
+}
+
+export async function purgeNodeInTree(
+    path: string, query: NodeValueDeleteQuery, options: BFastOptions
+): Promise<{ _id: string }> {
+    const pathHash = hashOfNodePath(path);
+    return _purgeNode(pathHash, query, options);
+}
+
+export function purgeNodeEntry(node: Node, iKey: string): Node {
+    if (!node || !node.hasOwnProperty('_id')) {
+        return node;
+    }
+    if (!node || !node.hasOwnProperty('value')) {
+        return node;
+    }
+    if (typeof node.value === "string") {
+        return node;
+    }
+    if (typeof node.value === "object") {
+        delete node.value[iKey];
+    }
+    return node;
+}
+
+export function purgeNodeEntryByTree(node_: Node, iKey: string, eKey: string, tree: any): Node {
+    let node = purgeNodeEntry(node_, iKey);
+    if (eKey === null || eKey === undefined) {
+        return node;
+    }
+    if (tree === null || tree === undefined) {
+        return node;
+    }
+    if (tree && tree.hasOwnProperty(node._id) && typeof tree[node._id] === "object" && tree[node._id][iKey] !== eKey) {
+        delete node.value[iKey];
+    }
+    return node;
+}
+
+export function externalKey(node: Node, iKey: string): string {
+    if (node === null || node === undefined) {
+        return null;
+    }
+    if (iKey === null || iKey === undefined) {
+        return null;
+    }
+    if (node.value === null || node.value === undefined) {
+        return null;
+    }
+    if (typeof node.value === "string") {
+        return node.value;
+    }
+    return node.value[iKey];
+}
+
+export async function internalShake(path: string, node: Node, iKey: string, options: BFastOptions): Promise<Node> {
+    node = purgeNodeEntry(node, iKey);
+    await purgeNodeInTree(path, {id: iKey}, options).catch(console.log);
+    return node;
+}
+
+export async function externalShake(
+    domain: string, path: string, node: Node, iKey: string, options: BFastOptions
+): Promise<Node> {
+    const eKey = externalKey(node, iKey);
+    const data = await _getData(domain, eKey, options);
+    if (data === null || data === undefined) {
+        node = purgeNodeEntry(node, iKey);
+        await purgeNodeInTree(path, {value: iKey}, options).catch(console.log);
+        return node;
+    }
+    const treeController = new TreeController();
+    let tree = await treeController.objectToTree(data, domain, {
+        nodeHandler: null,
+        nodeIdHandler: () => data?._id ? data._id : data?.id
+    });
+    const pathParts = path.split('/');
+    for (const pathPart of pathParts) {
+        if (pathPart !== domain) {
+            tree = tree[pathPart];
+            if (tree === null || tree === undefined) {
+                node = purgeNodeEntryByTree(node, iKey, eKey, tree);
+                await purgeNodeInTree(path, {value: iKey}, options).catch(console.log);
             }
         }
-        const returnFields = this.getReturnFields(updateModel as any);
-        updateModel = this.altUpdateModel(updateModel, context);
-        options.dbOptions = updateModel && updateModel.options ? updateModel.options : {};
-        const updatedDoc = await database.updateOne<any, any>(domain, updateModel, context, configs);
-        const cleanDoc = this.sanitize4User(updatedDoc, returnFields, [], updateModel.cids, security);
-        this.publishChanges(domain, {
-            _id: updatedDoc?._id,
-            fullDocument: updatedDoc,
-            documentKey: updatedDoc?._id,
-            operationType: "update"
-        });
-        return cleanDoc;
     }
+    return node;
+}
 
-    private altUpdateModel(updateModel: UpdateRuleRequestModel, context: ContextBlock) {
-        updateModel.update = this.sanitizeWithOperator4Db(updateModel?.update as any);
-        updateModel.filter = this.sanitizeWithOperator4Db(updateModel?.filter as any);
-        updateModel.update = this.addUpdateMetadata(updateModel?.update as any, context);
-        return updateModel;
-    }
-
-    async updateMany(
-        domain: string,
-        updateModel: UpdateRuleRequestModel,
-        database: DatabaseAdapter,
-        security: SecurityController,
-        context: ContextBlock,
-        options: DatabaseUpdateOptions = {bypassDomainVerification: false},
-        configs: BFastDatabaseOptions
-    ): Promise<any[]> {
-        if (
-            updateModel.filter &&
-            typeof updateModel.filter === 'object' &&
-            Object.keys(updateModel.filter).length > 0
-        ) {
-            if (options && options.bypassDomainVerification === false) {
-                await this.handleDomainValidation(domain);
-            }
-            if (updateModel.upsert === true) {
-                if (!updateModel.update.hasOwnProperty('$set')) {
-                    updateModel.update.$set = {}
-                }
-                if (!updateModel.update.$set.hasOwnProperty('_id')) {
-                    updateModel.update.$set._id = security.generateUUID();
-                }
-            }
-            updateModel = this.altUpdateModel(updateModel, context);
-            options.dbOptions = updateModel && updateModel.options ? updateModel.options : {};
-            const docs = await database.updateMany(
-                domain,
-                updateModel,
-                context,
-                configs
-            );
-            return docs.map(_t1 => {
-                const cleanDoc = this.sanitize4User(_t1, updateModel.return, [], updateModel.cids, security);
-                this.publishChanges(domain, {
-                    _id: _t1?._id,
-                    fullDocument: _t1,
-                    documentKey: _t1?._id,
-                    operationType: "update"
-                });
-                return cleanDoc;
-            });
+export async function shakeTree(node: Node, path: string, domain: string, options: BFastOptions): Promise<Node> {
+    const iKeys = internalKeys(node);
+    for (const iKey of iKeys) {
+        const mainNodePathHash = hashOfNodePath(`${domain}/_id`);
+        const idNode: Node = await _getNode(mainNodePathHash, iKey, options);
+        if (idNode === null || idNode === undefined) {
+            node = await internalShake(path, node, iKey, options);
+        } else {
+            node = await externalShake(domain, path, node, iKey, options);
         }
-        throw {message: 'you must supply filter object in update model'};
     }
+    return node;
+}
 
-    async delete(
-        domain: string,
-        deleteModel: DeleteModel<any>,
-        database: DatabaseAdapter,
-        security: SecurityController,
-        context: ContextBlock,
-        options: DatabaseBasicOptions = {bypassDomainVerification: false},
-        configs: BFastDatabaseOptions
-    ): Promise<any> {
-        if (options && options.bypassDomainVerification === false) {
-            await this.handleDomainValidation(domain);
-        }
-        deleteModel.filter = this.sanitizeWithOperator4Db(deleteModel?.filter as any);
-        const result = await database.delete<any>(domain, deleteModel, context, configs);
-        return result.map(t => {
-            const cleanDoc = this.sanitize4User(t, deleteModel.return, [], false, security);
-            this.publishChanges(domain, {
-                _id: t?._id,
-                fullDocument: t,
-                // @ts-ignore
-                documentKey: t?._id,
-                operationType: "delete"
-            });
-            return cleanDoc;
-        });
+export async function handleQueryObjectTree(
+    treeQuery: TreeQuery, domain: string, queryModel: QueryModel<any>, options: BFastOptions
+): Promise<any[] | number> {
+    const pathList = Object.keys(treeQuery);
+    if (pathList.length === 0) {
+        return getAllContentsFromTreeTable(domain, queryModel, options);
     }
-
-    async bulk<S>(
-        database: DatabaseAdapter,
-        operations: (session: S) => Promise<any>
-    ): Promise<any> {
-        return database.bulk(operations);
+    // console.log(treeQuery);
+    let externalKeys = await queryExternalKeys(treeQuery, domain, options);
+    // console.log(externalKeys);
+    externalKeys = await compactExternalKeys(domain, externalKeys, treeQuery, options);
+    // console.log(externalKeys, 'compacted');
+    if (queryModel?.size && queryModel?.size > 0) {
+        const skip = (queryModel.skip && queryModel.skip >= 0) ? queryModel.skip : 0;
+        externalKeys = externalKeys.slice(skip, (queryModel.size + skip));
     }
-
-    async changes(
-        domain: string,
-        pipeline: any[],
-        database: DatabaseAdapter,
-        security: SecurityController,
-        listener: (doc: ChangesDocModel) => void,
-        options: DatabaseChangesOptions = {bypassDomainVerification: false, resumeToken: undefined}
-    ): Promise<{ close: () => void }> {
-        if (options && options.bypassDomainVerification === false) {
-            await this.handleDomainValidation(domain);
-        }
-        return database.changes(
-            domain,
-            pipeline,
-            (doc: ChangesModel) => {
-                switch (doc.operationType) {
-                    case 'create':
-                        listener({
-                            name: 'create',
-                            resumeToken: doc._id,
-                            snapshot: this.sanitize4User(
-                                doc.fullDocument,
-                                [],
-                                [],
-                                false,
-                                security
-                            )
-                        });
-                        return;
-                    case 'update':
-                        listener({
-                            name: 'update',
-                            resumeToken: doc._id,
-                            snapshot: this.sanitize4User(
-                                doc.fullDocument,
-                                [],
-                                [],
-                                false,
-                                security
-                            )
-                        });
-                        return;
-                    case 'delete':
-                        listener({
-                            name: 'delete',
-                            resumeToken: doc._id,
-                            snapshot: this.sanitize4User(
-                                doc.fullDocument,
-                                [],
-                                [],
-                                false,
-                                security
-                            )
-                        });
-                        return;
-                }
-            },
-            options.resumeToken
-        );
+    if (queryModel?.count === true) {
+        return externalKeys.length;
     }
+    const all_p = externalKeys.map(x => _getData(domain, x, options));
+    const all = await Promise.all(all_p);
+    return all.filter(t => t !== null);
+}
 
-    // async syncs(
-    //     domain: string,
-    //     database: DatabaseAdapter,
-    //     security: SecurityController,
-    //     // listener: (doc: ChangesDocModel) => void,
-    //     options: BFastDatabaseOptions
-    // ): Promise<{ close: () => void }> {
-    //     // if (options && options.bypassDomainVerification === false) {
-    //     //     await this.handleDomainValidation(domain);
-    //     // }
-    //     return database.syncs(
-    //         domain,
-    //         // listener,
-    //         options
-    //     );
+export async function handleDomainValidation(domain: string): Promise<any> {
+    if (!validDomain(domain)) {
+        throw {
+            message: `${domain} is not a valid domain name`
+        };
+    }
+    return true;
+}
+
+export async function init(options: BFastOptions): Promise<any> {
+    return _init(options);
+}
+
+export async function checkPolicyInDomain(domain: string, options: DatabaseWriteOptions) {
+    if (options && options.bypassDomainVerification === false) {
+        await handleDomainValidation(domain);
+    }
+}
+
+export function hashOfNodePath(nodePath: string): string {
+    // console.log('Before hash ---> ', nodePath);
+    // const l = nodePath.match(new RegExp('[0-9a-f]{40}', 'ig'));
+    // if (Array.isArray(l) && l?.length > 0) {
+    //     console.log('Its already hashed -----> ', nodePath);
+    //     return nodePath;
     // }
+    return createHash('sha1').update(nodePath.toString().trim()).digest('hex');
+}
 
-    async query(
-        domain: string,
-        queryModel: QueryModel<any>,
-        database: DatabaseAdapter,
-        security: SecurityController,
-        context: ContextBlock,
-        options: DatabaseWriteOptions = {bypassDomainVerification: false},
-        configs: BFastDatabaseOptions
-    ): Promise<any> {
-        const returnFields = this.getReturnFields(queryModel as any);
-        const returnFields4Db = this.getReturnFields4Db(queryModel as any);
-        if (options && options.bypassDomainVerification === false) {
-            await this.handleDomainValidation(domain);
+export function whenWantToSaveADataNodeToATree(eKey: string, options: BFastOptions) {
+    return {
+        nodeHandler: async ({path, node}) => {
+            for (const key of Object.keys(node)) {
+                let $setMap: Node = {
+                    _id: isNaN(Number(key)) ? key.trim() : Number(key),
+                    value: node[key]
+                };
+                if (typeof node[key] === "object") {
+                    $setMap = Object.keys(node[key]).reduce((a: Node, b) => {
+                        a.value[b] = node[key][b];
+                        return a;
+                    }, {_id: isNaN(Number(key)) ? key.trim() : Number(key), value: {}});
+                } else {
+                    $setMap.value = node[key]
+                }
+                const pathHash = hashOfNodePath(path);
+                await _upsertNode(pathHash, $setMap, options);
+            }
+        },
+        nodeIdHandler: async function () {
+            return eKey?.toString();
         }
-        if (queryModel && queryModel.id) {
-            queryModel = this.sanitizeWithOperator4Db(queryModel as any);
-            queryModel.filter = this.sanitizeWithOperator4Db(queryModel?.filter as any);
-            queryModel.return = returnFields4Db;
-            const result = await database.findOne(domain, queryModel, context, configs);
-            return this.sanitize4User(
-                result,
-                returnFields,
-                queryModel?.hashes,
-                queryModel.cids,
-                security
-            );
+    }
+}
+
+export async function writeOne<T extends BasicAttributesModel>(
+    domain: string,
+    data: T,
+    cids: boolean,
+    context: ContextBlock,
+    writeOptions: DatabaseWriteOptions = {bypassDomainVerification: false},
+    options: BFastOptions
+): Promise<T> {
+    await checkPolicyInDomain(domain, writeOptions);
+    const returnFields = getReturnFields(data);
+    const sanitizedDataWithCreateMetadata = addCreateMetadata(data, context);
+    const sanitizedData: any = sanitize4Db(sanitizedDataWithCreateMetadata);
+    const treeController = new TreeController();
+    await treeController.objectToTree(sanitizedData, domain, whenWantToSaveADataNodeToATree(sanitizedData._id, options));
+    const savedData: any = await _upsertData(domain, sanitizedData, options);
+    const cleanDoc: any = sanitize4User(savedData, returnFields) as T;
+    publishChanges(domain, {
+        _id: cleanDoc?.id,
+        fullDocument: cleanDoc,
+        documentKey: cleanDoc?.id,
+        operationType: "create"
+    });
+    return cleanDoc;
+}
+
+export async function writeMany<T extends BasicAttributesModel>(
+    domain: string,
+    data: T[],
+    cids: boolean,
+    context: ContextBlock,
+    writeOptions: DatabaseWriteOptions = {bypassDomainVerification: false},
+    options: BFastOptions
+): Promise<any[]> {
+    const dP = data.map(d => writeOne(domain, d, cids, context, writeOptions, options));
+    return Promise.all(dP);
+}
+
+export function incrementFields(newDoc: any, ip: { [p: string]: any }) {
+    if (!newDoc) {
+        newDoc = {};
+    }
+    if (!ip) {
+        return newDoc;
+    } else {
+        for (const key of Object.keys(ip)) {
+            if (typeof ip[key] === "number") {
+                if (newDoc.hasOwnProperty(key) && !isNaN(newDoc[key])) {
+                    newDoc[key] += ip[key];
+                } else if (!newDoc.hasOwnProperty(key)) {
+                    newDoc[key] = ip[key];
+                }
+            } else if (typeof ip[key] === "object" && JSON.stringify(ip[key]).startsWith('{')) {
+                newDoc[key] = incrementFields(newDoc[key], ip[key]);
+            }
+        }
+        return newDoc;
+    }
+}
+
+export async function updateOne(
+    domain: string,
+    updateModel: UpdateRuleRequestModel,
+    context: ContextBlock,
+    updateOptions: DatabaseUpdateOptions = {bypassDomainVerification: false},
+    options: BFastOptions
+): Promise<any> {
+    await checkPolicyInDomain(domain, updateOptions);
+    if (updateModel.upsert === true) {
+        if (!updateModel.update.hasOwnProperty('$set')) {
+            updateModel.update.$set = {id: generateUUID()}
+        }
+    }
+    const returnFields = getReturnFields(updateModel as any);
+    updateModel = altUpdateModel(updateModel, context);
+    updateOptions.dbOptions = updateModel && updateModel.options ? updateModel.options : {};
+    const fQm = {id: updateModel.id, cids: false, return: []};
+    let oldDoc = await findById(domain, fQm, updateOptions, options);
+    if (!oldDoc && updateModel.upsert === true) {
+        oldDoc = {id: updateModel.id};
+    }
+    if (!oldDoc) {
+        return null;
+    }
+    const updateParts = updateModel.update.$set;
+    const incrementParts = updateModel.update.$inc;
+    let newDoc = Object.assign(oldDoc, updateParts);
+    newDoc = incrementFields(newDoc, incrementParts);
+    newDoc.return = returnFields;
+    const updatedDoc = await writeOne(domain, newDoc, !!updateModel.cids, context, updateOptions, options);
+    const cleanDoc = sanitize4User(updatedDoc, returnFields);
+    publishChanges(domain, {
+        _id: updatedDoc?._id,
+        fullDocument: updatedDoc,
+        documentKey: updatedDoc?._id,
+        operationType: "update"
+    });
+    return cleanDoc;
+}
+
+export async function updateMany(
+    domain: string,
+    updateModel: UpdateRuleRequestModel,
+    context: ContextBlock,
+    updateOptions: DatabaseUpdateOptions = {bypassDomainVerification: false},
+    options: BFastOptions
+): Promise<any> {
+    await checkPolicyInDomain(domain, updateOptions);
+    const oldDocs: any[] = await findByFilter(domain, updateModel, context, updateOptions, options);
+    if (Array.isArray(oldDocs) && oldDocs.length === 0 && updateModel.upsert === true) {
+        const set = updateModel.update.$set ? updateModel.update.$set : {};
+        let nDoc = Object.assign(set, updateModel.filter);
+        const incrementParts = updateModel.update.$inc;
+        nDoc = incrementFields(nDoc, incrementParts);
+        nDoc.return = updateModel.return;
+        oldDocs.push(nDoc);
+        return writeMany(domain, oldDocs, !!updateModel.cids, context, updateOptions, options);
+    }
+    for (const x of oldDocs) {
+        oldDocs[oldDocs.indexOf(x)] = await updateOne(
+            domain,
+            {
+                update: updateModel.update,
+                upsert: updateModel.upsert,
+                id: x.id,
+                return: []
+            },
+            context,
+            updateOptions,
+            options
+        );
+    }
+    return oldDocs;
+}
+
+function altUpdateModel(updateModel: UpdateRuleRequestModel, context: ContextBlock) {
+    updateModel.update = sanitizeWithOperator4Db(updateModel?.update as any);
+    updateModel.filter = sanitizeWithOperator4Db(updateModel?.filter as any);
+    updateModel.update = addUpdateMetadata(updateModel?.update as any);
+    return updateModel;
+}
+
+export async function externalKeys(node: Node): Promise<Array<string>> {
+    const externalKeyList = [];
+    if (node && typeof node.value === "object") {
+        externalKeyList.push(...Object.values<string>(node.value));
+    }
+    if (node && typeof node.value === 'string') {
+        externalKeyList.push(node.value);
+    }
+    return externalKeyList;
+}
+
+export async function queryExternalKeys(
+    treeQuery: TreeQuery, domain: string, options: BFastOptions
+): Promise<string[]> {
+    let eKeyList = [];
+    const pathList = Object.keys(treeQuery);
+    for (const path of pathList) {
+        const nodeId = treeQuery[path];
+        let node: Node | Array<Node> = await searchNode(path, nodeId, options);
+        if (Array.isArray(node)) {
+            for (let _node of node) {
+                _node = await shakeTree(_node, path, domain, options);
+                const r = await externalKeys(_node);
+                eKeyList.push(...r);
+            }
         } else {
-            queryModel = this.sanitizeWithOperator4Db(queryModel as any);
-            queryModel.filter = this.sanitizeWithOperator4Db(queryModel?.filter as any);
-            queryModel.return = returnFields4Db;
-            const result = await database.findMany(domain, queryModel, context, configs);
-            if (result && Array.isArray(result)) {
-                return result.map(value => this.sanitize4User(
-                    value,
-                    returnFields,
-                    queryModel?.hashes,
-                    queryModel.cids,
-                    security
-                ));
+            node = await shakeTree(node, path, domain, options);
+            const r = await externalKeys(node);
+            eKeyList.push(...r);
+        }
+    }
+    return Array.from(eKeyList.reduce((a, b) => a.add(b), new Set()));
+}
+
+export async function compactExternalKeys(
+    table: string, eKeyList: string[], treeQuery: TreeQuery, options: BFastOptions
+): Promise<string[]> {
+    const eKList = new Set<string>();
+    for (const eKey of eKeyList) {
+        const data = await _getData(table, eKey, options);
+        const fT = await verifyDataWithTreeQuery(table, treeQuery, data);
+        if (fT === true) eKList.add(eKey);
+    }
+    return Array.from(eKList);
+}
+
+export async function queryInternalKeys(
+    treeQuery: TreeQuery, domain: string, options: BFastOptions
+): Promise<string[]> {
+    let iKeyList = [];
+    const pathList = Object.keys(treeQuery);
+    for (const path of pathList) {
+        const nodeId = treeQuery[path];
+        let node: Node | Array<Node> = await searchNode(path, nodeId, options);
+        if (Array.isArray(node)) {
+            for (let _node of node) {
+                _node = await shakeTree(_node, path, domain, options);
+                const r = internalKeys(_node);
+                iKeyList.push(...r);
             }
-            return result;
+        } else {
+            // const r = await extractInternalKeysFromNodes(node, domain, path, options);
+            // iKeyList.push(...r);
+            node = await shakeTree(node, path, domain, options);
+            const r = internalKeys(node);
+            iKeyList.push(...r);
         }
     }
+    return Array.from(iKeyList.reduce((a, b) => a.add(b), new Set()));
+}
 
-    addUpdateMetadata(
-        data: any,
-        context?: ContextBlock
-    ): any {
-        if (data && typeof data !== 'boolean') {
-            if (data.$set) {
-                data.$set.updatedAt = data.$set.updatedAt ? data.$set.updatedAt : new Date();
-            } else if (data.$inc) {
-                data.$set = {};
-                data.$set.updatedAt = new Date();
-            }
-            return data;
+export async function verifyDataWithTreeQuery(table: string, treeQuery: TreeQuery, data: Data): Promise<boolean> {
+    const treeQ = {};
+    await new TreeController().objectToTree(data, table, {
+        nodeIdHandler: () => null,
+        nodeHandler: async ({name, path, node}) => {
+            const v = Object.keys(node)[0];
+            treeQ[path] = isNaN(Number(v)) ? v : parseFloat(v);
         }
-        return data;
-    }
-
-    validDomain(domain: string): boolean {
-        return (domain !== '_User' && domain !== '_Token' && domain !== '_Policy');
-    }
-
-    addCreateMetadata<T extends BasicAttributesModel>(
-        data: T,
-        security: SecurityController,
-        context: ContextBlock
-    ): T {
-        data.createdBy = context?.uid;
-        data.createdAt = data && data.createdAt ? data.createdAt : new Date().toISOString();
-        data.updatedAt = data && data.updatedAt ? data.updatedAt : new Date().toISOString();
-        if (data._id) {
-            return data;
+    });
+    const trues = [];
+    for (const tq of Object.keys(treeQuery)) {
+        if (typeof treeQuery[tq] === "object") {
+            const fn = new Function('it', (treeQuery[tq] as any).$fn);
+            trues.push(fn(treeQ[tq]));
+        } else if (typeof treeQuery[tq] !== "object" && treeQ[tq] === treeQuery[tq]) {
+            trues.push(true);
+        } else {
+            trues.push(false);
         }
-        data._id = data && data.id ? data.id : security.generateUUID();
-        delete data.id;
-        return data;
+    }
+    return trues.reduce((a, b) => a && b, true);
+}
+
+export async function compactInternalKeys(
+    table: string, iKeyList: string[], treeQuery: TreeQuery, options: BFastOptions
+): Promise<string[]> {
+    const iKList = new Set<string>();
+    for (const iKey of iKeyList) {
+        const mPHash = hashOfNodePath(`${table}/_id`);
+        const idNode = await _getNode(mPHash, iKey, options);
+        if (idNode && typeof idNode.value === "string") {
+            const data = await _getData(table, idNode.value, options);
+            const v = await verifyDataWithTreeQuery(table, treeQuery, data);
+            if (v === true) iKList.add(iKey);
+        }
+    }
+    return Array.from(iKList);
+}
+
+export async function handleDeleteObjectTree(
+    treeQuery: TreeQuery, domain: string, options: BFastOptions
+): Promise<{ _id: string }[]> {
+    let iKList = await queryInternalKeys(treeQuery, domain, options);
+    // console.log(iKList);
+    iKList = await compactInternalKeys(domain, iKList, treeQuery, options);
+    // console.log(iKList, 'compacted');
+    const pathHash = hashOfNodePath(`${domain}/_id`);
+    return Promise.all(
+        iKList.map(async iK => _purgeNode(pathHash, {id: iK}, options))
+    );
+}
+
+export async function remove(
+    domain: string, deleteModel: DeleteModel<any>, context: ContextBlock,
+    basicOptions: DatabaseBasicOptions = {bypassDomainVerification: false}, options: BFastOptions
+): Promise<any> {
+    await checkPolicyInDomain(domain, basicOptions);
+    deleteModel.filter = sanitizeWithOperator4Db(deleteModel?.filter as any);
+    let deleteTree;
+    try {
+        const treeController = new TreeController();
+        deleteTree = await treeController.query(
+            domain,
+            deleteModel.id ? {_id: deleteModel.id} : deleteModel.filter
+        );
+    } catch (e) {
+        console.log(e);
+        return null;
+    }
+    let result = [];
+    if (Array.isArray(deleteTree)) {
+        for (const _tree of deleteTree) {
+            const r = await handleDeleteObjectTree(_tree, domain, options);
+            Array.isArray(r) ? result.push(...r) : result.push(r);
+        }
+    } else {
+        result = await handleDeleteObjectTree(deleteTree, domain, options);
     }
 
-    getReturnFields<T extends BasicAttributesModel>(data: T): any {
-        if (data && data.return && Array.isArray(data.return)) {
-            let flag = true;
-            if (data.return.length > 0) {
-                data.return.forEach(value => {
-                    if (typeof value !== 'string') {
-                        flag = false;
-                    }
+    return result.map(t => {
+        const cleanDoc = sanitize4User(t, deleteModel.return);
+        publishChanges(domain, {
+            _id: t?._id,
+            fullDocument: t,
+            documentKey: t?._id,
+            operationType: "delete"
+        });
+        return cleanDoc;
+    });
+}
+
+export async function bulk<S>(
+    operations: (session: S) => Promise<any>
+): Promise<any> {
+    return await operations(null);
+}
+
+export async function changes(
+    domain: string, pipeline: any[], listener: (doc: ChangesDocModel) => void,
+    options: DatabaseChangesOptions = {bypassDomainVerification: false, resumeToken: undefined}
+): Promise<{ close: () => void }> {
+    if (options && options.bypassDomainVerification === false) {
+        await handleDomainValidation(domain);
+    }
+    const _listener = (doc: ChangesModel) => {
+        switch (doc.operationType) {
+            case 'create':
+                listener({
+                    name: 'create',
+                    snapshot: sanitize4User(doc.fullDocument, [])
                 });
-            }
-            if (flag === true) {
-                return data.return;
-            } else {
-                return undefined;
-            }
-        } else {
-            return undefined;
-        }
-    }
-
-    getReturnFields4Db<T extends BasicAttributesModel>(data: T): any {
-        if (data && data.return && Array.isArray(data.return)) {
-            let flag = true;
-            if (data.return.length > 0) {
-                data.return.forEach((value, index) => {
-                    if (typeof value !== 'string') {
-                        flag = false;
-                    }
-                    data.return[index] = Object.keys(this.sanitize4Db({[value]: 1}))[0];
+                return;
+            case 'update':
+                listener({
+                    name: 'update',
+                    snapshot: sanitize4User(doc.fullDocument, [])
                 });
-            }
-            if (flag === true) {
-                return data.return;
-            } else {
-                return undefined;
-            }
-        } else {
-            return undefined;
+                return;
+            case 'delete':
+                listener({
+                    name: 'delete',
+                    snapshot: sanitize4User(doc.fullDocument, [])
+                });
+                return;
         }
     }
-
-    sanitizeWithOperator4Db<T extends BasicAttributesModel>(data: T): T {
-        data = this.sanitize4Db(data);
-        if (data === null || data === undefined) {
-            return null;
+    const appEventInst = AppEventsFactory.getInstance();
+    appEventInst.sub(ConstUtil.DB_CHANGES_EVENT.concat(domain), _listener);
+    return {
+        close: () => {
+            appEventInst.unSub(ConstUtil.DB_CHANGES_EVENT.concat(domain), _listener);
         }
-        // Object.keys(data).forEach(key => {
-        //     if (key.startsWith('$')) {
-        //         // @ts-ignore
-        //         data[key] = this.sanitize4Db(data[key]);
-        //     }
-        // });
+    }
+}
+
+export async function findById(
+    domain: string, queryModel: QueryModel<any>,
+    writeOptions: DatabaseWriteOptions = {bypassDomainVerification: false}, options: BFastOptions
+): Promise<any> {
+    const returnFields = getReturnFields(queryModel as any);
+    const returnFields4Db = getReturnFields4Db(queryModel as any);
+    await checkPolicyInDomain(domain, writeOptions);
+    queryModel = sanitizeWithOperator4Db(queryModel as any);
+    queryModel.filter = sanitizeWithOperator4Db(queryModel?.filter as any);
+    queryModel.return = returnFields4Db;
+    const treeController = new TreeController();
+    const queryTree = await treeController.query(domain, {
+        _id: queryModel._id
+    });
+    const nodePathHash = hashOfNodePath(Object.keys(queryTree)[0]);
+    const nodeId = Object.values(queryTree)[0];
+    const node: Node = await _getNode(nodePathHash, nodeId, options);
+    if (!node) {
+        return null;
+    }
+    const eKey = externalKey(node, nodeId);
+    const data = await _getData(domain, eKey, options);
+    return sanitize4User(data, returnFields);
+}
+
+export async function treeQuery(domain: string, data: object): Promise<TreeQuery | TreeQuery[]> {
+    try {
+        const treeController = new TreeController();
+        return treeController.query(domain, data);
+    } catch (e) {
+        console.log(e);
+        return {};
+    }
+}
+
+export async function handleOrQueryInTree(
+    domain: string, queryMode: QueryModel<any>, treeQuery: TreeQuery[], options: BFastOptions
+) {
+    const resultMap = {};
+    for (const tQ of treeQuery) {
+        const r = await handleQueryObjectTree(tQ, domain, queryMode, options);
+        Array.isArray(r) ? (r.forEach(_r1 => {
+            resultMap[_r1._id] = _r1
+        })) : resultMap[generateUUID()] = r;
+    }
+    const _result1: any[] = Object.values(resultMap);
+    return queryMode?.count ? _result1.reduce((a, b) => a + b, 0) : _result1;
+}
+
+export async function findByFilter(
+    domain: string, queryModel: QueryModel<any>, context: ContextBlock,
+    writeOptions: DatabaseWriteOptions = {bypassDomainVerification: false}, options: BFastOptions
+): Promise<any> {
+    const returnFields = getReturnFields(queryModel as any);
+    const returnFields4Db = getReturnFields4Db(queryModel as any);
+    await checkPolicyInDomain(domain, writeOptions);
+    queryModel = sanitizeWithOperator4Db(queryModel as any);
+    queryModel.filter = sanitizeWithOperator4Db(queryModel?.filter ? queryModel.filter : {});
+    queryModel.return = returnFields4Db;
+    const query = await treeQuery(domain, queryModel.filter);
+    let result;
+    if (Array.isArray(query)) {
+        result = await handleOrQueryInTree(domain, queryModel, query, options);
+    } else {
+        result = await handleQueryObjectTree(query, domain, queryModel, options);
+    }
+    if (result && Array.isArray(result)) {
+        return result.map(v => sanitize4User(v, returnFields));
+    }
+    return result;
+}
+
+export function addUpdateMetadata(data: any): any {
+    if (data && typeof data !== 'boolean') {
+        if (data.$set) {
+            data.$set.updatedAt = data.$set.updatedAt ? data.$set.updatedAt : new Date().toISOString();
+        } else if (data.$inc) {
+            data.$set = {};
+            data.$set.updatedAt = new Date().toISOString();
+        }
         return data;
     }
+    return data;
+}
 
-    sanitize4Db<T extends BasicAttributesModel>(data: T): T {
-        if (data === null || data === undefined) {
-            return null;
-        }
-        if (data && data.hasOwnProperty('return')) {
-            delete data.return;
-        }
-        if (data && data.hasOwnProperty('id')) {
-            data._id = data.id;
-            delete data.id;
-        }
+export function validDomain(domain: string): boolean {
+    return (domain !== '_User' && domain !== '_Token' && domain !== '_Policy');
+}
 
-        if (data && data.hasOwnProperty('_created_at')) {
-            data.createdAt = data._created_at;
-            delete data._created_at;
-        }
-
-        if (data && data.hasOwnProperty('_updated_at')) {
-            data.updatedAt = data._updated_at;
-            delete data._updated_at;
-        }
-
-        if (data && data.hasOwnProperty('_created_by')) {
-            data.createdBy = data._created_by;
-            delete data._created_by;
-        }
+export function addCreateMetadata(data: any, context: ContextBlock) {
+    data.createdBy = context?.uid ? context.uid : null;
+    data.createdAt = data && data.createdAt ? data.createdAt : new Date().toISOString();
+    data.updatedAt = data && data.updatedAt ? data.updatedAt : new Date().toISOString();
+    if (data._id) {
         return data;
     }
+    data._id = data && data.id ? data.id : generateUUID();
+    delete data.id;
+    return data;
+}
 
-    sanitize4User<T extends BasicAttributesModel>(
-        data: T,
-        returnFields: string[],
-        hashes: string[],
-        onlyCids: boolean,
-        security: SecurityController,
-    ): T {
-        if (data === null || data === undefined) {
-            return null;
-        }
-        if (data && data.hasOwnProperty('_id')) {
-            data.id = data._id ? (typeof data._id === 'object' ? data._id : data._id.toString()) : '';
-            delete data._id;
-        }
-        if (data && data.hasOwnProperty('_created_at')) {
-            data.createdAt = data._created_at;
-            delete data._created_at;
-        }
-        if (data && data.hasOwnProperty('_updated_at')) {
-            data.updatedAt = data._updated_at;
-            delete data._updated_at;
-        }
-        if (data && data.hasOwnProperty('_created_by')) {
-            data.createdBy = data?._created_by;
-            delete data._created_by;
-        }
-        if (data && data.hasOwnProperty('_hashed_password')) {
-            if (!data.password) {
-                data.password = data._hashed_password;
-            }
-            delete data._hashed_password;
-        }
-        if (data && typeof data.hasOwnProperty('_rperm')) {
-            delete data._rperm;
-        }
-        if (data && typeof data.hasOwnProperty('_wperm')) {
-            delete data._wperm;
-        }
-        if (data && typeof data.hasOwnProperty('_acl')) {
-            delete data._acl;
-        }
-        if (!hashes) {
-            hashes = [];
-        }
-        let returnedData: any = {};
-        if (!returnFields && typeof returnFields !== 'boolean') {
-            returnedData.id = data.id;
-        } else if (returnFields && Array.isArray(returnFields) && returnFields.length === 0) {
-            returnedData = data;
-        } else {
-            returnFields.forEach(value => {
-                returnedData[value] = data[value];
+export function getReturnFields(data: any): any {
+    if (data && data.return && Array.isArray(data.return)) {
+        let flag = true;
+        if (data.return.length > 0) {
+            data.return.forEach(value => {
+                if (typeof value !== 'string') {
+                    flag = false;
+                }
             });
-            returnedData.id = data.id;
-            returnedData.createdAt = data.createdAt;
-            returnedData.updatedAt = data.updatedAt;
         }
-
-        if (returnedData === null || returnedData === undefined) {
-            return null;
-        }
-        if (onlyCids === true) {
-            return returnedData;
-        }
-        const dataHash = security.sha256OfObject(returnedData);
-        const exists = hashes.filter(h => h === dataHash);
-        if (exists.length === 0) {
-            return returnedData;
-        } else if (exists.length === 1) {
-            return dataHash as any;
+        if (flag === true) {
+            return data.return;
         } else {
-            return returnedData;
+            return undefined;
         }
+    } else {
+        return undefined;
+    }
+}
+
+export function getReturnFields4Db(data: any): any {
+    if (data && data.return && Array.isArray(data.return)) {
+        let flag = true;
+        if (data.return.length > 0) {
+            data.return.forEach((value, index) => {
+                if (typeof value !== 'string') {
+                    flag = false;
+                }
+                data.return[index] = Object.keys(sanitize4Db({[value]: 1}))[0];
+            });
+        }
+        if (flag === true) {
+            return data.return;
+        } else {
+            return undefined;
+        }
+    } else {
+        return undefined;
+    }
+}
+
+export function sanitizeWithOperator4Db(data: any) {
+    data = sanitize4Db(data);
+    if (data === null || data === undefined) {
+        return null;
+    }
+    return data;
+}
+
+export function sanitize4Db(data: any) {
+    if (data === null || data === undefined) {
+        return null;
+    }
+    if (data && data.hasOwnProperty('return')) {
+        delete data.return;
+    }
+    if (data && data.hasOwnProperty('id')) {
+        data._id = data.id;
+        delete data.id;
     }
 
-    publishChanges(domain: string, change: ChangesModel) {
-        AppEventsFactory.getInstance().pub(ConstUtil.DB_CHANGES_EVENT.concat(domain), change);
+    if (data && data.hasOwnProperty('_created_at')) {
+        data.createdAt = data._created_at;
+        delete data._created_at;
     }
 
+    if (data && data.hasOwnProperty('_updated_at')) {
+        data.updatedAt = data._updated_at;
+        delete data._updated_at;
+    }
+
+    if (data && data.hasOwnProperty('_created_by')) {
+        data.createdBy = data._created_by;
+        delete data._created_by;
+    }
+    return data;
+}
+
+export function sanitize4User(data: any, returnFields: string[]) {
+    if (data === null || data === undefined) {
+        return null;
+    }
+    if (data && data.hasOwnProperty('_id')) {
+        data.id = data._id ? (typeof data._id === 'object' ? data._id : data._id.toString()) : '';
+        delete data._id;
+    }
+    if (data && data.hasOwnProperty('_created_at')) {
+        data.createdAt = data._created_at;
+        delete data._created_at;
+    }
+    if (data && data.hasOwnProperty('_updated_at')) {
+        data.updatedAt = data._updated_at;
+        delete data._updated_at;
+    }
+    if (data && data.hasOwnProperty('_created_by')) {
+        data.createdBy = data?._created_by;
+        delete data._created_by;
+    }
+    if (data && data.hasOwnProperty('_hashed_password')) {
+        if (!data.password) {
+            data.password = data._hashed_password;
+        }
+        delete data._hashed_password;
+    }
+    if (data && typeof data.hasOwnProperty('_rperm')) {
+        delete data._rperm;
+    }
+    if (data && typeof data.hasOwnProperty('_wperm')) {
+        delete data._wperm;
+    }
+    if (data && typeof data.hasOwnProperty('_acl')) {
+        delete data._acl;
+    }
+    let returnedData: any = {};
+    if (!returnFields && typeof returnFields !== 'boolean') {
+        returnedData.id = data.id;
+    } else if (returnFields && Array.isArray(returnFields) && returnFields.length === 0) {
+        returnedData = data;
+    } else {
+        returnFields.forEach(value => {
+            returnedData[value] = data[value];
+        });
+        returnedData.id = data.id;
+        returnedData.createdAt = data.createdAt;
+        returnedData.updatedAt = data.updatedAt;
+    }
+
+    if (returnedData === null || returnedData === undefined) {
+        return null;
+    }
+    return returnedData;
+}
+
+export function publishChanges(domain: string, change: ChangesModel) {
+    AppEventsFactory.getInstance().pub(ConstUtil.DB_CHANGES_EVENT.concat(domain), change);
 }

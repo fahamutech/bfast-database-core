@@ -1,6 +1,5 @@
 export interface BasicAttributesModel {
     id?: string;
-    objectId?: string;
     _id?: string;
     _oid?: string;
     createdAt?: string;
@@ -16,6 +15,5 @@ export interface BasicAttributesModel {
     password?: string;
     return?: string[];
     $currentDate?: { _updated_at: true };
-
     [key: string]: any;
 }

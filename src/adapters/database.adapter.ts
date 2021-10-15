@@ -1,100 +1,16 @@
-import {BasicAttributesModel} from '../model/basic-attributes.model';
-import {ContextBlock} from '../model/rules.model';
-import {QueryModel} from '../model/query-model';
-import {UpdateRuleRequestModel} from '../model/update-rule-request.model';
-import {DeleteModel} from '../model/delete-model';
-import {BFastDatabaseOptions} from "../bfast-database.option";
-import {ChangesDocModel} from "../model/changes-doc.model";
+import {BFastOptions} from "../bfast-database.option";
+import {Data} from "../model/data";
+import {Node} from "../model/node";
+import {NodeValueDeleteQuery} from "../model/node-value-delete-query";
+import {NodePage} from "../model/node-page";
 
-export abstract class DatabaseAdapter {
+export type InitDatabaseFn = (options: BFastOptions) => Promise<any>;
 
-    abstract init(options: BFastDatabaseOptions): Promise<any>;
+// export type PurgeDataFn = (table: string, id: string, options: BFastOptions) => Promise<{ _id: string }>;
+export type GetDataFn = (table: string, id: string, options: BFastOptions) => Promise<Data>;
+export type UpsertDataFn = (table: string, data: Data, options: BFastOptions) => Promise<Data>;
 
-    abstract writeOne<T extends BasicAttributesModel>(
-        domain: string,
-        data: T,
-        cids: boolean,
-        context: ContextBlock,
-        options: BFastDatabaseOptions
-    ): Promise<any>;
-
-    abstract writeMany<T extends BasicAttributesModel>(
-        domain: string,
-        data: T[],
-        cids: boolean,
-        context: ContextBlock,
-        options: BFastDatabaseOptions
-    ): Promise<any[]>;
-
-    abstract updateOne<T extends BasicAttributesModel, V>(
-        domain: string,
-        updateModel: UpdateRuleRequestModel,
-        context: ContextBlock,
-        options: BFastDatabaseOptions
-    ): Promise<V>;
-
-    abstract updateMany<T extends BasicAttributesModel>(
-        domain: string,
-        updateModel: UpdateRuleRequestModel,
-        context: ContextBlock,
-        options: BFastDatabaseOptions
-    ): Promise<any[]>;
-
-    abstract delete<T extends BasicAttributesModel>(
-        domain: string,
-        deleteModel: DeleteModel<T>,
-        context: ContextBlock,
-        options: BFastDatabaseOptions
-    ): Promise<{ _id: string }[]>;
-
-    abstract findOne<T extends BasicAttributesModel>(
-        domain: string,
-        queryModel: QueryModel<T>,
-        context: ContextBlock,
-        options: BFastDatabaseOptions
-    ): Promise<any>;
-
-    abstract findMany<T extends BasicAttributesModel>(
-        domain: string,
-        queryModel: QueryModel<T>,
-        context: ContextBlock,
-        options: BFastDatabaseOptions
-    ): Promise<any>;
-
-    abstract changes(domain: string, pipeline: object[], listener: (doc: any) => void, resumeToken: string): Promise<any>;
-
-    // abstract syncs(
-    //     domain: string,
-    //     // listener: (doc: ChangesDocModel) => void,
-    //     options: BFastDatabaseOptions): Promise<any>;
-
-    abstract bulk(operations: (session) => Promise<any>): Promise<any>;
-}
-
-export interface DatabaseWriteOptions extends DatabaseBasicOptions {
-    indexes?: {
-        field?: string,
-        unique?: boolean,
-        collation?: { locale: string, strength: number },
-        expireAfterSeconds?: number;
-    }[];
-}
-
-export interface DatabaseChangesOptions extends DatabaseWriteOptions{
-    resumeToken?: string;
-}
-
-export interface DatabaseUpdateOptions extends DatabaseBasicOptions {
-    indexes?: {
-        field?: string;
-        unique?: boolean;
-        collation?: { locale: string, strength: number };
-        expireAfterSeconds?: number;
-    }[];
-    dbOptions?: { [key: string]: any }
-}
-
-export interface DatabaseBasicOptions {
-    bypassDomainVerification: boolean;
-    transaction?: any;
-}
+export type UpsertNodeFn = (path: string, node: Node, options: BFastOptions) => Promise<Node>;
+export type GetNodeFn = (path: string, id: string, options: BFastOptions) => Promise<Node>;
+export type GetNodesFn = (path: string, nodePage: NodePage, options: BFastOptions) => Promise<Node[]>;
+export type PurgeNodeFn = (path: string, query: NodeValueDeleteQuery, options: BFastOptions) => Promise<{ _id: string }>;

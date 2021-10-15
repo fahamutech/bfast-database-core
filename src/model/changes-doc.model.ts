@@ -1,5 +1,5 @@
 export interface ChangesDocModel {
     name: 'create' | 'update' | 'delete',
-    resumeToken: string,
+    // resumeToken: string,
     snapshot: {[k:string]: any}
 }

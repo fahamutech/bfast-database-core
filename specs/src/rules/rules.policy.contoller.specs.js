@@ -1,17 +1,10 @@
 const {mongoRepSet, config} = require('../../mock.config');
 const {before, after} = require('mocha');
 const {assert, expect, should} = require('chai');
-const {
-    RulesController,
-    DatabaseFactory,
-    AuthController,
-    DatabaseController,
-    SecurityController
-} = require("../../../dist");
+const {handleAuthorizationRule} = require("../../../dist/cjs");
 
 describe('policy', function () {
 
-    let _rulesController = new RulesController();
     let mongoMemoryReplSet
     before(async function () {
         mongoMemoryReplSet = mongoRepSet();
@@ -23,7 +16,7 @@ describe('policy', function () {
 
     describe('add', function () {
         it('should return added policy when masterKey is valid', async function () {
-            const results = await _rulesController.handleAuthorizationRule({
+            const results = await handleAuthorizationRule({
                     context: {
                         useMasterKey: true
                     },
@@ -33,10 +26,6 @@ describe('policy', function () {
                         }
                     }
                 }, {errors: {}},
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory(),
                 config
             );
             should().exist(results.policy);
@@ -57,7 +46,7 @@ describe('policy', function () {
             });
         });
         it('should return error message when masterKey is invalid', async function () {
-            const results = await _rulesController.handleAuthorizationRule({
+            const results = await handleAuthorizationRule({
                     context: {
                         useMasterKey: false
                     },
@@ -67,10 +56,6 @@ describe('policy', function () {
                         }
                     }
                 }, {errors: {}},
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory(),
                 config
             );
             should().exist(results.errors['policy']);
@@ -80,7 +65,7 @@ describe('policy', function () {
     });
     describe('list', function () {
         before(async function () {
-            await _rulesController.handleAuthorizationRule({
+            await handleAuthorizationRule({
                     context: {
                         useMasterKey: true
                     },
@@ -90,15 +75,11 @@ describe('policy', function () {
                         }
                     }
                 }, {errors: {}},
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory(),
                 config
             );
         });
         after(async function () {
-            await _rulesController.handleAuthorizationRule({
+            await handleAuthorizationRule({
                     context: {
                         useMasterKey: true
                     },
@@ -108,15 +89,11 @@ describe('policy', function () {
                         }
                     }
                 }, {errors: {}},
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory(),
                 config
             );
         });
         it('should return list of policy when masterKey is valid', async function () {
-            const results = await _rulesController.handleAuthorizationRule({
+            const results = await handleAuthorizationRule({
                     context: {
                         useMasterKey: true
                     },
@@ -124,10 +101,6 @@ describe('policy', function () {
                         list: {}
                     }
                 }, {errors: {}},
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory(),
                 config
             );
             assert(results.policy !== undefined);
@@ -139,7 +112,7 @@ describe('policy', function () {
     });
     describe('remove', function () {
         before(async function () {
-            await _rulesController.handleAuthorizationRule({
+            await handleAuthorizationRule({
                     context: {
                         useMasterKey: true
                     },
@@ -149,15 +122,11 @@ describe('policy', function () {
                         }
                     }
                 }, {errors: {}},
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory(),
                 config
             );
         });
         after(async function () {
-            await _rulesController.handleAuthorizationRule({
+            await handleAuthorizationRule({
                     context: {
                         useMasterKey: true
                     },
@@ -167,15 +136,11 @@ describe('policy', function () {
                         }
                     }
                 }, {errors: {}},
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory(),
                 config
             );
         });
         it('should remove a policy when masterKey is valid', async function () {
-            const results = await _rulesController.handleAuthorizationRule({
+            const results = await handleAuthorizationRule({
                     context: {
                         useMasterKey: true
                     },
@@ -185,10 +150,6 @@ describe('policy', function () {
                         }
                     }
                 }, {errors: {}},
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory(),
                 config
             );
             should().exist(results.policy);
@@ -196,7 +157,7 @@ describe('policy', function () {
             expect(results.policy.remove[0].id).equal('read.category');
         });
         it('should return empty map when remove non exist rule', async function () {
-            const results = await _rulesController.handleAuthorizationRule({
+            const results = await handleAuthorizationRule({
                     context: {
                         useMasterKey: true
                     },
@@ -206,10 +167,6 @@ describe('policy', function () {
                         }
                     }
                 }, {errors: {}},
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory(),
                 config
             );
             should().exist(results.policy);

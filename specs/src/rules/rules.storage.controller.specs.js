@@ -1,14 +1,10 @@
 const {mongoRepSet, config} = require('../../mock.config');
 const {before, after} = require('mocha');
 const {assert, should, expect} = require('chai');
-const {
-    RulesController, AuthFactory, IpfsStorageFactory, StorageController, AuthController, DatabaseController,
-    SecurityController, DatabaseFactory
-} = require("../../../dist");
+const {handleStorageRule, AuthFactory, IpfsStorageFactory} = require("../../../dist/cjs");
 
 describe('Storage', function () {
 
-    let _rulesController = new RulesController();
     let mongoMemoryReplSet
     before(async function () {
         mongoMemoryReplSet = mongoRepSet();
@@ -21,7 +17,7 @@ describe('Storage', function () {
     describe('add', function () {
         it('should return url of saved file', async function () {
             const results = {errors: {}};
-            await _rulesController.handleStorageRule({
+            await handleStorageRule({
                     applicationId: 'daas',
                     files: {
                         save: {
@@ -30,12 +26,7 @@ describe('Storage', function () {
                         }
                     }
                 }, results,
-                new StorageController(),
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
                 new AuthFactory(),
-                new DatabaseFactory(),
                 new IpfsStorageFactory(),
                 config
             );
@@ -49,7 +40,7 @@ describe('Storage', function () {
     describe('list', function () {
         before(async function () {
             const results = {errors: {}};
-            await _rulesController.handleStorageRule({
+            await handleStorageRule({
                     applicationId: 'daas',
                     files: {
                         save: {
@@ -58,16 +49,11 @@ describe('Storage', function () {
                         }
                     }
                 }, results,
-                new StorageController(),
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
                 new AuthFactory(),
-                new DatabaseFactory(),
                 new IpfsStorageFactory(),
                 config
             );
-            await _rulesController.handleStorageRule({
+            await handleStorageRule({
                     applicationId: 'daas',
                     files: {
                         save: {
@@ -76,30 +62,20 @@ describe('Storage', function () {
                         }
                     }
                 }, results,
-                new StorageController(),
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
                 new AuthFactory(),
-                new DatabaseFactory(),
                 new IpfsStorageFactory(),
                 config
             );
         });
         it('should list files', async function () {
             const results = {errors: {}};
-            await _rulesController.handleStorageRule({
+            await handleStorageRule({
                     applicationId: 'daas',
                     files: {
                         list: {}
                     }
                 }, results,
-                new StorageController(),
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
                 new AuthFactory(),
-                new DatabaseFactory(),
                 new IpfsStorageFactory(),
                 config
             );
@@ -111,7 +87,7 @@ describe('Storage', function () {
         });
         it('should list only 2 files', async function () {
             const results = {errors: {}};
-            await _rulesController.handleStorageRule({
+            await handleStorageRule({
                     applicationId: 'daas',
                     files: {
                         list: {
@@ -119,12 +95,7 @@ describe('Storage', function () {
                         }
                     }
                 }, results,
-                new StorageController(),
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
                 new AuthFactory(),
-                new DatabaseFactory(),
                 new IpfsStorageFactory(),
                 config
             );
@@ -136,7 +107,7 @@ describe('Storage', function () {
         });
         it('should list files contain doe keyword', async function () {
             const results = {errors: {}};
-            await _rulesController.handleStorageRule({
+            await handleStorageRule({
                     applicationId: 'daas',
                     files: {
                         list: {
@@ -144,20 +115,15 @@ describe('Storage', function () {
                         }
                     }
                 }, results,
-                new StorageController(),
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
                 new AuthFactory(),
-                new DatabaseFactory(),
                 new IpfsStorageFactory(),
                 config
             );
-            assert(results.files !== undefined);
-            assert(results.files.list !== undefined);
-            assert(Array.isArray(results.files.list));
-            assert(results.files.list.length === 1);
-            assert(results.files.list[0].name.toString().includes('doe.txt') === true);
+            should().exist(results.files);
+            should().exist(results.files.list);
+            expect(Array.isArray(results.files.list)).equal(true);
+            expect(results.files.list.length).equal(1);
+            expect(results.files.list[0].name.toString().includes('doetxt')).equal(true);
         });
     });
 
@@ -165,7 +131,7 @@ describe('Storage', function () {
         let name = '';
         before(async function () {
             const results = {errors: {}};
-            await _rulesController.handleStorageRule({
+            const v = await handleStorageRule({
                     applicationId: 'daas',
                     files: {
                         save: {
@@ -174,20 +140,15 @@ describe('Storage', function () {
                         }
                     }
                 }, results,
-                new StorageController(),
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
                 new AuthFactory(),
-                new DatabaseFactory(),
                 new IpfsStorageFactory(),
                 config
             );
-            name = results.files.save.toString().replace('/storage/bfast_test/file/', '');
+            name = v.files.save.toString().replace('/storage/bfast_test/file/', '');
         });
         it('should delete a file', async function () {
             const results = {errors: {}};
-            await _rulesController.handleStorageRule({
+            await handleStorageRule({
                     applicationId: 'daas',
                     files: {
                         delete: {
@@ -195,19 +156,14 @@ describe('Storage', function () {
                         }
                     }
                 }, results,
-                new StorageController(),
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
                 new AuthFactory(),
-                new DatabaseFactory(),
                 new IpfsStorageFactory(),
                 config
             );
             should().exist(results.files);
             should().exist(results.files.delete);
             expect(results.files.delete).length(1);
-            expect(results.files.delete[0]._id).equal('doe1.txt');
+            expect(results.files.delete[0].id).equal(name);
         });
     });
 });

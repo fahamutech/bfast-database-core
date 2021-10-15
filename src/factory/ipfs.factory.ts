@@ -1,4 +1,4 @@
-import {BFastDatabaseOptions} from "../bfast-database.option";
+import {BFastOptions} from "../bfast-database.option";
 import {CID, create, IPFSHTTPClient} from "ipfs-http-client";
 import {Buffer} from "buffer";
 import {devLog} from "../utils/debug.util";
@@ -21,7 +21,7 @@ export class IpfsFactory {
     private constructor() {
     }
 
-    static async getInstance(options: BFastDatabaseOptions) {
+    static async getInstance(options: BFastOptions) {
         if (!IpfsFactory.instance) {
             IpfsFactory.instance = new IpfsFactory();
             IpfsFactory.ipfs = await create({
@@ -41,7 +41,7 @@ export class IpfsFactory {
         data: { [k: string]: any },
         buffer: Buffer,
         domain: string,
-        options: BFastDatabaseOptions
+        options: BFastOptions
     ): Promise<{ cid: string, size: number }> {
         if (options.useLocalIpfs) {
             devLog('use local ipfs');
@@ -60,7 +60,7 @@ export class IpfsFactory {
     async generateDataFromCid(
         cid: string,
         ipfsOptions: IpfsOption,
-        options: BFastDatabaseOptions
+        options: BFastOptions
     ): Promise<object | ReadableStream | Buffer> {
         if ((await this.checkIfWeHaveCidInWeb3(cid, options)) === false) {
             return null;
@@ -109,7 +109,7 @@ export class IpfsFactory {
         buffer: Buffer,
         domain: string,
         data: { [k: string]: any },
-        options: BFastDatabaseOptions
+        options: BFastOptions
     ) {
         const web3Storage = new Web3Storage({
             token: options.web3Token
@@ -130,7 +130,7 @@ export class IpfsFactory {
 
     async checkIfWeHaveCidInWeb3(
         cid: string,
-        options: BFastDatabaseOptions
+        options: BFastOptions
     ) {
         if (/* when testing or decide to use offline ipfs node */options.useLocalIpfs === true) {
             return true;

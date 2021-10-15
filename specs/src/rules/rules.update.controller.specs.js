@@ -1,18 +1,9 @@
 const {mongoRepSet, config} = require('../../mock.config');
 const {before, after} = require('mocha');
 const {should, expect, assert} = require("chai");
-const {
-    RulesController,
-    DatabaseFactory,
-    AuthController,
-    DatabaseController,
-    SecurityController,
-    UpdateRuleController
-} = require("../../../dist");
+const {handleCreateRules, handleUpdateRules, handleQueryRules} = require("../../../dist/cjs");
 
 describe('RulesController', function () {
-
-    let _rulesController = new RulesController();
     let mongoMemoryReplSet;
     before(async function () {
         mongoMemoryReplSet = mongoRepSet();
@@ -23,7 +14,7 @@ describe('RulesController', function () {
     });
     describe('update', function () {
         before(async function () {
-            await _rulesController.handleCreateRules({
+            await handleCreateRules({
                     createProduct: [
                         {name: 'xyz', price: 50, status: 'new', id: 'xyz'},
                         {name: 'wer', price: 100, status: 'new'},
@@ -32,16 +23,12 @@ describe('RulesController', function () {
                         {id: 'josh', name: 'ethan', price: 60, a: {b: 10}, createdAt: 'leo', 'updatedAt': 'leo'},
                     ]
                 }, {errors: {}},
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory(),
                 config,
                 null
             );
         });
         it('should update a document by id', async function () {
-            const results = await _rulesController.handleUpdateRules({
+            const results = await handleUpdateRules({
                     updateProduct: {
                         id: 'xyz',
                         update: {
@@ -51,12 +38,8 @@ describe('RulesController', function () {
                         },
                         return: []
                     }
-                }, {errors: {}},
-                new UpdateRuleController(),
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory(),
+                },
+                {errors: {}},
                 config,
                 null
             );
@@ -64,8 +47,29 @@ describe('RulesController', function () {
             expect(results.updateProduct.name).equal('apple');
             expect(results.updateProduct.price).equal(50);
         });
+        it('should update a document by id with dates', async function () {
+            const results = await handleUpdateRules({
+                    updateProduct: {
+                        id: 'josh',
+                        update: {
+                            $set: {
+                                name: 'ethan'
+                            }
+                        },
+                        return: []
+                    }
+                }, {errors: {}},
+                config,
+                null
+            );
+            // console.log(results);
+            should().exist(results.updateProduct);
+            expect(results.updateProduct.name).equal('ethan');
+            expect(results.updateProduct.price).equal(60);
+            expect(results.updateProduct.createdAt).equal('leo');
+        });
         it('should update a documents by filter', async function () {
-            const results = await _rulesController.handleUpdateRules({
+            const results = await handleUpdateRules({
                     updateProduct: {
                         filter: {
                             status: 'new'
@@ -79,11 +83,6 @@ describe('RulesController', function () {
                         return: []
                     }
                 }, {errors: {}},
-                new UpdateRuleController(),
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory(),
                 config,
                 null
             );
@@ -93,7 +92,7 @@ describe('RulesController', function () {
             expect(results.updateProduct.map(x1 => x1.name)).to.have.members(['apple', 'apple', 'apple']);
         });
         it('should update many documents by filter', async function () {
-            const results = await _rulesController.handleUpdateRules({
+            const results = await handleUpdateRules({
                     updateProduct: [
                         {
                             filter: {
@@ -119,11 +118,6 @@ describe('RulesController', function () {
                         }
                     ]
                 }, {errors: {}},
-                new UpdateRuleController(),
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory(),
                 config,
                 null
             );
@@ -135,7 +129,7 @@ describe('RulesController', function () {
             expect(results.updateProduct[1]).length(4);
         });
         it('should update many documents by id', async function () {
-            const results = await _rulesController.handleUpdateRules({
+            const results = await handleUpdateRules({
                     updateProduct: [
                         {
                             id: 'xyz',
@@ -160,11 +154,6 @@ describe('RulesController', function () {
                         // }
                     ]
                 }, {errors: {}},
-                new UpdateRuleController(),
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory(),
                 config,
                 null
             );
@@ -176,7 +165,7 @@ describe('RulesController', function () {
             // expect(results.updateProduct[1]).length(4);
         });
         it('should not update many documents when empty filter exist', async function () {
-            const results = await _rulesController.handleUpdateRules({
+            const results = await handleUpdateRules({
                     updateProduct: [
                         {
                             filter: {},
@@ -189,11 +178,6 @@ describe('RulesController', function () {
                         }
                     ]
                 }, {errors: {}},
-                new UpdateRuleController(),
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory(),
                 config,
                 null
             );
@@ -202,7 +186,7 @@ describe('RulesController', function () {
             assert(results.errors['update.Product']['message'] === 'Empty map is not supported in update rule');
         });
         it('should not update objects by empty filter', async function () {
-            const results = await _rulesController.handleUpdateRules({
+            const results = await handleUpdateRules({
                     updateProduct: {
                         filter: {},
                         update: {
@@ -213,11 +197,6 @@ describe('RulesController', function () {
                         return: []
                     }
                 }, {errors: {}},
-                new UpdateRuleController(),
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory(),
                 config,
                 null
             );
@@ -226,7 +205,7 @@ describe('RulesController', function () {
             assert(results.errors['update.Product']['message'] === 'Empty map is not supported in update rule');
         });
         it('should update when empty filter and id is supplied', async function () {
-            const results = await _rulesController.handleUpdateRules({
+            const results = await handleUpdateRules({
                     updateProduct: {
                         id: 'xyz',
                         filter: {},
@@ -238,11 +217,6 @@ describe('RulesController', function () {
                         return: []
                     }
                 }, {errors: {}},
-                new UpdateRuleController(),
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory(),
                 config,
                 null
             );
@@ -252,7 +226,7 @@ describe('RulesController', function () {
         });
         it('should create document if not exist and upsert is true, with query by id', async function () {
             const _date = new Date();
-            const results = await _rulesController.handleUpdateRules({
+            const results = await handleUpdateRules({
                     updateProduct: {
                         id: 'xyz123',
                         update: {
@@ -266,11 +240,6 @@ describe('RulesController', function () {
                         return: []
                     }
                 }, {errors: {}},
-                new UpdateRuleController(),
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory(),
                 config,
                 null
             );
@@ -283,13 +252,13 @@ describe('RulesController', function () {
                 id: 'xyz123',
                 name: 'apple',
                 createdAt: _date,
-                // createdBy: null,
+                createdBy: null,
                 updatedAt: _date
             });
         });
         it('should not create document if not exist and upsert is false, with query by id', async function () {
             const _date = new Date();
-            const results = await _rulesController.handleUpdateRules({
+            const results = await handleUpdateRules({
                     updateProduct: {
                         id: '667yu90',
                         update: {
@@ -303,18 +272,13 @@ describe('RulesController', function () {
                         return: []
                     }
                 }, {errors: {}},
-                new UpdateRuleController(),
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory(),
                 config,
                 null
             );
             should().not.exist(results.updateProduct);
         });
         it('should create documents if not exist and upsert is true, with query by filter', async function () {
-            const results = await _rulesController.handleUpdateRules(
+            const results = await handleUpdateRules(
                 {
                     updateProduct: {
                         filter: {
@@ -331,15 +295,10 @@ describe('RulesController', function () {
                     }
                 },
                 {errors: {}},
-                new UpdateRuleController(),
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory(),
                 config,
                 null
             );
-            const r = await _rulesController.handleQueryRules({
+            const r = await handleQueryRules({
                     queryProduct: {
                         filter: {
                             status: 'mixer'
@@ -347,10 +306,6 @@ describe('RulesController', function () {
                         return: []
                     }
                 }, {errors: {}},
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory(),
                 config,
                 null
             );
@@ -362,7 +317,7 @@ describe('RulesController', function () {
 
         it('should increment a number field if $inc operation provided and field exist in a doc ', async function () {
             // const _date = new Date();
-            const results = await _rulesController.handleUpdateRules({
+            const results = await handleUpdateRules({
                     updateProduct: {
                         id: 'josh',
                         update: {
@@ -373,11 +328,6 @@ describe('RulesController', function () {
                         return: []
                     }
                 }, {errors: {}},
-                new UpdateRuleController(),
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory(),
                 config,
                 null
             );
@@ -386,7 +336,7 @@ describe('RulesController', function () {
         });
         it('should increment a number field if $inc operation provided and field exist in a inner doc ', async function () {
             // const _date = new Date();
-            const results = await _rulesController.handleUpdateRules({
+            const results = await handleUpdateRules({
                     updateProduct: {
                         id: 'josh',
                         update: {
@@ -399,11 +349,6 @@ describe('RulesController', function () {
                         return: []
                     }
                 }, {errors: {}},
-                new UpdateRuleController(),
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory(),
                 config,
                 null
             );
@@ -412,7 +357,7 @@ describe('RulesController', function () {
         });
         it('should increment near and far field in a doc ', async function () {
             // const _date = new Date();
-            const results = await _rulesController.handleUpdateRules({
+            const results = await handleUpdateRules({
                     updateProduct: {
                         id: 'josh',
                         update: {
@@ -426,11 +371,6 @@ describe('RulesController', function () {
                         return: []
                     }
                 }, {errors: {}},
-                new UpdateRuleController(),
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory(),
                 config,
                 null
             );
@@ -440,7 +380,7 @@ describe('RulesController', function () {
         });
         it('should increment not exist field', async function () {
             // const _date = new Date();
-            const results = await _rulesController.handleUpdateRules({
+            const results = await handleUpdateRules({
                     updateProduct: {
                         id: 'josh',
                         update: {
@@ -451,11 +391,6 @@ describe('RulesController', function () {
                         return: []
                     }
                 }, {errors: {}},
-                new UpdateRuleController(),
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory(),
                 config,
                 null
             );
@@ -463,7 +398,7 @@ describe('RulesController', function () {
             expect(results.updateProduct.c).equal(10);
         });
         it('should increment not exist inner field', async function () {
-            const results = await _rulesController.handleUpdateRules({
+            const results = await handleUpdateRules({
                     updateProduct: {
                         id: 'josh',
                         update: {
@@ -480,11 +415,6 @@ describe('RulesController', function () {
                         return: []
                     }
                 }, {errors: {}},
-                new UpdateRuleController(),
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory(),
                 config,
                 null
             );
@@ -504,7 +434,7 @@ describe('RulesController', function () {
             })
         });
         it('should not increment non number field', async function () {
-            const results = await _rulesController.handleUpdateRules({
+            const results = await handleUpdateRules({
                     updateProduct: {
                         id: 'josh',
                         update: {
@@ -515,11 +445,6 @@ describe('RulesController', function () {
                         return: []
                     }
                 }, {errors: {}},
-                new UpdateRuleController(),
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory(),
                 config,
                 null
             );
@@ -527,7 +452,7 @@ describe('RulesController', function () {
             expect(results.updateProduct.name).equal('ethan');
         });
         it('should upsert and increment field when upsert is true and use id', async function () {
-            const results = await _rulesController.handleUpdateRules({
+            const results = await handleUpdateRules({
                     updateProduct: {
                         id: 'josh334',
                         upsert: true,
@@ -539,11 +464,6 @@ describe('RulesController', function () {
                         return: []
                     }
                 }, {errors: {}},
-                new UpdateRuleController(),
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory(),
                 config,
                 null
             );
@@ -551,7 +471,7 @@ describe('RulesController', function () {
             expect(results.updateProduct.age).equal(10);
         });
         it('should upsert and increment field when upsert is true and use filter', async function () {
-            const results = await _rulesController.handleUpdateRules({
+            const results = await handleUpdateRules({
                     updateProduct: {
                         filter: {
                             name: 'night'
@@ -565,11 +485,6 @@ describe('RulesController', function () {
                         return: []
                     }
                 }, {errors: {}},
-                new UpdateRuleController(),
-                new AuthController(),
-                new DatabaseController(),
-                new SecurityController(),
-                new DatabaseFactory(),
                 config,
                 null
             );
