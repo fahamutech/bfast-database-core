@@ -341,7 +341,7 @@ export async function updateOne(
         }
     }
     const returnFields = getReturnFields(updateModel as any);
-    updateModel = altUpdateModel(updateModel, context);
+    updateModel = altUpdateModel(updateModel);
     updateOptions.dbOptions = updateModel && updateModel.options ? updateModel.options : {};
     const fQm = {id: updateModel.id, cids: false, return: []};
     let oldDoc = await findById(domain, fQm, updateOptions, options);
@@ -402,7 +402,7 @@ export async function updateMany(
     return oldDocs;
 }
 
-function altUpdateModel(updateModel: UpdateRuleRequestModel, context: ContextBlock) {
+function altUpdateModel(updateModel: UpdateRuleRequestModel) {
     updateModel.update = sanitizeWithOperator4Db(updateModel?.update as any);
     updateModel.filter = sanitizeWithOperator4Db(updateModel?.filter as any);
     updateModel.update = addUpdateMetadata(updateModel?.update as any);
@@ -484,7 +484,7 @@ export async function verifyDataWithTreeQuery(table: string, treeQuery: TreeQuer
     const treeQ = {};
     await new TreeController().objectToTree(data, table, {
         nodeIdHandler: () => null,
-        nodeHandler: async ({name, path, node}) => {
+        nodeHandler: async ({path, node}) => {
             const v = Object.keys(node)[0];
             treeQ[path] = isNaN(Number(v)) ? v : parseFloat(v);
         }

@@ -29,6 +29,7 @@ describe('Database', function () {
         it('should perform query with expression', async function () {
             const query = {
                 applicationId: config.applicationId,
+                token: null,
                 queryT: {
                     filter: {
                         name: {

@@ -7,6 +7,7 @@ import {createHash} from 'crypto';
 export function generateUUID(): string {
     return uuid.v4();
 }
+
 export function sha256OfObject(data: { [key: string]: any }) {
     return createHash('sha256')
         .update(JSON.stringify(data))
@@ -58,8 +59,14 @@ export async function verifyToken(token: string, options: BFastOptions): Promise
     // const jwk = getJwk(options.rsaPublicKeyInJson);
     // const jwt = njwt.verify(token, jwk.key.toPublicKeyPEM(), jwk.alg);
     // return jwt.body.toJSON();
-    if (token === null || token === undefined) {
-        throw {message: 'token is null or undefined'};
+    // if (token === null || token === undefined) {
+    //     throw {message: 'token is null or undefined'};
+    // }
+    try {
+        return _jwt.verify(token, options.masterKey);
+    } catch (e) {
+        console.log(token);
+        console.log(e);
+        return {uid: null};
     }
-    return _jwt.verify(token, options.masterKey);
 }

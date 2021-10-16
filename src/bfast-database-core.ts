@@ -5,7 +5,7 @@ import {AuthAdapter} from "./adapters/auth.adapter";
 import {FilesAdapter} from "./adapters/files.adapter";
 import {S3StorageFactory} from "./factories/s3-storage.factory";
 import {IpfsStorageFactory} from "./factories/ipfs-storage.factory";
-import {_init} from "./factories/database-factory-resolver";
+import {init} from "./controllers/database.controller";
 
 function getAuthFactory(options: BFastOptions): AuthAdapter {
     return (options && options.adapters && options.adapters.auth)
@@ -55,7 +55,7 @@ function validateOptions(options: BFastOptions): { valid: boolean, message: stri
 }
 
 async function setUpDatabase(options: BFastOptions): Promise<any> {
-    return await _init(options);
+    return init(options)
 }
 
 export function initialize(options: BFastOptions): WebServices {

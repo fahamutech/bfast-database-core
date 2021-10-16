@@ -233,8 +233,8 @@ export function verifyRequestToken(
     }
 
     request.body.context.useMasterKey = false;
-    const vToken = () => {
-        verifyToken(token, options).then(value => {
+    const vToken = (tk) => {
+        verifyToken(tk, options).then(value => {
             request.body.context.auth = true;
             request.body.context.uid = value.uid;
             next();
@@ -246,9 +246,9 @@ export function verifyRequestToken(
         });
     }
     if (token && token !== '') {
-        vToken();
+        vToken(token);
     } else if (headerToken && headerToken !== '') {
-        vToken();
+        vToken(headerToken);
     } else {
         request.body.context.auth = false;
         request.body.context.uid = null;
