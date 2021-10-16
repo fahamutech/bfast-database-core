@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
 //    "experimentalDecorators": true,
-//    "declaration": true,
+    "declaration": true,
 //    "target": "es5",
 //    "module": "es2015",
 //    "outDir": "./dist/es5",
@@ -10,7 +10,7 @@
     "strict": false,
     "esModuleInterop": true,
     "moduleResolution": "Node",
-    "skipLibCheck": true,
+//    "skipLibCheck": true,
 //    "lib": [
 //      "dom",
 //      "es5",

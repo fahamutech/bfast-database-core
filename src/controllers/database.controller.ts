@@ -163,7 +163,7 @@ export async function externalShake(
         nodeIdHandler: () => data?._id ? data._id : data?.id
     });
     const pathParts = path.split('/');
-    for (const pathPart of pathParts) {
+    const _p = pathParts.map(async pathPart => {
         if (pathPart !== domain) {
             tree = tree[pathPart];
             if (tree === null || tree === undefined) {
@@ -171,13 +171,14 @@ export async function externalShake(
                 await purgeNodeInTree(path, {value: iKey}, options).catch(console.log);
             }
         }
-    }
+    })
+    await Promise.all(_p);
     return node;
 }
 
 export async function shakeTree(node: Node, path: string, domain: string, options: BFastOptions): Promise<Node> {
     const iKeys = internalKeys(node);
-    for (const iKey of iKeys) {
+    const _p = iKeys.map(async iKey=>{
         const mainNodePathHash = hashOfNodePath(`${domain}/_id`);
         const idNode: Node = await _getNode(mainNodePathHash, iKey, options);
         if (idNode === null || idNode === undefined) {
@@ -185,7 +186,8 @@ export async function shakeTree(node: Node, path: string, domain: string, option
         } else {
             node = await externalShake(domain, path, node, iKey, options);
         }
-    }
+    });
+    await Promise.all(_p);
     return node;
 }
 
@@ -245,7 +247,7 @@ export function hashOfNodePath(nodePath: string): string {
 export function whenWantToSaveADataNodeToATree(eKey: string, options: BFastOptions) {
     return {
         nodeHandler: async ({path, node}) => {
-            for (const key of Object.keys(node)) {
+            const _p: Promise<any>[] = Object.keys(node).map(key => {
                 let $setMap: Node = {
                     _id: isNaN(Number(key)) ? key.trim() : Number(key),
                     value: node[key]
@@ -259,8 +261,9 @@ export function whenWantToSaveADataNodeToATree(eKey: string, options: BFastOptio
                     $setMap.value = node[key]
                 }
                 const pathHash = hashOfNodePath(path);
-                await _upsertNode(pathHash, $setMap, options);
-            }
+                return _upsertNode(pathHash, $setMap, options);
+            });
+            await Promise.all(_p);
         },
         nodeIdHandler: async function () {
             return eKey?.toString();
@@ -385,21 +388,25 @@ export async function updateMany(
         oldDocs.push(nDoc);
         return writeMany(domain, oldDocs, !!updateModel.cids, context, updateOptions, options);
     }
-    for (const x of oldDocs) {
-        oldDocs[oldDocs.indexOf(x)] = await updateOne(
-            domain,
-            {
-                update: updateModel.update,
-                upsert: updateModel.upsert,
-                id: x.id,
-                return: []
-            },
-            context,
-            updateOptions,
-            options
-        );
-    }
-    return oldDocs;
+    const _p = oldDocs.map(async x => {
+        const _uM = {update: updateModel.update, upsert: updateModel.upsert, id: x.id, return: []}
+        return updateOne(domain, _uM, context, updateOptions, options);
+    });
+    return await Promise.all(_p);
+    // for (const x of oldDocs) {
+    //     oldDocs[oldDocs.indexOf(x)] = await updateOne(
+    //         domain,
+    //         {
+    //             update: updateModel.update,
+    //             upsert: updateModel.upsert,
+    //             id: x.id,
+    //             return: []
+    //         },
+    //         context,
+    //         updateOptions,
+    //         options
+    //     );
+    // }
 }
 
 function altUpdateModel(updateModel: UpdateRuleRequestModel) {
@@ -423,61 +430,68 @@ export async function externalKeys(node: Node): Promise<Array<string>> {
 export async function queryExternalKeys(
     treeQuery: TreeQuery, domain: string, options: BFastOptions
 ): Promise<string[]> {
-    let eKeyList = [];
     const pathList = Object.keys(treeQuery);
-    for (const path of pathList) {
+    const _p: Promise<any>[] = pathList.map(async path => {
         const nodeId = treeQuery[path];
         let node: Node | Array<Node> = await searchNode(path, nodeId, options);
         if (Array.isArray(node)) {
-            for (let _node of node) {
+            const _p1: Promise<string[]>[] = node.map(async _node => {
                 _node = await shakeTree(_node, path, domain, options);
-                const r = await externalKeys(_node);
-                eKeyList.push(...r);
-            }
+                return externalKeys(_node);
+            });
+            return await Promise.all(_p1);
         } else {
             node = await shakeTree(node, path, domain, options);
-            const r = await externalKeys(node);
-            eKeyList.push(...r);
+            return externalKeys(node);
         }
-    }
-    return Array.from(eKeyList.reduce((a, b) => a.add(b), new Set()));
+    });
+    let eKeyList = (await Promise.all(_p));
+    return _reduceToOneLevelStringOfArray(eKeyList);
 }
 
 export async function compactExternalKeys(
     table: string, eKeyList: string[], treeQuery: TreeQuery, options: BFastOptions
 ): Promise<string[]> {
-    const eKList = new Set<string>();
-    for (const eKey of eKeyList) {
+    const _p: Promise<string>[] = eKeyList.map(async eKey => {
         const data = await _getData(table, eKey, options);
         const fT = await verifyDataWithTreeQuery(table, treeQuery, data);
-        if (fT === true) eKList.add(eKey);
+        if (fT === true) return eKey;
+        else return null;
+    })
+    let eKL = (await Promise.all(_p)).filter(y => y !== null);
+    const eKLS = eKL.reduce((a, b) => a.add(b), new Set<string>());
+    return Array.from(eKLS);
+}
+
+function _reduceToOneLevelStringOfArray(v: any[]): string[] {
+    while (Array.isArray(v) && typeof v[0] === "object") {
+        v = v.reduce((a, b) => [...a, ...b], []);
     }
-    return Array.from(eKList);
+    return Array.from(v.reduce((a, b) => a.add(b), new Set()));
 }
 
 export async function queryInternalKeys(
     treeQuery: TreeQuery, domain: string, options: BFastOptions
 ): Promise<string[]> {
-    let iKeyList = [];
     const pathList = Object.keys(treeQuery);
-    for (const path of pathList) {
+    const _p = pathList.map(async path => {
         const nodeId = treeQuery[path];
         let node: Node | Array<Node> = await searchNode(path, nodeId, options);
-        if (Array.isArray(node)) {
-            for (let _node of node) {
-                _node = await shakeTree(_node, path, domain, options);
-                const r = internalKeys(_node);
-                iKeyList.push(...r);
-            }
-        } else {
-            // const r = await extractInternalKeysFromNodes(node, domain, path, options);
-            // iKeyList.push(...r);
-            node = await shakeTree(node, path, domain, options);
-            const r = internalKeys(node);
-            iKeyList.push(...r);
+
+        async function _shakeAndGetIKeys(_node1: Node) {
+            _node1 = await shakeTree(_node1, path, domain, options);
+            return internalKeys(_node1);
         }
-    }
-    return Array.from(iKeyList.reduce((a, b) => a.add(b), new Set()));
+
+        if (Array.isArray(node)) {
+            const _p1 = node.map(_node => _shakeAndGetIKeys(_node));
+            return await Promise.all(_p1);
+        } else {
+            return _shakeAndGetIKeys(node);
+        }
+    });
+    let iKeyList: any[] = await Promise.all(_p);
+    return _reduceToOneLevelStringOfArray(iKeyList);
 }
 
 export async function verifyDataWithTreeQuery(table: string, treeQuery: TreeQuery, data: Data): Promise<boolean> {
@@ -506,17 +520,20 @@ export async function verifyDataWithTreeQuery(table: string, treeQuery: TreeQuer
 export async function compactInternalKeys(
     table: string, iKeyList: string[], treeQuery: TreeQuery, options: BFastOptions
 ): Promise<string[]> {
-    const iKList = new Set<string>();
-    for (const iKey of iKeyList) {
+    const _p = iKeyList.map(async iKey => {
         const mPHash = hashOfNodePath(`${table}/_id`);
         const idNode = await _getNode(mPHash, iKey, options);
         if (idNode && typeof idNode.value === "string") {
             const data = await _getData(table, idNode.value, options);
             const v = await verifyDataWithTreeQuery(table, treeQuery, data);
-            if (v === true) iKList.add(iKey);
+            if (v === true) return iKey;
+            else return null;
         }
-    }
-    return Array.from(iKList);
+    });
+    let iKL: any[] = await Promise.all(_p);
+    iKL = iKL.filter(y => y !== null);
+    const iKLS = iKL.reduce((a, b) => a.add(b), new Set())
+    return Array.from(iKLS);
 }
 
 export async function handleDeleteObjectTree(
@@ -551,10 +568,11 @@ export async function remove(
     }
     let result = [];
     if (Array.isArray(deleteTree)) {
-        for (const _tree of deleteTree) {
+        const _p = deleteTree.map(async _tree => {
             const r = await handleDeleteObjectTree(_tree, domain, options);
             Array.isArray(r) ? result.push(...r) : result.push(r);
-        }
+        });
+        await Promise.all(_p);
     } else {
         result = await handleDeleteObjectTree(deleteTree, domain, options);
     }
@@ -654,12 +672,13 @@ export async function handleOrQueryInTree(
     domain: string, queryMode: QueryModel<any>, treeQuery: TreeQuery[], options: BFastOptions
 ) {
     const resultMap = {};
-    for (const tQ of treeQuery) {
+    const _p = treeQuery.map(async tQ => {
         const r = await handleQueryObjectTree(tQ, domain, queryMode, options);
         Array.isArray(r) ? (r.forEach(_r1 => {
             resultMap[_r1._id] = _r1
         })) : resultMap[generateUUID()] = r;
-    }
+    });
+    await Promise.all(_p);
     const _result1: any[] = Object.values(resultMap);
     return queryMode?.count ? _result1.reduce((a, b) => a + b, 0) : _result1;
 }
