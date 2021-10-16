@@ -9,7 +9,7 @@ describe('SecurityController', function () {
             assert(typeof token === "string");
         });
     });
-    describe('verifyToken', function () {
+    describe('verify Token', function () {
         it('should verify token using public jwk', async function () {
             const token = await getToken({uid: 'test1'}, config,1);
             const decoded = await verifyToken(token, config);

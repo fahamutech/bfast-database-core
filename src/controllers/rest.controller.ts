@@ -8,7 +8,7 @@ import {BFastOptions} from "../bfast-database.option";
 import {NextFunction, Request, Response} from 'express'
 import {AuthAdapter} from "../adapters/auth.adapter";
 import {FilesAdapter} from "../adapters/files.adapter";
-import {verifyToken} from './security.controller';
+// import {verifyToken} from './security.controller';
 import {hasPermission} from "./auth.controller";
 import {
     handleAuthenticationRule,
@@ -31,11 +31,7 @@ import {
 import {devLog} from "../utils/debug.util";
 
 export function getFile(
-    request: Request,
-    response: Response,
-    _: NextFunction,
-    filesAdapter: FilesAdapter,
-    options
+    request: Request, response: Response, _: NextFunction, filesAdapter: FilesAdapter, options
 ): void {
     if (request?.method?.toString()?.toLowerCase() === 'head') {
         fileInfo(request, response, filesAdapter, options);
@@ -59,11 +55,7 @@ export function getFile(
 }
 
 export function getThumbnail(
-    request: Request,
-    response: Response,
-    _: NextFunction,
-    filesAdapter: FilesAdapter,
-    options: BFastOptions
+    request: Request, response: Response, _: NextFunction, filesAdapter: FilesAdapter, options: BFastOptions
 ): void {
     if (isS3(filesAdapter) === true) {
         handleGetFileBySignedUrl(
@@ -88,9 +80,9 @@ export function getAllFiles(
     request: any, response: any, _: NextFunction, filesAdapter: FilesAdapter, options: BFastOptions
 ): void {
     listFiles({
-            skip: isNaN(Number(request.query.skip)) ? 0: parseInt(request.query.skip),
-            after: request.query.after ? request.query.after.toString(): '',
-            size: isNaN(Number(request.query.size)) ? 20: parseInt(request.query.size),
+            skip: isNaN(Number(request.query.skip)) ? 0 : parseInt(request.query.skip),
+            after: request.query.after ? request.query.after.toString() : '',
+            size: isNaN(Number(request.query.size)) ? 20 : parseInt(request.query.size),
             prefix: request.query.prefix ? request.query.prefix.toString() : '',
         },
         filesAdapter,
@@ -103,11 +95,7 @@ export function getAllFiles(
 }
 
 export function multipartForm(
-    request: Request,
-    response: Response,
-    _: NextFunction,
-    filesAdapter: FilesAdapter,
-    options: BFastOptions
+    request: Request, response: Response, _: NextFunction, filesAdapter: FilesAdapter, options: BFastOptions
 ): void {
     const contentType = request.get('content-type').split(';')[0].toString().trim();
     if (contentType !== 'multipart/form-data'.trim()) {
@@ -180,10 +168,7 @@ export function multipartForm(
 }
 
 export function verifyApplicationId(
-    request: any,
-    response: any,
-    next: any,
-    options: BFastOptions
+    request: any, response: any, next: any, options: BFastOptions
 ): void {
     const applicationId = request.body.applicationId;
     if (applicationId === options.applicationId) {
@@ -197,10 +182,7 @@ export function verifyApplicationId(
 }
 
 export function filePolicy(
-    request: Request,
-    response: Response,
-    next: NextFunction,
-    options: BFastOptions
+    request: Request, response: Response, next: NextFunction, options: BFastOptions
 ): void {
     hasPermission(request.body.ruleId, request.body.context, options).then(value => {
         if (value === true) {
@@ -214,15 +196,11 @@ export function filePolicy(
 }
 
 export function verifyRequestToken(
-    request: Request,
-    response: Response,
-    next: NextFunction,
-    options: BFastOptions
+    request: Request, response: Response, next: NextFunction, options: BFastOptions
 ): void {
-    const token = request.body.token;
-    const headerToken = request.headers['x-bfast-token'];
+    // const token = request.body.token;
+    // const headerToken = request.headers['x-bfast-token'];
     const masterKey = request.body.masterKey;
-
     if (masterKey === options.masterKey) {
         request.body.context.auth = true;
         request.body.context.uid = "masterKey";
@@ -231,29 +209,28 @@ export function verifyRequestToken(
         next();
         return;
     }
-
     request.body.context.useMasterKey = false;
-    const vToken = (tk) => {
-        verifyToken(tk, options).then(value => {
-            request.body.context.auth = true;
-            request.body.context.uid = value.uid;
-            next();
-        }).catch(_ => {
-            request.body.context.auth = false;
-            request.body.context.uid = null;
-            next();
-            // response.status(httpStatus.UNAUTHORIZED).json({message: 'bad token', code: -1});
-        });
-    }
-    if (token && token !== '') {
-        vToken(token);
-    } else if (headerToken && headerToken !== '') {
-        vToken(headerToken);
-    } else {
-        request.body.context.auth = false;
-        request.body.context.uid = null;
-        next();
-    }
+    // const vToken = (tk) => {
+    //     verifyToken(tk, options).then(value => {
+    //         request.body.context.auth = true;
+    //         request.body.context.uid = value.uid;
+    //         next();
+    //     }).catch(_ => {
+    //         request.body.context.auth = false;
+    //         request.body.context.uid = null;
+    //         next();
+    response.status(httpStatus.UNAUTHORIZED).json({message: 'bad token', code: -1});
+    // });
+    // }
+    // if (token && token !== '') {
+    //     vToken(token);
+    // } else if (headerToken && headerToken !== '') {
+    //     vToken(headerToken);
+    // } else {
+    request.body.context.auth = false;
+    request.body.context.uid = null;
+    next();
+    // }
 }
 
 export function verifyMethod(request: any, response: any, next: any): void {
@@ -277,26 +254,17 @@ export function verifyBodyData(request: any, response: any, next: any): void {
 }
 
 export function handleRuleBlocks(
-    request: Request,
-    response: Response,
-    _: NextFunction,
-    authAdapter: AuthAdapter,
-    filesAdapter: FilesAdapter,
+    request: Request, response: Response, _: NextFunction, authAdapter: AuthAdapter, filesAdapter: FilesAdapter,
     options: BFastOptions,
 ): void {
     const body = request.body;
     try {
-       devLog(JSON.stringify(body));
+        devLog(JSON.stringify(body));
     } catch (e) {
         console.log(e);
     }
     const results: RuleResponse = {errors: {}};
-    handleAuthenticationRule(
-        body,
-        results,
-        authAdapter,
-        options
-    ).then(_1 => {
+    handleAuthenticationRule(body, results, authAdapter, options).then(_1 => {
         return handleAuthorizationRule(
             body,
             results,

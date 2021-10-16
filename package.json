@@ -1,6 +1,6 @@
 {
   "name": "bfast-database-core",
-  "version": "2.2.0-alpha.5",
+  "version": "2.2.0-alpha.6",
   "main": "dist/index.js",
   "types": "dist/types/index.d.ts",
   "typings": "dist/types/index.d.ts",

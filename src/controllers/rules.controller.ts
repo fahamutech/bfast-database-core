@@ -9,7 +9,6 @@ import {bulk, findByFilter, findById, remove, writeMany, writeOne} from "./datab
 import {handleUpdateRule} from "./update.rule.controller";
 import {addPolicyRule, hasPermission, listPolicyRule, removePolicyRule, signIn, signUp} from "./auth.controller";
 import {deleteFile, listFiles, saveFile} from "./storage.controller";
-import del from "del";
 
 export function getRulesKey(rules: RulesModel): string[] {
     if (rules) {

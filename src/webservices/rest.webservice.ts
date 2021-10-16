@@ -24,26 +24,9 @@ export function rulesRestAPI(
         onRequest: [
             (rq, rs, n) => verifyMethod(rq, rs, n),
             (rq, rs, n) => verifyBodyData(rq, rs, n),
-            (rq, rs, n) => verifyApplicationId(
-                rq,
-                rs,
-                n,
-                options
-            ),
-            (rq, rs, n) => verifyRequestToken(
-                rq as any,
-                rs as any,
-                n,
-                options
-            ),
-            (rq, rs, n) => handleRuleBlocks(
-                rq as any,
-                rs as any,
-                n,
-                authAdapter,
-                filesAdapter,
-                options
-            )
+            (rq, rs, n) => verifyApplicationId(rq, rs, n, options),
+            (rq, rs, n) => verifyRequestToken(rq, rs, n, options),
+            (rq, rs, n) => handleRuleBlocks(rq, rs, n, authAdapter, filesAdapter, options)
         ]
     }
 }
