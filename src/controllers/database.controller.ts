@@ -247,7 +247,7 @@ export function hashOfNodePath(nodePath: string): string {
 export function whenWantToSaveADataNodeToATree(eKey: string, options: BFastOptions) {
     return {
         nodeHandler: async ({path, node}) => {
-            const _p: Promise<any>[] = Object.keys(node).map(key => {
+            const _p: Promise<any>[] = Object.keys(node).map(async key => {
                 let $setMap: Node = {
                     _id: isNaN(Number(key)) ? key.trim() : Number(key),
                     value: node[key]
@@ -261,7 +261,7 @@ export function whenWantToSaveADataNodeToATree(eKey: string, options: BFastOptio
                     $setMap.value = node[key]
                 }
                 const pathHash = hashOfNodePath(path);
-                return _upsertNode(pathHash, $setMap, options);
+                return await _upsertNode(pathHash, $setMap, options);
             });
             await Promise.all(_p);
         },

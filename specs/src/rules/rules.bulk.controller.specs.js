@@ -203,48 +203,48 @@ describe('Bulk', function () {
     describe('delete', function () {
         before(async function () {
             await handleCreateRules({
-                createProduct: [
-                    {
-                        name: 'xps',
-                        price: 50,
-                        user: {
-                            email: 'a@a.com'
+                    createProduct: [
+                        {
+                            name: 'xps',
+                            price: 50,
+                            user: {
+                                email: 'a@a.com'
+                            },
+                            id: 'xpsid',
+                            createdAt: 'leo',
+                            updatedAt: 'leo'
                         },
-                        id: 'xpsid',
-                        createdAt: 'leo',
-                        updatedAt: 'leo'
-                    },
-                    {
-                        name: 'hp',
-                        price: 100,
-                        user: {
-                            email: 'a@a.com'
-                        },
-                        id: 'hpip',
-                        createdAt: 'leo',
-                        updatedAt: 'leo'
-                    }
-                ]
-            }, {errors: {}},
+                        {
+                            name: 'hp',
+                            price: 100,
+                            user: {
+                                email: 'a@a.com'
+                            },
+                            id: 'hpip',
+                            createdAt: 'leo',
+                            updatedAt: 'leo'
+                        }
+                    ]
+                }, {errors: {}},
                 config,
                 null
             );
         });
         it('should delete only matches', async function () {
             const results = await handleBulkRule({
-                transaction: {
-                    commit: {
-                        deleteProduct: {
-                            filter: {
-                                name: 'xps',
-                                user: {
-                                    email: 'a@a.com'
+                    transaction: {
+                        commit: {
+                            deleteProduct: {
+                                filter: {
+                                    name: 'xps',
+                                    user: {
+                                        email: 'a@a.com'
+                                    }
                                 }
                             }
                         }
                     }
-                }
-            }, {errors: {}},
+                }, {errors: {}},
                 config
             );
             should().exist(results.transaction);
@@ -257,5 +257,253 @@ describe('Bulk', function () {
                 ],
             });
         });
-    })
+    });
+    describe('update', async function () {
+        before(async function () {
+            await handleCreateRules({
+                    createstocks: [
+                        {
+                            "product": "aziko 500mg -azithromycin tab",
+                            "idOld": "IHg6jrZW4lnPuq68vGKX",
+                            "wholesalePrice": 1600,
+                            "unit": "tablets",
+                            "wholesaleQuantity": 1,
+                            "retailPrice": 3000,
+                            "category": "medicine",
+                            "shelf": "counter",
+                            "retailWholesalePrice": 1600,
+                            "nhifPrice": 0,
+                            "profit": 2150,
+                            "purchase": 1350,
+                            "quantity": -525,
+                            "reorder": 0,
+                            "supplier": "samiro",
+                            "q_status": "",
+                            "times": 2.5925925925925926,
+                            "expire": "2020-03-20",
+                            "retail_stockcol": "",
+                            "stockable": true,
+                            "saleable": true,
+                            "purchasable": true,
+                            "barcode": "",
+                            "canExpire": false,
+                            "catalog": ["general"],
+                            "description": "",
+                            "downloadable": false,
+                            "downloads": [],
+                            "image": "",
+                            "metas": {},
+                            "updatedAt": "2021-08-25T16:14:50.766Z",
+                            "id": "d5rYcAywdw",
+                            "createdAt": "2019-10-17T15:51:59.899Z"
+                        },
+                        {
+                            "product": "paracetamol 10*10 tab-panadol pcm",
+                            "unit": "tabs",
+                            "category": "medicine",
+                            "shelf": "counter",
+                            "quantity": -37661,
+                            "wholesaleQuantity": 100,
+                            "q_status": "",
+                            "reorder": 300,
+                            "supplier": "core pharma ltd",
+                            "purchase": 20,
+                            "retailPrice": 40,
+                            "retailWholesalePrice": 1760,
+                            "profit": -135,
+                            "times": 0.15625,
+                            "expire": "2022-12-30T21:00:00.000Z",
+                            "idOld": "sUOTiTdDzh14u74t5DDy",
+                            "retail_stockcol": "",
+                            "nhifPrice": 20,
+                            "wholesalePrice": 2500,
+                            "active": true,
+                            "canExpire": true,
+                            "description": "",
+                            "downloadable": false,
+                            "downloads": [],
+                            "purchasable": true,
+                            "saleable": true,
+                            "stockable": true,
+                            "barcode": "",
+                            "catalog": ["general"],
+                            "image": "",
+                            "metas": {},
+                            "updatedAt": "2021-08-26T13:47:20.078Z",
+                            "id": "RG6GCCGPDB",
+                            "createdAt": "2019-01-15T05:13:57.050Z"
+                        }
+                    ]
+                },
+                {errors: {}},
+                config,
+                null);
+        });
+        it('should execute big doc', async function () {
+            const rule = {
+                "transaction": {
+                    "commit": {
+                        "createsales": [
+                            {
+                                "amount": 6000,
+                                "discount": 0,
+                                "quantity": 2,
+                                "product": "aziko 500mg -azithromycin tab",
+                                "category": "medicine",
+                                "unit": "tablets",
+                                "channel": "retail",
+                                "date": "2021-10-15",
+                                "idTra": "n",
+                                "customerObject": {"phone": "SYSTEM"},
+                                "soldBy": {"username": "bahati"},
+                                "timer": "2021-10-15T12:31",
+                                "user": "40a2a518-6412-4c24-9dd7-31a4625d0f28",
+                                "sellerObject": {
+                                    "username": "bahati",
+                                    "lastname": "bahati",
+                                    "firstname": "bahati",
+                                    "email": "bahati@lbpharmacy"
+                                },
+                                "createdAt": "2021-10-15T09:31:37.782Z",
+                                "updatedAt": "2021-10-15T09:31:37.772Z",
+                                "stock": {
+                                    "product": "aziko 500mg -azithromycin tab",
+                                    "idOld": "IHg6jrZW4lnPuq68vGKX",
+                                    "wholesalePrice": 1600,
+                                    "unit": "tablets",
+                                    "wholesaleQuantity": 1,
+                                    "retailPrice": 3000,
+                                    "category": "medicine",
+                                    "shelf": "counter",
+                                    "retailWholesalePrice": 1600,
+                                    "nhifPrice": 0,
+                                    "profit": 2150,
+                                    "purchase": 1350,
+                                    "quantity": -525,
+                                    "reorder": 0,
+                                    "supplier": "samiro",
+                                    "q_status": "",
+                                    "times": 2.5925925925925926,
+                                    "expire": "2020-03-20",
+                                    "retail_stockcol": "",
+                                    "stockable": true,
+                                    "saleable": true,
+                                    "purchasable": true,
+                                    "barcode": "",
+                                    "canExpire": false,
+                                    "catalog": ["general"],
+                                    "description": "",
+                                    "downloadable": false,
+                                    "downloads": [],
+                                    "image": "",
+                                    "metas": {},
+                                    "updatedAt": "2021-08-25T16:14:50.766Z",
+                                    "id": "d5rYcAywdw",
+                                    "createdAt": "2019-10-17T15:51:59.899Z"
+                                },
+                                "stockId": "d5rYcAywdw",
+                                "cartId": "384891b8-0a06-468d-8ae5-ed54416237e0",
+                                "batch": "e5b8e9c8-7c0e-4584-a236-6c8853338faa",
+                                "id": "e5b8e9c8-7c0e-4584-a236-6c8853338faa",
+                                "return": []
+                            },
+                            {
+                                "amount": 400,
+                                "discount": 0,
+                                "quantity": 10,
+                                "product": "paracetamol 10*10 tab-panadol pcm",
+                                "category": "medicine",
+                                "unit": "tabs",
+                                "channel": "retail",
+                                "date": "2021-10-15",
+                                "idTra": "n",
+                                "customerObject": {"phone": "SYSTEM"},
+                                "soldBy": {"username": "bahati"},
+                                "timer": "2021-10-15T12:31",
+                                "user": "40a2a518-6412-4c24-9dd7-31a4625d0f28",
+                                "sellerObject": {
+                                    "username": "bahati",
+                                    "lastname": "bahati",
+                                    "firstname": "bahati",
+                                    "email": "bahati@lbpharmacy"
+                                },
+                                "createdAt": "2021-10-15T09:31:37.782Z",
+                                "updatedAt": "2021-10-15T09:31:37.772Z",
+                                "stock": {
+                                    "product": "paracetamol 10*10 tab-panadol pcm",
+                                    "unit": "tabs",
+                                    "category": "medicine",
+                                    "shelf": "counter",
+                                    "quantity": -37661,
+                                    "wholesaleQuantity": 100,
+                                    "q_status": "",
+                                    "reorder": 300,
+                                    "supplier": "core pharma ltd",
+                                    "purchase": 20,
+                                    "retailPrice": 40,
+                                    "retailWholesalePrice": 1760,
+                                    "profit": -135,
+                                    "times": 0.15625,
+                                    "expire": "2022-12-30T21:00:00.000Z",
+                                    "idOld": "sUOTiTdDzh14u74t5DDy",
+                                    "retail_stockcol": "",
+                                    "nhifPrice": 20,
+                                    "wholesalePrice": 2500,
+                                    "active": true,
+                                    "canExpire": true,
+                                    "description": "",
+                                    "downloadable": false,
+                                    "downloads": [],
+                                    "purchasable": true,
+                                    "saleable": true,
+                                    "stockable": true,
+                                    "barcode": "",
+                                    "catalog": ["general"],
+                                    "image": "",
+                                    "metas": {},
+                                    "updatedAt": "2021-08-26T13:47:20.078Z",
+                                    "id": "RG6GCCGPDB",
+                                    "createdAt": "2019-01-15T05:13:57.050Z"
+                                },
+                                "stockId": "RG6GCCGPDB",
+                                "cartId": "384891b8-0a06-468d-8ae5-ed54416237e0",
+                                "batch": "5853bbda-a8cf-4ba2-afe1-8bd9b2363520",
+                                "id": "5853bbda-a8cf-4ba2-afe1-8bd9b2363520",
+                                "return": []
+                            }
+                        ],
+                        "updatestocks": [
+                            {
+                                "id": "d5rYcAywdw",
+                                "return": [],
+                                "update": {"$inc": {"quantity": -2}}
+                            },
+                            {
+                                "id": "RG6GCCGPDB",
+                                "return": [],
+                                "update": {"$inc": {"quantity": -10}}
+                            }
+                        ]
+                    }
+                },
+                "applicationId": "usP3UIsAh364",
+                "context": {"applicationId": "usP3UIsAh364", "useMasterKey": false, "auth": false, "uid": null}
+            };
+            const results = await handleBulkRule(
+                rule,
+                {errors: {}},
+                config
+            );
+            console.log(results);
+            // should().exist(results.transaction);
+            // should().exist(results.transaction.commit);
+            // const _r = {...results.transaction.commit}
+            // expect(_r).eql({
+            //     errors: {},
+            //     deleteProduct: [
+            //         {id: 'xpsid'}
+            //     ],
+            // });
+        });
+    });
 });

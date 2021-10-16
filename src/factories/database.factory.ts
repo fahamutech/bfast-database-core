@@ -11,9 +11,10 @@ import {MongoClient} from 'mongodb';
 import {BFastOptions} from '../bfast-database.option';
 import {Node} from "../models/node";
 import {Data} from "../models/data";
+import {TextEncoder} from "util";
 
 async function withMongoClient(fn: (conn: MongoClient) => Promise<any>, options: BFastOptions) {
-    const conn = await MongoClient.connect(options.databaseURI);
+    const conn = await new MongoClient(options.databaseURI).connect();
     try {
         return await fn(conn);
     } finally {
@@ -25,6 +26,7 @@ async function withMongoClient(fn: (conn: MongoClient) => Promise<any>, options:
 
 export const upsertDataInStore: UpsertDataFn = async (table: string, data: Data, options: BFastOptions) => {
     return withMongoClient(async conn => {
+        console.log(new TextEncoder().encode(JSON.stringify(data)).byteLength / 1000, ' :::::::::::::Kb');
         await conn.db().collection(table).updateOne(
             {_id: data?._id},
             {$set: data},
@@ -70,10 +72,10 @@ export const purgeNode: PurgeNodeFn = (table, query, options) => {
 export const upsertNode: UpsertNodeFn = async (path, node, options) => {
     // console.log(node,'upsert node')
     const set = {};
-    if (node && node.value && typeof node.value === "object"){
+    if (node && node.value && typeof node.value === "object") {
         set[`value.${Object.keys(node.value)[0]}`] = Object.values(node.value)[0];
     }
-    if (node && node.value && typeof node.value === "string"){
+    if (node && node.value && typeof node.value === "string") {
         set['value'] = node.value;
     }
     return withMongoClient(async conn => {
