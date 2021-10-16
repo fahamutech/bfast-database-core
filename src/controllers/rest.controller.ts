@@ -8,7 +8,7 @@ import {BFastOptions} from "../bfast-database.option";
 import {NextFunction, Request, Response} from 'express'
 import {AuthAdapter} from "../adapters/auth.adapter";
 import {FilesAdapter} from "../adapters/files.adapter";
-// import {verifyToken} from './security.controller';
+import {verifyToken} from './security.controller';
 import {hasPermission} from "./auth.controller";
 import {
     handleAuthenticationRule,
@@ -198,8 +198,8 @@ export function filePolicy(
 export function verifyRequestToken(
     request: Request, response: Response, next: NextFunction, options: BFastOptions
 ): void {
-    // const token = request.body.token;
-    // const headerToken = request.headers['x-bfast-token'];
+    const token = request.body.token;
+    const headerToken = request.headers['x-bfast-token'];
     const masterKey = request.body.masterKey;
     if (masterKey === options.masterKey) {
         request.body.context.auth = true;
@@ -210,27 +210,27 @@ export function verifyRequestToken(
         return;
     }
     request.body.context.useMasterKey = false;
-    // const vToken = (tk) => {
-    //     verifyToken(tk, options).then(value => {
-    //         request.body.context.auth = true;
-    //         request.body.context.uid = value.uid;
-    //         next();
-    //     }).catch(_ => {
-    //         request.body.context.auth = false;
-    //         request.body.context.uid = null;
-    //         next();
-    response.status(httpStatus.UNAUTHORIZED).json({message: 'bad token', code: -1});
-    // });
-    // }
-    // if (token && token !== '') {
-    //     vToken(token);
-    // } else if (headerToken && headerToken !== '') {
-    //     vToken(headerToken);
-    // } else {
-    request.body.context.auth = false;
-    request.body.context.uid = null;
-    next();
-    // }
+    const vToken = (tk) => {
+        verifyToken(tk, options).then(value => {
+            request.body.context.auth = true;
+            request.body.context.uid = value.uid;
+            next();
+        }).catch(_ => {
+            request.body.context.auth = false;
+            request.body.context.uid = null;
+            next();
+            response.status(httpStatus.UNAUTHORIZED).json({message: 'bad token', code: -1});
+        });
+    }
+    if (token && token !== '') {
+        vToken(token);
+    } else if (headerToken && headerToken !== '') {
+        vToken(headerToken);
+    } else {
+        request.body.context.auth = false;
+        request.body.context.uid = null;
+        next();
+    }
 }
 
 export function verifyMethod(request: any, response: any, next: any): void {

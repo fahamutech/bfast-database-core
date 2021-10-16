@@ -63,7 +63,10 @@ export async function verifyToken(token: string, options: BFastOptions): Promise
     //     throw {message: 'token is null or undefined'};
     // }
     try {
-        return _jwt.verify(token, options.masterKey);
+        if (typeof token === "string") {
+            return _jwt.verify(token, options.masterKey);
+        }
+        return {uid: null};
     } catch (e) {
         console.log(token);
         console.log(e);
