@@ -289,49 +289,49 @@ describe('Changes', function () {
                 done();
             });
         });
-        it('should receive all updated docs', function (done) {
-            const changes = bfast.database()
-                .table('test')
-                .query()
-                .changes(
-                    () => {
-                        bfast.functions()
-                            .request('/v2')
-                            .post({
-                                    applicationId: config.applicationId,
-                                    deletetest: {
-                                        filter: {
-                                            createdAt: 'leo'
-                                        },
-                                        return: []
-                                    }
-                                }
-                            );
-                    },
-                    () => {
-                    }
-                );
-            // let called = 0;
-            changes.addListener(response => {
-                if (response.body.info) {
-                    return;
-                }
-                // console.log(response.body.change);
-                should().exist(response);
-                should().exist(response.body);
-                should().exist(response.body.change);
-                expect([
-                    {
-                        name: 'delete',
-                        snapshot: {
-                            id: 'zai'
-                        }
-                    }
-                ]).to.deep.include(response.body.change);
-                done();
-                changes.close();
-            });
-        });
+        // it('should receive all updated docs', function (done) {
+        //     const changes = bfast.database()
+        //         .table('test')
+        //         .query()
+        //         .changes(
+        //             () => {
+        //                 bfast.functions()
+        //                     .request('/v2')
+        //                     .post({
+        //                             applicationId: config.applicationId,
+        //                             deletetest: {
+        //                                 filter: {
+        //                                     createdAt: 'leo'
+        //                                 },
+        //                                 return: []
+        //                             }
+        //                         }
+        //                     );
+        //             },
+        //             () => {
+        //             }
+        //         );
+        //     // let called = 0;
+        //     changes.addListener(response => {
+        //         if (response.body.info) {
+        //             return;
+        //         }
+        //         // console.log(response.body.change);
+        //         should().exist(response);
+        //         should().exist(response.body);
+        //         should().exist(response.body.change);
+        //         expect([
+        //             {
+        //                 name: 'delete',
+        //                 snapshot: {
+        //                     id: 'zai'
+        //                 }
+        //             }
+        //         ]).to.deep.include(response.body.change);
+        //         done();
+        //         changes.close();
+        //     });
+        // });
     });
     describe('removeListener', function () {
         let c1, c2, r2;
