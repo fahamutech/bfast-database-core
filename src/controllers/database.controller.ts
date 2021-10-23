@@ -13,6 +13,7 @@ import {DatabaseUpdateOptions} from "../models/database-update-options";
 import {DatabaseBasicOptions} from "../models/database-basic-options";
 import {DatabaseChangesOptions} from "../models/database-changes-options";
 import {
+    _aggregate,
     _createData,
     _getData,
     _getManyData,
@@ -880,4 +881,14 @@ export function sanitize4User(data: any, returnFields: string[]) {
 
 export function publishChanges(domain: string, change: ChangesModel) {
     AppEventsFactory.getInstance().pub(ConstUtil.DB_CHANGES_EVENT.concat(domain), change);
+}
+
+export async function aggregate(
+    table: string, pipelines: any[],
+    writeOptions: DatabaseWriteOptions = {bypassDomainVerification: false},
+    options: BFastOptions
+): Promise<any> {
+    await checkPolicyInDomain(table, writeOptions);
+    const results = await _aggregate(table, pipelines, options);
+    return results.map(result => sanitize4User(result, []));
 }

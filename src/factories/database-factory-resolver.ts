@@ -7,10 +7,11 @@ import {
     InitDatabaseFn,
     PurgeDataFn,
     PurgeManyDataFn,
-    UpdateDataFn
+    UpdateDataFn, AggregateDataFn
 } from "../adapters/database.adapter";
 import {FactoryIdentifier} from "../models/factory-identifier";
 import {
+    aggregate,
     createDataInStore,
     getDataInStore,
     getManyDataInStore,
@@ -19,7 +20,6 @@ import {
     purgeManyDataInStore,
     updateDataInStore,
 } from "./database.factory";
-import {UpdateData} from "../models/update-data";
 import {Data} from "../models/data";
 import {QueryModel} from "../models/query-model";
 import {UpdateModel} from "../models/update-model";
@@ -128,4 +128,12 @@ export const _init: InitDatabaseFn = async options => {
         return uI(options);
     }
     return initDatabase(options);
+}
+
+export const _aggregate: AggregateDataFn = (table, pipelines, options) => {
+    const uA = Factory.get<AggregateDataFn>(FactoryIdentifier.AggregateDataFn);
+    if (uA) {
+        return uA(table, pipelines, options);
+    }
+    return aggregate(table, pipelines, options);
 }

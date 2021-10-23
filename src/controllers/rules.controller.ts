@@ -5,7 +5,7 @@ import {BFastOptions} from '../bfast-database.option';
 import {devLog} from "../utils/debug.util";
 import {AuthAdapter} from "../adapters/auth.adapter";
 import {FilesAdapter} from "../adapters/files.adapter";
-import {bulk, findByFilter, findById, remove, writeMany, writeOne} from "./database.controller";
+import {aggregate, bulk, findByFilter, findById, remove, writeMany, writeOne} from "./database.controller";
 import {handleUpdateRule} from "./update.rule.controller";
 import {addPolicyRule, hasPermission, listPolicyRule, removePolicyRule, signIn, signUp} from "./auth.controller";
 import {deleteFile, listFiles, saveFile} from "./storage.controller";
@@ -564,11 +564,8 @@ export async function handleUpdateRules(
 }
 
 export async function handleStorageRule(
-    rulesBlockModel: RulesModel,
-    ruleResultModel: RuleResponse,
-    authAdapter: AuthAdapter,
-    filesAdapter: FilesAdapter,
-    options: BFastOptions,
+    rulesBlockModel: RulesModel, ruleResultModel: RuleResponse,
+    authAdapter: AuthAdapter, filesAdapter: FilesAdapter, options: BFastOptions,
 ): Promise<RuleResponse> {
     try {
         const fileRules = getRulesKey(rulesBlockModel).filter(rule => rule.startsWith('files'));
@@ -662,6 +659,70 @@ export async function handleStorageRule(
         ruleResultModel.errors.files = {
             message: e.message ? e.message : e.toString(),
             path: 'files',
+            data: null
+        };
+        return ruleResultModel;
+    }
+}
+
+export async function handleAggregationRules(
+    rulesBlockModel: RulesModel, ruleResultModel: RuleResponse, options: BFastOptions
+): Promise<RuleResponse> {
+    try {
+        const aggregateRules = getRulesKey(rulesBlockModel).filter(rule => rule.startsWith('aggregate'));
+        if (aggregateRules.length === 0) {
+            return ruleResultModel;
+        }
+        for (const aggregateRule of aggregateRules) {
+            const domain = extractDomain(aggregateRule, 'aggregate');
+            const allowed = await hasPermission(`aggregate.${domain}`, rulesBlockModel?.context, options);
+            if (allowed !== true) {
+                ruleResultModel.errors[`aggregate.${domain}`] = {
+                    message: 'You have insufficient permission to this resource',
+                    path: `aggregate.${domain}`,
+                    data: rulesBlockModel[aggregateRule]
+                };
+                return ruleResultModel;
+            }
+            const data = rulesBlockModel[aggregateRule];
+            try {
+                if (data
+                    && data.hashes
+                    && data.pipelines
+                    && Array.isArray(data.pipelines)
+                    && Array.isArray(data.hashes)
+                ) {
+                    ruleResultModel[aggregateRule] = await aggregate(
+                        domain,
+                        data.pipelines,
+                        {bypassDomainVerification: true, transaction: null},
+                        options
+                    );
+                } else if (data && Array.isArray(data)) {
+                    ruleResultModel[aggregateRule] = await aggregate(
+                        domain,
+                        data,
+                        {bypassDomainVerification: true, transaction: null},
+                        options
+                    );
+                } else {
+                    throw {message: 'A pipeline must be of any[] or {hashes:string[],pipelines: any[]}'};
+                }
+            } catch (e) {
+                devLog(e);
+                ruleResultModel.errors[`aggregate.${domain}`] = {
+                    message: e.message ? e.message : e.toString(),
+                    path: `aggregate.${domain}`,
+                    data
+                };
+            }
+        }
+        return ruleResultModel;
+    } catch (e) {
+        devLog(e);
+        ruleResultModel.errors[`aggregate`] = {
+            message: e.message ? e.message : e.toString(),
+            path: `aggregate`,
             data: null
         };
         return ruleResultModel;

@@ -13,4 +13,5 @@ export enum FactoryIdentifier {
     UpdateManyDataFn,
     UpdateDataFn,
     CreateDataFn,
+    AggregateDataFn,
 }

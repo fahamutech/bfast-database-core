@@ -13,3 +13,5 @@ export type CreateDataFn = (table: string, data: Data, options: BFastOptions) =>
 // export type CreateManyDataFn = (table: string, datas: Array<Data>, options: BFastOptions) => Promise<Data[]>;
 export type UpdateDataFn = (table: string, updateModel: UpdateModel, options: BFastOptions) => Promise<Data>;
 // export type UpdateManyDataFn = (table: string, query: Data, data: UpdateData, options: BFastOptions) => Promise<Data[]>;
+
+export type AggregateDataFn = (table: string, pipelines: any[], options: BFastOptions)=>Promise<Data>;

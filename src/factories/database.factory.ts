@@ -1,4 +1,5 @@
 import {
+    AggregateDataFn,
     CreateDataFn,
     FindDataFn,
     GetDataFn,
@@ -223,6 +224,13 @@ export const initDatabase: InitDatabaseFn = async (options) => {
     //         unique: true,
     //         // collation: {locale: 'en', strength: 2}
     //     });
-        return 'done';
+    return 'done';
     // }, options);
+}
+
+
+export const aggregate: AggregateDataFn = async (table, pipelines, options) => {
+    return withMongoClient(conn => {
+        return conn.db().collection(table).aggregate(pipelines, {allowDiskUse: true}).toArray();
+    }, options);
 }

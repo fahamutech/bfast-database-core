@@ -11,6 +11,7 @@ import {FilesAdapter} from "../adapters/files.adapter";
 import {verifyToken} from './security.controller';
 import {hasPermission} from "./auth.controller";
 import {
+    handleAggregationRules,
     handleAuthenticationRule,
     handleAuthorizationRule,
     handleBulkRule,
@@ -265,54 +266,22 @@ export function handleRuleBlocks(
     }
     const results: RuleResponse = {errors: {}};
     handleAuthenticationRule(body, results, authAdapter, options).then(_1 => {
-        return handleAuthorizationRule(
-            body,
-            results,
-            options
-        );
+        return handleAuthorizationRule(body, results, options);
     }).then(_2 => {
-        return handleCreateRules(
-            body,
-            results,
-            options,
-            null
-        );
+        return handleCreateRules(body, results, options, null);
     }).then(_3 => {
-        return handleUpdateRules(
-            body,
-            results,
-            options,
-            null
-        );
+        return handleUpdateRules(body, results, options, null);
     }).then(_4 => {
-        return handleDeleteRules(
-            body,
-            results,
-            options,
-            null
-        );
+        return handleDeleteRules(body, results, options, null);
     }).then(_5 => {
-        return handleQueryRules(
-            body,
-            results,
-            options,
-            null
-        );
+        return handleQueryRules(body, results, options, null);
     }).then(_6 => {
-        return handleBulkRule(
-            body,
-            results,
-            options
-        );
+        return handleBulkRule(body, results, options);
     }).then(_8 => {
-        return handleStorageRule(
-            body,
-            results,
-            authAdapter,
-            filesAdapter,
-            options
-        );
+        return handleStorageRule(body, results, authAdapter, filesAdapter, options);
     }).then(_9 => {
+        return handleAggregationRules(body, results, options);
+    }).then(_10 => {
         if (!(results.errors && Object.keys(results.errors).length > 0)) {
             delete results.errors;
         }
