@@ -107,7 +107,9 @@ export async function hasPermission(ruleId: string, context: ContextBlock, optio
         policyDomainName,
         {
             return: [],
-            filter,
+            filter: {
+                $or: filter
+            },
         },
         context,
         {
@@ -173,16 +175,19 @@ export async function signUp<T extends BasicUserAttributesModel>(
     const oldUser = await findByFilter(
         '_User',
         {
-            filter: [
-                {username: userModel.username},
-                {email: userModel.email},
-            ],
+            filter: {
+                $or: [
+                    {username: userModel.username},
+                    {email: userModel.email}
+                ]
+            },
             return: []
         },
         context,
         {bypassDomainVerification: true},
         options
     );
+    // console.log(oldUser, '***********');
     if (Array.isArray(oldUser) && oldUser.length > 0) {
         throw {message: 'User already exist'};
     }

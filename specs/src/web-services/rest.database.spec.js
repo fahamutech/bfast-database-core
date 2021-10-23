@@ -33,7 +33,7 @@ describe('Database', function () {
                 queryT: {
                     filter: {
                         name: {
-                            $fn: `return it !== 'xps';`
+                            $ne: 'xps'
                         }
                     },
                     return: []

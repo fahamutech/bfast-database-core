@@ -92,7 +92,7 @@ describe('Changes', function () {
                             .table('test')
                             .save([
                                 {
-                                    id: 'ethan',
+                                    id: 'ethan2',
                                     name: 'joshua',
                                     createdAt: 'leo',
                                     updatedAt: 'leo'
@@ -120,7 +120,7 @@ describe('Changes', function () {
                     {
                         name: 'create',
                         snapshot: {
-                            id: 'ethan',
+                            id: 'ethan2',
                             name: 'joshua',
                             createdAt: 'leo',
                             updatedAt: 'leo',

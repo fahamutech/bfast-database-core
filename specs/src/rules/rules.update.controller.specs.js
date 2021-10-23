@@ -62,7 +62,6 @@ describe('RulesController', function () {
                 config,
                 null
             );
-            // console.log(results);
             should().exist(results.updateProduct);
             expect(results.updateProduct.name).equal('ethan');
             expect(results.updateProduct.price).equal(60);
@@ -232,8 +231,8 @@ describe('RulesController', function () {
                         update: {
                             $set: {
                                 name: 'apple',
-                                _created_at: _date,
-                                _updated_at: _date,
+                                createdAt: _date,
+                                updatedAt: _date,
                             }
                         },
                         upsert: true,
@@ -252,7 +251,7 @@ describe('RulesController', function () {
                 id: 'xyz123',
                 name: 'apple',
                 createdAt: _date,
-                createdBy: null,
+                // createdBy: null,
                 updatedAt: _date
             });
         });
@@ -264,8 +263,8 @@ describe('RulesController', function () {
                         update: {
                             $set: {
                                 name: 'doe_apple',
-                                _created_at: _date,
-                                _updated_at: _date,
+                                createdAt: _date,
+                                updatedAt: _date,
                             }
                         },
                         upsert: false,
@@ -287,7 +286,7 @@ describe('RulesController', function () {
                         update: {
                             $set: {
                                 name: 'apple',
-                                _created_at: new Date()
+                                createdAt: new Date()
                             }
                         },
                         upsert: true,
@@ -298,14 +297,16 @@ describe('RulesController', function () {
                 config,
                 null
             );
-            const r = await handleQueryRules({
+            const r = await handleQueryRules(
+                {
                     queryProduct: {
                         filter: {
                             status: 'mixer'
                         },
                         return: []
                     }
-                }, {errors: {}},
+                },
+                {errors: {}},
                 config,
                 null
             );
@@ -335,7 +336,6 @@ describe('RulesController', function () {
             expect(results.updateProduct.price).equal(70);
         });
         it('should increment a number field if $inc operation provided and field exist in a inner doc ', async function () {
-            // const _date = new Date();
             const results = await handleUpdateRules({
                     updateProduct: {
                         id: 'josh',
@@ -448,8 +448,9 @@ describe('RulesController', function () {
                 config,
                 null
             );
-            should().exist(results.updateProduct);
-            expect(results.updateProduct.name).equal('ethan');
+            should().not.exist(results.updateProduct);
+            should().exist(results.errors['update.Product']);
+            // expect(results.updateProduct.name).equal('ethan');
         });
         it('should upsert and increment field when upsert is true and use id', async function () {
             const results = await handleUpdateRules({

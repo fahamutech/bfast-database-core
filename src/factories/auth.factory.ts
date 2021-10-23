@@ -52,9 +52,7 @@ export class AuthFactory implements AuthAdapter {
     }
 
     async signUp<T extends BasicUserAttributesModel>(
-        userModel: T,
-        context: ContextBlock,
-        options: BFastOptions
+        userModel: T, context: ContextBlock, options: BFastOptions
     ): Promise<T> {
         userModel.password = await hashPlainText(userModel?.password);
         const user = await writeOne(

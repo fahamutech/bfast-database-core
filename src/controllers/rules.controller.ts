@@ -9,6 +9,7 @@ import {bulk, findByFilter, findById, remove, writeMany, writeOne} from "./datab
 import {handleUpdateRule} from "./update.rule.controller";
 import {addPolicyRule, hasPermission, listPolicyRule, removePolicyRule, signIn, signUp} from "./auth.controller";
 import {deleteFile, listFiles, saveFile} from "./storage.controller";
+import {UpdateModel} from "../models/update-model";
 
 export function getRulesKey(rules: RulesModel): string[] {
     if (rules) {
@@ -431,9 +432,7 @@ export async function handleQueryRules(
 }
 
 export async function handleBulkRule(
-    rulesBlockModel: RulesModel,
-    ruleResultModel: RuleResponse,
-    options: BFastOptions,
+    rulesBlockModel: RulesModel, ruleResultModel: RuleResponse, options: BFastOptions,
 ): Promise<RuleResponse> {
     try {
         const transactionRules = getRulesKey(rulesBlockModel).filter(rule => rule.startsWith('transaction'));
@@ -470,7 +469,11 @@ export async function handleBulkRule(
                 session
             );
         });
-        ruleResultModel.transaction = {commit: resultObject};
+        ruleResultModel.transaction = {
+            commit: {
+                errors: resultObject.errors
+            }
+        };
         return ruleResultModel;
     } catch (e) {
         devLog(e);
@@ -496,7 +499,7 @@ export async function handleUpdateRules(
         }
         for (const updateRule of updateRules) {
             const domain = extractDomain(updateRule, 'update');
-            const updateRuleRequests: UpdateRuleRequestModel = rules[updateRule];
+            const updateRuleRequests: UpdateModel = rules[updateRule];
             const allowed = await hasPermission(
                 `update.${domain}`,
                 rules.context,
@@ -649,7 +652,7 @@ export async function handleStorageRule(
                 ruleResultModel.errors[`files.${action}`] = {
                     message: e.message ? e.message : e.toString(),
                     path: `files.${action}`,
-                    data
+                    data: JSON.stringify(data, null, 2)
                 };
             }
         }
