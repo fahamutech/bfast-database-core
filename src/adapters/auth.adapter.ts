@@ -4,9 +4,7 @@ import {BFastOptions} from "../bfast-database.option";
 
 export abstract class AuthAdapter {
     abstract signUp<T extends BasicUserAttributesModel>(
-        userModel: T,
-        context: ContextBlock,
-        options: BFastOptions
+        userModel: T, context: ContextBlock, options: BFastOptions
     ): Promise<T>;
 
     abstract signIn<T extends BasicUserAttributesModel>(

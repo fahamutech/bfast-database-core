@@ -1,15 +1,15 @@
 import {RulesModel} from '../models/rules.model';
-import {UpdateRuleRequestModel} from '../models/update-rule-request.model';
 import {BFastOptions} from "../bfast-database.option";
-import {findByFilter, updateMany, updateOne} from "./database.controller";
+import {updateMany, updateOne} from "./database.controller";
+import {UpdateModel} from "../models/update-model";
 
 export async function handleUpdateRule(
     rules: RulesModel,
     domain: string,
-    updateRuleRequest: UpdateRuleRequestModel,
+    updateRuleRequest: UpdateModel,
     transactionSession: any,
     options: BFastOptions
-): Promise<any[] | string> {
+): Promise<any[]> {
     if (!updateRuleRequest?.update) {
         throw new Error('Please update field is required, which contains properties to update a document');
     }

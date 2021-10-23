@@ -175,8 +175,8 @@ describe('RulesController', function () {
                 config,
                 null
             );
-            assert(results.queryProduct !== undefined);
-            assert(results.queryProduct.name === 'xyz');
+            should().exist(results.queryProduct);
+            expect(results.queryProduct.name).equal('xyz');
             assert(results.queryProduct.id === 'xyzid');
             assert(results.queryProduct.price === 60);
             assert(results.queryProduct.status === 'new');
@@ -255,7 +255,7 @@ describe('RulesController', function () {
                     queryProduct: {
                         filter: {
                             name: {
-                                $fn: `return it.toString().length > 0`
+                                $exists: true
                             }
                         },
                         size: 2,
@@ -413,10 +413,12 @@ describe('RulesController', function () {
         it('should perform query when filter is in or format/array', async function () {
             const results = await handleQueryRules({
                     queryProduct: {
-                        filter: [
-                            {name: 'xyz'},
-                            {name: 'poi'}
-                        ],
+                        filter: {
+                            $or: [
+                                {name: 'xyz'},
+                                {name: 'poi'}
+                            ]
+                        },
                         return: []
                     }
                 }, {errors: {}},
@@ -447,10 +449,12 @@ describe('RulesController', function () {
         it('should perform query when filter is in or format/array and one query is false', async function () {
             const results = await handleQueryRules({
                     queryProduct: {
-                        filter: [
-                            {name: 'xyz'},
-                            {name: 'joshua'}
-                        ],
+                        filter: {
+                            $or: [
+                                {name: 'xyz'},
+                                {name: 'joshua'}
+                            ]
+                        },
                         return: []
                     }
                 }, {errors: {}},
@@ -476,10 +480,12 @@ describe('RulesController', function () {
         it('should perform count query when filter is in or format/array', async function () {
             const results = await handleQueryRules({
                     queryProduct: {
-                        filter: [
-                            {name: 'xyz'},
-                            {name: 'poi'}
-                        ],
+                        filter: {
+                            $or: [
+                                {name: 'xyz'},
+                                {name: 'poi'}
+                            ]
+                        },
                         count: true,
                         return: []
                     }
@@ -542,9 +548,10 @@ describe('RulesController', function () {
             const results = await handleQueryRules({
                     queryProduct: {
                         filter: {
-                            price: {
-                                $fn: `return (it === 50 || it === 100);`
-                            }
+                            $or: [
+                                {price: 50},
+                                {price: 100}
+                            ]
                         },
                         return: []
                     }
@@ -561,10 +568,10 @@ describe('RulesController', function () {
                     queryProduct: {
                         filter: {
                             price: {
-                                $fn: 'return true',
-                                $orderBy: 'asc'
+                                $exists: true,
                             }
                         },
+                        orderBy: [{price: 1}],
                         return: []
                     }
                 }, {errors: {}},
@@ -610,11 +617,11 @@ describe('RulesController', function () {
                     queryProduct: {
                         filter: {
                             price: {
-                                $fn: 'return true',
-                                $orderBy: 'asc',
-                                $limit: 2,
+                                $exists: true,
                             }
                         },
+                        size: 2,
+                        orderBy: [{price: 1}],
                         return: []
                     }
                 }, {errors: {}},
@@ -651,11 +658,11 @@ describe('RulesController', function () {
                     queryProduct: {
                         filter: {
                             price: {
-                                $fn: 'return true',
-                                $orderBy: 'asc',
-                                $skip: 2,
+                                $exists: true
                             }
                         },
+                        skip: 2,
+                        orderBy: [{price: 1}],
                         return: []
                     }
                 }, {errors: {}},
@@ -682,10 +689,10 @@ describe('RulesController', function () {
                     queryProduct: {
                         filter: {
                             price: {
-                                $fn: 'return true',
-                                $orderBy: 'desc'
+                                $exists: true,
                             }
                         },
+                        orderBy: [{price: -1}],
                         return: []
                     }
                 }, {errors: {}},
@@ -730,11 +737,7 @@ describe('RulesController', function () {
             const results = await handleQueryRules({
                     queryProduct: {
                         filter: {
-                            tags: {
-                                b: {
-                                    c: 2
-                                }
-                            }
+                            'tags.b.c': 2
                         },
                         return: []
                     }
@@ -816,7 +819,6 @@ describe('RulesController', function () {
                 config,
                 null
             );
-            // console.log(results1);
             should().exist(results1);
             should().exist(results1.queryProduct);
             expect(results1.queryProduct).length(1);
