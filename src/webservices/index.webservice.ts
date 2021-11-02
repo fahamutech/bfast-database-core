@@ -5,8 +5,8 @@ import {BFastOptions} from "../bfast-database.option";
 import {AuthAdapter} from "../adapters/auth.adapter";
 import {
     getFileFromStorage,
-    getFilesFromStorage,
-    geThumbnailFromStorage,
+    getFilesFromStorage, getFileV2FromStorage,
+    geThumbnailFromStorage, geThumbnailV2FromStorage,
     getUploadFileV2,
     uploadMultiPartFile
 } from "./storage.webservice";
@@ -22,7 +22,9 @@ export class WebServices {
     storage(prefix = '/'): StorageApiModel {
         return {
             fileApi: getFileFromStorage(prefix, this.filesAdapter, this.options),
+            fileV2Api: getFileV2FromStorage(prefix, this.filesAdapter, this.options),
             fileThumbnailApi: geThumbnailFromStorage(prefix, this.filesAdapter, this.options),
+            fileThumbnailV2Api: geThumbnailV2FromStorage(prefix, this.filesAdapter, this.options),
             fileListApi: getFilesFromStorage(prefix, this.filesAdapter, this.options),
             fileUploadApi: uploadMultiPartFile(prefix, this.filesAdapter, this.options),
             getUploadFileV2: getUploadFileV2(prefix)

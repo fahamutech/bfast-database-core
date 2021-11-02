@@ -96,11 +96,31 @@ export function getFileFromStorage(
     }
 }
 
+export function getFileV2FromStorage(
+    prefix = '/', filesAdapter: FilesAdapter, options: BFastOptions
+): FunctionsModel {
+    return {
+        path: `${prefix}v2/storage/:appId/file/:filename`,
+        method: 'GET',
+        onRequest: handleGetFile(filesAdapter, options)
+    }
+}
+
 export function geThumbnailFromStorage(
     prefix = '/', filesAdapter: FilesAdapter, options: BFastOptions
 ): FunctionsModel {
     return {
         path: `${prefix}storage/:appId/file/:filename/thumbnail`,
+        method: 'GET',
+        onRequest: handleGetThumbnail(filesAdapter, options)
+    }
+}
+
+export function geThumbnailV2FromStorage(
+    prefix = '/', filesAdapter: FilesAdapter, options: BFastOptions
+): FunctionsModel {
+    return {
+        path: `${prefix}v2/storage/:appId/file/:filename/thumbnail`,
         method: 'GET',
         onRequest: handleGetThumbnail(filesAdapter, options)
     }
