@@ -79,9 +79,11 @@ export function initialize(options: BFastOptions): WebServices {
             console.error(_);
             process.exit(-1);
         });
+        const fileF = getFilesFactory(options);
+        fileF.init(options).catch(console.log);
         return new WebServices(
             getAuthFactory(options),
-            getFilesFactory(options),
+            fileF,
             options
         );
     } else {
