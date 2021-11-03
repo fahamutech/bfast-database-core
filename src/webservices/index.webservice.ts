@@ -31,7 +31,7 @@ export class WebServices {
         };
     }
 
-    realtime(config: { applicationId: string, masterKey: string }, prefix = '/'): {
+    realtime(config: { applicationId: string, projectId: string, masterKey: string }, prefix = '/'): {
         changes: { name: string, onEvent: any },
     } {
         return {

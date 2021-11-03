@@ -287,7 +287,7 @@ export async function writeOne<T extends BasicAttributesModel>(
         fullDocument: cleanDoc,
         documentKey: cleanDoc?.id,
         operationType: "create"
-    });
+    }, options);
     return cleanDoc;
 }
 
@@ -361,7 +361,7 @@ export async function updateOne(
         _id: updatedDoc?._id,
         fullDocument: updatedDoc,
         operationType: "update"
-    });
+    }, options);
     return cleanDoc;
 }
 
@@ -593,7 +593,7 @@ export async function remove(
             fullDocument: t,
             documentKey: t?._id,
             operationType: "delete"
-        });
+        }, options);
         return cleanDoc;
     });
 }
@@ -605,7 +605,9 @@ export async function bulk<S>(
 }
 
 export async function changes(
-    domain: string, pipeline: any[], listener: (doc: ChangesDocModel) => void,
+    domain: string,
+    projectId: string,
+    pipeline: any[], listener: (doc: ChangesDocModel) => void,
     options: DatabaseChangesOptions = {bypassDomainVerification: false, resumeToken: undefined}
 ): Promise<{ close: () => void }> {
     if (options && options.bypassDomainVerification === false) {
@@ -634,10 +636,11 @@ export async function changes(
         }
     }
     const appEventInst = AppEventsFactory.getInstance();
-    appEventInst.sub(ConstUtil.DB_CHANGES_EVENT.concat(domain), _listener);
+    const eventName = appEventInst.eventName(projectId, domain);
+    appEventInst.sub(eventName, _listener);
     return {
         close: () => {
-            appEventInst.unSub(ConstUtil.DB_CHANGES_EVENT.concat(domain), _listener);
+            appEventInst.unSub(eventName, _listener);
         }
     }
 }
@@ -879,8 +882,9 @@ export function sanitize4User(data: any, returnFields: string[]) {
     return returnedData;
 }
 
-export function publishChanges(domain: string, change: ChangesModel) {
-    AppEventsFactory.getInstance().pub(ConstUtil.DB_CHANGES_EVENT.concat(domain), change);
+export function publishChanges(domain: string, change: ChangesModel, options: BFastOptions) {
+    const aI = AppEventsFactory.getInstance();
+    aI.pub(aI.eventName(options.projectId, domain), change);
 }
 
 export async function aggregate(

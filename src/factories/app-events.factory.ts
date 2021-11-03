@@ -1,13 +1,14 @@
 import EventEmitter from "events";
 import {ChangesModel} from "../models/changes.model";
+import {ConstUtil} from "../utils/const.util";
 
 export class AppEventsFactory {
-    readonly eventEmitter ;
+    readonly eventEmitter;
     private static instance: AppEventsFactory;
 
     private constructor() {
         this.eventEmitter = new EventEmitter();
-        this.eventEmitter.setMaxListeners(100000);
+        this.eventEmitter.setMaxListeners(100000000);
     }
 
     public static getInstance(): AppEventsFactory {
@@ -29,7 +30,11 @@ export class AppEventsFactory {
         this.eventEmitter.emit(eventName, doc);
     }
 
-    public connected(eventName:string): number{
+    public eventName(projectId: string, domain: string): string {
+        return ConstUtil.DB_CHANGES_EVENT.concat(domain).concat(projectId);
+    }
+
+    public connected(eventName: string): number {
         return this.eventEmitter.listenerCount(eventName);
     }
 }

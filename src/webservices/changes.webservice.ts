@@ -2,7 +2,7 @@ import {ChangesDocModel} from "../models/changes-doc.model";
 import {changes} from '../controllers/database.controller';
 
 export function changesRestAPI(
-    config: { applicationId: string, masterKey: string },
+    config: { applicationId: string, projectId: string, masterKey: string },
     prefix = '/',
 ): { name: string, onEvent: any } {
     return {
@@ -13,6 +13,7 @@ export function changesRestAPI(
                 if (request.body.pipeline && Array.isArray(request.body.pipeline) && request.body.domain) {
                     changes(
                         request.body.domain,
+                        config.projectId,
                         request.body.pipeline,
                         (doc: ChangesDocModel) => {
                             response.emit({change: doc});
