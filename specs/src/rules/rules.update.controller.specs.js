@@ -13,9 +13,9 @@ describe('RulesController', function () {
         await mongoMemoryReplSet.stop();
     });
     describe('update', function () {
-        const leo = new Date().toISOString();
+        const leo = new Date();
         before(async function () {
-            await handleCreateRules({
+            const r = await handleCreateRules({
                     createProduct: [
                         {name: 'xyz', price: 50, status: 'new', id: 'xyz'},
                         {name: 'wer', price: 100, status: 'new'},
@@ -27,6 +27,8 @@ describe('RulesController', function () {
                 config,
                 null
             );
+            should().exist(r);
+            should().exist(r.createProduct);
         });
         it('should update a document by id', async function () {
             const results = await handleUpdateRules({
@@ -66,7 +68,7 @@ describe('RulesController', function () {
             should().exist(results.updateProduct);
             expect(results.updateProduct.name).equal('ethan');
             expect(results.updateProduct.price).equal(60);
-            expect(results.updateProduct.createdAt).equal(leo);
+            expect(results.updateProduct.createdAt).eql(leo);
         });
         it('should update a documents by filter', async function () {
             const results = await handleUpdateRules({
@@ -248,12 +250,14 @@ describe('RulesController', function () {
             expect(results.updateProduct.id).equal('xyz123');
             should().exist(results.updateProduct.createdAt);
             should().exist(results.updateProduct.createdAt);
+            expect(typeof results.updateProduct.createdAt).equal('object');
+            expect(typeof results.updateProduct.updatedAt).equal('object');
             expect(results.updateProduct).eql({
                 id: 'xyz123',
                 name: 'apple',
-                createdAt: _date,
+                createdAt: new Date(_date),
                 // createdBy: null,
-                updatedAt: _date
+                updatedAt: new Date(_date)
             });
         });
         it('should not create document if not exist and upsert is false, with query by id', async function () {

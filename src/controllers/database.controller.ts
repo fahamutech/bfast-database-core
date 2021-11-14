@@ -6,7 +6,6 @@ import {generateUUID} from './security.controller';
 import {ChangesModel} from '../models/changes.model';
 import {ChangesDocModel} from "../models/changes-doc.model";
 import {AppEventsFactory} from "../factories/app-events.factory";
-import {ConstUtil} from "../utils/const.util";
 import {BFastOptions} from "../bfast-database.option";
 import {DatabaseWriteOptions} from "../models/database-write-options";
 import {DatabaseUpdateOptions} from "../models/database-update-options";
@@ -23,7 +22,6 @@ import {
 } from "../factories/database-factory-resolver";
 import {UpdateModel} from "../models/update-model";
 import moment from 'moment';
-import {execFile} from 'child_process';
 
 export async function handleDomainValidation(domain: string): Promise<any> {
     if (!validDomain(domain)) {
@@ -56,7 +54,8 @@ export async function writeOne<T extends BasicAttributesModel>(
     const returnFields = getReturnFields(data);
     const sanitizedDataWithCreateMetadata = addCreateMetadata(data, context);
     const sanitizedData: any = sanitize4Db(sanitizedDataWithCreateMetadata);
-    const savedData: any = await _createData(domain, sanitizedData, options);
+
+    const savedData: any = await _createData(domain, sanitizeDate(sanitizedData), options);
     const cleanDoc: any = sanitize4User(savedData, returnFields) as T;
     publishChanges(domain, {
         _id: cleanDoc?.id,
@@ -95,6 +94,7 @@ export async function updateOne(
     const returnFields = getReturnFields(updateModel as any);
     updateModel = altUpdateModel(updateModel);
     // console.log(updateModel);
+    updateModel.update.$set = sanitizeDate(updateModel.update.$set);
     const updatedDoc = await _updateData(domain, updateModel, options);
     const cleanDoc = sanitize4User(updatedDoc, returnFields);
     publishChanges(domain, {
@@ -252,7 +252,7 @@ export function addUpdateMetadata(data: any): any {
         if (data.$set) {
             let userDate = data.$set.updatedAt;
             if (moment(userDate).isValid()) {
-                userDate = moment(userDate).toISOString();
+                userDate = moment(userDate).toDate();
             }
             data.$set.updatedAt = userDate ? userDate : new Date();
             data.$set = sanitize4Db(data.$set);
@@ -270,14 +270,28 @@ export function validDomain(domain: string): boolean {
     return (domain !== '_User' && domain !== '_Token' && domain !== '_Policy');
 }
 
+export function sanitizeDate(data: any) {
+    if (data && data.createdAt) {
+        if (moment(data.createdAt).isValid()) {
+            data.createdAt = moment(data.createdAt).toDate();
+        }
+    }
+    if (data && data.updatedAt) {
+        if (moment(data.updatedAt).isValid()) {
+            data.updatedAt = moment(data.updatedAt).toDate();
+        }
+    }
+    return data;
+}
+
 export function addCreateMetadata(data: any, context: ContextBlock) {
     let userUpdateDate = data.updatedAt;
     if (moment(userUpdateDate).isValid()) {
-        userUpdateDate = moment(userUpdateDate).toISOString();
+        userUpdateDate = moment(userUpdateDate).toDate();
     }
     let userCreateDate = data.createdAt;
     if (moment(userCreateDate).isValid()) {
-        userCreateDate = moment(userCreateDate).toISOString();
+        userCreateDate = moment(userCreateDate).toDate();
     }
     if (context) {
         data.createdBy = context.uid ? context.uid : null;
@@ -338,11 +352,11 @@ export function sanitizeWithOperator4Db(data: any) {
     if (data === null || data === undefined) {
         return null;
     }
-    if (data.filter && data.filter.id){
+    if (data.filter && data.filter.id) {
         data.filter._id = data.filter.id;
         delete data.filter.id;
     }
-    if (data.id){
+    if (data.id) {
         data._id = data.id;
         delete data.id;
     }
@@ -384,7 +398,7 @@ export function sanitize4User(data: any, returnFields: string[]) {
         return null;
     }
     if (data && data.hasOwnProperty('_id')) {
-        data.id = data._id ? (typeof data._id === 'object' ? data._id : data._id.toString()) : '';
+        data.id = data._id ? (typeof data._id === 'object' ? data._id : data._id.toString().trim()) : '';
         delete data._id;
     }
     if (data && data.hasOwnProperty('_created_at')) {
@@ -406,10 +420,10 @@ export function sanitize4User(data: any, returnFields: string[]) {
         delete data._hashed_password;
     }
     // if (data && data.hasOwnProperty('password')) {
-        // if (!data.password) {
-        //     data.password = data._hashed_password;
-        // }
-        // delete data.password;
+    // if (!data.password) {
+    //     data.password = data._hashed_password;
+    // }
+    // delete data.password;
     // }
     if (data && typeof data.hasOwnProperty('_rperm')) {
         delete data._rperm;
