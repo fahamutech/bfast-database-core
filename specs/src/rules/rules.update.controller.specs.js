@@ -13,6 +13,7 @@ describe('RulesController', function () {
         await mongoMemoryReplSet.stop();
     });
     describe('update', function () {
+        const leo = new Date().toISOString();
         before(async function () {
             await handleCreateRules({
                     createProduct: [
@@ -20,7 +21,7 @@ describe('RulesController', function () {
                         {name: 'wer', price: 100, status: 'new'},
                         {name: 'poi', price: 30, status: 'new'},
                         {name: 'poipo', price: 60, status: 'old'},
-                        {id: 'josh', name: 'ethan', price: 60, a: {b: 10}, createdAt: 'leo', 'updatedAt': 'leo'},
+                        {id: 'josh', name: 'ethan', price: 60, a: {b: 10}, createdAt: leo, 'updatedAt': leo},
                     ]
                 }, {errors: {}},
                 config,
@@ -65,7 +66,7 @@ describe('RulesController', function () {
             should().exist(results.updateProduct);
             expect(results.updateProduct.name).equal('ethan');
             expect(results.updateProduct.price).equal(60);
-            expect(results.updateProduct.createdAt).equal('leo');
+            expect(results.updateProduct.createdAt).equal(leo);
         });
         it('should update a documents by filter', async function () {
             const results = await handleUpdateRules({
@@ -224,7 +225,7 @@ describe('RulesController', function () {
             assert(typeof results.updateProduct === 'object');
         });
         it('should create document if not exist and upsert is true, with query by id', async function () {
-            const _date = new Date();
+            const _date = new Date().toISOString();
             const results = await handleUpdateRules({
                     updateProduct: {
                         id: 'xyz123',
@@ -403,7 +404,7 @@ describe('RulesController', function () {
                         id: 'josh',
                         update: {
                             $set: {
-                                updatedAt: 'leo'
+                                updatedAt: leo
                             },
                             $inc: {
                                 c: 10,
@@ -428,9 +429,9 @@ describe('RulesController', function () {
                 a: {b: 21},
                 c: 20,
                 e: {a: 10},
-                createdAt: 'leo',
-                createdBy: null,
-                updatedAt: 'leo'
+                createdAt: leo,
+                // createdBy: null,
+                updatedAt: leo
             })
         });
         it('should not increment non number field', async function () {

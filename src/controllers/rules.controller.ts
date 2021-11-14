@@ -1,5 +1,4 @@
 import {RuleResponse, RulesModel} from '../models/rules.model';
-import {UpdateRuleRequestModel} from '../models/update-rule-request.model';
 import {DeleteModel} from '../models/delete-model';
 import {BFastOptions} from '../bfast-database.option';
 import {devLog} from "../utils/debug.util";

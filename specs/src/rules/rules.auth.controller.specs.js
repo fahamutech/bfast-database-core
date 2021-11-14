@@ -187,6 +187,7 @@ describe('Auth Rule', function () {
                 new AuthFactory(),
                 config
             );
+            // console.log(results)
             should().exist(results.auth.signIn);
             assert(typeof results.auth.signIn === 'object');
             assert(results.auth.signIn.username === 'doe2');

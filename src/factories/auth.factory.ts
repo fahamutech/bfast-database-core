@@ -47,6 +47,7 @@ export class AuthFactory implements AuthAdapter {
                 throw new Error('Password is not valid');
             }
         } else {
+            // console.log(users);
             throw new Error('Username is not valid');
         }
     }

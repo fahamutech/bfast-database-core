@@ -58,7 +58,6 @@ describe('RulesController::Delete Unit Test', function () {
             expect(results.deleteProduct.length).equal(1);
             expect(typeof results.deleteProduct[0].id === "string").equal(true);
         });
-
         it('should delete documents given many ids in filter', async function () {
             const results = await handleDeleteRules({
                     deleteProduct: {
@@ -73,7 +72,6 @@ describe('RulesController::Delete Unit Test', function () {
                 config,
                 null
             );
-            // console.log(results.deleteProduct);
             should().exist(results.deleteProduct);
             expect(Array.isArray(results.deleteProduct)).equal(true);
             expect(results.deleteProduct.length).equal(3);
@@ -81,7 +79,6 @@ describe('RulesController::Delete Unit Test', function () {
                 ['16b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b', 'a', 'b']
             );
         });
-
         it('should not delete objects by empty filter', async function () {
             const results = await handleDeleteRules({
                     deleteProduct: {

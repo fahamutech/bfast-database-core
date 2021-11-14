@@ -86,6 +86,7 @@ describe('RulesController', function () {
                 }, {errors: {}},
                 config
             );
+            // console.log(results.createTest)
             should().exist(results.createTest);
             expect(typeof results.createTest['id']).equal('string');
             expect(results.createTest['name']).equal('john');

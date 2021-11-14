@@ -187,8 +187,8 @@ export async function signUp<T extends BasicUserAttributesModel>(
         {bypassDomainVerification: true},
         options
     );
-    // console.log(oldUser, '***********');
     if (Array.isArray(oldUser) && oldUser.length > 0) {
+        console.log(oldUser, 'INFO: TRY RE SIGNUP');
         throw {message: 'User already exist'};
     }
     return await authAdapter.signUp(userModel, context, options);
