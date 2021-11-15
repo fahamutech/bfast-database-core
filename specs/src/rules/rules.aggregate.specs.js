@@ -7,6 +7,7 @@ describe('RulesController::Aggregation Unit Test', function () {
     let mongoMemoryReplSet
     before(async function () {
         mongoMemoryReplSet = mongoRepSet();
+        await mongoMemoryReplSet.start();
         await handleCreateRules({
             createProduct: {
                 name: 'xyz',
