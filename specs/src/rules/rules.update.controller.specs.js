@@ -5,31 +5,38 @@ const {handleCreateRules, handleUpdateRules, handleQueryRules} = require("../../
 
 describe('RulesController', function () {
     let mongoMemoryReplSet;
+    const leo = new Date();
     before(async function () {
         mongoMemoryReplSet = mongoRepSet();
         await mongoMemoryReplSet.start();
+        const r = await handleCreateRules({
+                createProduct: [
+                    {name: 'xyz', price: 50, status: 'new', id: 'xyz'},
+                    {name: 'wer', price: 100, status: 'new'},
+                    {name: 'poi', price: 30, status: 'new'},
+                    {name: 'poipo', price: 60, status: 'old'},
+                    {
+                        id: 'ethan',
+                        name: 'josh', price: 50, status: 'old', flags: {
+                            a: {
+                                q: 1,
+                                g: 2
+                            }
+                        }
+                    },
+                    {id: 'josh', name: 'ethan', price: 60, a: {b: 10}, createdAt: leo, 'updatedAt': leo},
+                ]
+            }, {errors: {}},
+            config,
+            null
+        );
+        should().exist(r);
+        should().exist(r.createProduct);
     });
     after(async function () {
         await mongoMemoryReplSet.stop();
     });
     describe('update', function () {
-        const leo = new Date();
-        before(async function () {
-            const r = await handleCreateRules({
-                    createProduct: [
-                        {name: 'xyz', price: 50, status: 'new', id: 'xyz'},
-                        {name: 'wer', price: 100, status: 'new'},
-                        {name: 'poi', price: 30, status: 'new'},
-                        {name: 'poipo', price: 60, status: 'old'},
-                        {id: 'josh', name: 'ethan', price: 60, a: {b: 10}, createdAt: leo, 'updatedAt': leo},
-                    ]
-                }, {errors: {}},
-                config,
-                null
-            );
-            should().exist(r);
-            should().exist(r.createProduct);
-        });
         it('should update a document by id', async function () {
             const results = await handleUpdateRules({
                     updateProduct: {
@@ -320,7 +327,6 @@ describe('RulesController', function () {
             expect(r.queryProduct[0].status).equal('mixer');
             expect(typeof r.queryProduct[0].id).equal('string');
         });
-
         it('should increment a number field if $inc operation provided and field exist in a doc ', async function () {
             // const _date = new Date();
             const results = await handleUpdateRules({
@@ -497,6 +503,55 @@ describe('RulesController', function () {
             should().exist(results.updateProduct);
             expect(results.updateProduct[0].age).equal(10);
             expect(results.updateProduct[0].name).equal('night');
+        });
+    });
+    describe('$unset', function () {
+        it('should remove field in a document', async function () {
+            const results = await handleUpdateRules({
+                    updateProduct: {
+                        id: 'xyz',
+                        update: {
+                            $unset: {
+                                status: 1
+                            }
+                        },
+                        return: []
+                    }
+                },
+                {errors: {}},
+                config,
+                null
+            );
+            should().exist(results.updateProduct);
+            should().not.exist(results.updateProduct.status);
+            expect(results.updateProduct.name).equal('xyz');
+            expect(results.updateProduct.price).equal(50);
+        });
+        it('should remove embedded field in a document', async function () {
+            const results = await handleUpdateRules({
+                    updateProduct: {
+                        id: 'ethan',
+                        update: {
+                            $unset: {
+                                'flags.a.q': 1
+                            }
+                        },
+                        return: []
+                    }
+                },
+                {errors: {}},
+                config,
+                null
+            );
+            should().exist(results.updateProduct);
+            should().not.exist(results.updateProduct.flags.a.q);
+            expect(results.updateProduct.name).equal('josh');
+            expect(results.updateProduct.price).equal(50);
+            expect(results.updateProduct.flags).eql({
+                a: {
+                    g: 2
+                }
+            })
         });
     });
 });
