@@ -26,13 +26,12 @@ jobs:
           port: 27017
       - name: Test
         run: |
-          npm install -g yarn
           npm install -g ipfs
           jsipfs init
           jsipfs config --json Addresses.API '["/ip4/127.0.0.1/tcp/5001"]'
           jsipfs daemon &
-          yarn install
-          yarn test
+          npm install
+          npm run test
 
         #jsipfs config --json API.HTTPHeaders.Access-Control-Allow-Origin '["*"]'
         env:

@@ -26,14 +26,13 @@ jobs:
           port: 27017
       - name: publish to npm@beta
         run: |
-          npm install -g yarn
           npm install -g ipfs
           jsipfs init
           jsipfs config --json Addresses.API '["/ip4/127.0.0.1/tcp/5001"]'
           jsipfs daemon &
-          yarn install
-          yarn test
-          yarn chapisha:beta
+          npm install
+          npm run test
+          npm run chapisha:beta
 
 #jsipfs config --json API.HTTPHeaders.Access-Control-Allow-Origin '["*"]'
         env:

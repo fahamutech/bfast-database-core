@@ -1,6 +1,6 @@
 {
   "name": "bfast-database-core",
-  "version": "3.0.0-alpha.11",
+  "version": "3.0.0-alpha.12",
   "main": "./index.js",
   "types": "./index.d.ts",
   "license": "MIT",
@@ -20,7 +20,7 @@
   "scripts": {
     "build": "gulp build && npm run build:esm",
     "build:esm": "tsc -p tsconfig.json --declaration",
-    "test": "yarn run build && nyc mocha  specs/src/*",
+    "test": "npm run build && nyc mocha  specs/src/*",
     "chapisha:beta": "npm run build && cd dist && npm publish --tag beta",
     "chapisha": "npm run build && cd dist && npm publish"
   },
