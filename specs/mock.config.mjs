@@ -1,7 +1,8 @@
-const {getEnv} = require('../dist')
-const mongodb = require('mongodb');
-const axios = require("axios");
-const {expect} = require('chai');
+import {getEnv} from "../dist/index.js";
+import mongodb from "mongodb";
+import axios from "axios";
+import {expect} from "chai";
+
 
 const mongoMemoryReplSet = () => {
     return {
@@ -17,10 +18,10 @@ const mongoMemoryReplSet = () => {
     }
 }
 
-exports.serverUrl = 'http://localhost:3111/v2';
-exports.mongoRepSet = mongoMemoryReplSet;
+export const serverUrl = 'http://localhost:3111/v2';
+export const mongoRepSet = mongoMemoryReplSet;
 
-exports.config = {
+export const config = {
     applicationId: 'bfast_test',
     useLocalIpfs: true,
     projectId: 'bfast_test',
@@ -37,8 +38,8 @@ exports.config = {
     rsaPublicKeyInJson: {}
 }
 
-exports.sendRuleRequest = async function sendRequest(data, code = 200) {
-    const response = await axios.post(exports.serverUrl, data);
+export const sendRuleRequest = async function sendRequest(data, code = 200) {
+    const response = await axios.post(serverUrl, data);
     expect(response.status).equal(code);
     return response.data;
 }

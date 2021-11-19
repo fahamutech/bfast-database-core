@@ -1,6 +1,9 @@
-const {config} = require('../../mock.config');
-const {assert, should} = require('chai');
-const {getToken, verifyToken} = require("../../../dist");
+import {assert, should} from "chai";
+import {getToken, verifyToken} from "../../../dist";
+
+// import {getToken, verifyToken} from "../../../dist";
+
+const {config} = require('../../mock.config.mjs');
 
 describe('SecurityController', function () {
     describe('getToken', function () {

@@ -29,11 +29,20 @@ const clientConfig = {
         extensions: ['.tsx', '.ts', '.js']
     },
     output: {
-        filename: 'index.js',
+        filename: 'index.cjs',
         path: path.resolve(__dirname, './dist'),
         libraryTarget: "commonjs",
         // globalObject: "this"
     },
+    externals: [
+        'mongodb-client-encryption',
+        'bson-ext',
+        'kerberos',
+        'snappy',
+        'snappy/package.json',
+        'aws4',
+        'electron'
+    ]
 };
 
 module.exports = [clientConfig];

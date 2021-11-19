@@ -4,11 +4,11 @@ import {ContextBlock} from '../models/rules.model';
 import mime from 'mime';
 import {StatusCodes} from 'http-status-codes';
 import {BFastOptions} from '../bfast-database.option';
-import sharp from 'sharp';
+import {read, AUTO} from 'jimp/es';
 import {Buffer} from "buffer";
 import {Request, Response} from 'express'
 import {Storage} from "../models/storage";
-import {request as httpsRequest} from "https";
+import {findById} from './database.controller';
 
 export function getSource(base64: string, type: string): any {
     let data: string;
@@ -94,62 +94,77 @@ export function checkStreamCapability(req: Request, filesController: FilesAdapte
 }
 
 export function handleGetFileRequest(
-    request: Request,
-    response: Response,
+    request: any,
+    response: any,
     thumbnail: boolean,
     filesAdapter: FilesAdapter,
     options: BFastOptions
 ): void {
-    const name = request.params.filename;
-    // @ts-ignore
-    const contentType = mime.getType(name);
-    if (thumbnail === true && contentType && contentType.toString().startsWith('image')) {
-        filesAdapter.getFileData(
-            name,
-            true,
-            options
-        ).then(value => {
-            const width = parseInt(request.query.width ? request.query.width.toString() : '100');
-            const height = parseInt(request.query.height ? request.query.height.toString() : '0');
-            // response.set('Content-Length', data.size);
-            // @ts-ignore
-            value.data.pipe(sharp().resize(width, height !== 0 ? height : null)).pipe(response);
-        }).catch(_ => {
-            getFileData(name, contentType, request, response, filesAdapter, options);
-        });
-    } else {
-        getFileData(name, contentType, request, response, filesAdapter, options);
+    function err(r) {
+        response.status(StatusCodes.EXPECTATION_FAILED)
+            .send({message: r && r.message ? r.message : r.toString()});
     }
+
+    const name = request.params.filename;
+    findById(
+        '_Storage',{id: name, return: []},{bypassDomainVerification: true},options
+    ).then(async (f: Storage) => {
+        try {
+            if (!f) {
+                err({message: 'file not exist'});
+                return;
+            }
+            if (thumbnail === true && f.type?.toString()?.startsWith('image')) {
+                const width = parseInt(request.query.width ? request.query.width : 100);
+                const height = parseInt(request.query.height ? request.query.height : AUTO);
+                const value = await filesAdapter.getFileData(name, false, options);
+                const image = await read(value as any);
+                const imageBuffer = await image.resize(width, height).getBufferAsync(f.type);
+                response.send(imageBuffer);
+            } else {
+                response.set('content-type', f.type);
+                response.set('content-length', f.size);
+                response.set('Content-Disposition', `attachment; filename="${f.name}.${f.extension}"`);
+                const fstrm = await filesAdapter.getFileData(name, true, options);
+                // @ts-ignore
+                fstrm.data.pipe(response);
+            }
+        } catch (e234) {
+            err(e234);
+        }
+    }).catch(reason => {
+        err(reason);
+    });
 }
 
-export function getFileData(
-    name,
-    contentType,
-    request,
-    response,
-    filesAdapter: FilesAdapter,
-    options: BFastOptions
-) {
-    if (checkStreamCapability(request, filesAdapter)) {
-        filesAdapter.handleFileStream(name, request, response, contentType, options).catch(_43 => {
-            response.status(StatusCodes.NOT_FOUND);
-            response.json({message: 'File not found'});
-        });
-    } else {
-        filesAdapter.getFileData(name, false, options).then(data => {
-            response.status(StatusCodes.OK);
-            response.set({
-                'Content-Type': data.type,
-                'Content-Length': data.size,
-                'Content-Disposition': `attachment; filename="${data.name}.${data.extension}"`,
-            });
-            return response.send(data.data);
-        }).catch(_12 => {
-            response.status(StatusCodes.NOT_FOUND);
-            response.json({message: 'File not found'});
-        });
-    }
-}
+// export function getFileData(
+//     name,
+//     contentType,
+//     request,
+//     response,
+//     filesAdapter: FilesAdapter,
+//     options: BFastOptions
+// ) {
+//     if (checkStreamCapability(request, filesAdapter)) {
+//         filesAdapter.handleFileStream(name, request, response, contentType, options).catch(_43 => {
+//             response.status(StatusCodes.NOT_FOUND);
+//             response.json({message: 'File not found'});
+//         });
+//     } else {
+//         filesAdapter.getFileData(name, false, options).then(data => {
+//             response.status(StatusCodes.OK);
+//             response.set({
+//                 'Content-Type': data.type,
+//                 'Content-Length': data.size,
+//                 'Content-Disposition': `attachment; filename="${data.name}.${data.extension}"`,
+//             });
+//             return response.send(data.data);
+//         }).catch(_12 => {
+//             response.status(StatusCodes.NOT_FOUND);
+//             response.json({message: 'File not found'});
+//         });
+//     }
+// }
 
 export async function listFiles(
     data: { prefix: string, size: number, skip: number, after: string },
@@ -202,29 +217,38 @@ export function isS3(filesAdapter: FilesAdapter): boolean {
 export function handleGetFileBySignedUrl(
     request: any, response: any, thumbnail: boolean, filesAdapter: FilesAdapter, options: BFastOptions
 ): void {
+    function err(r) {
+        response.status(StatusCodes.EXPECTATION_FAILED)
+            .send({message: r && r.message ? r.message : r.toString()});
+    }
+
     const name = request.params.filename;
-    // @ts-ignore
-    const contentType = mime.getType(name);
-    filesAdapter.signedUrl(name, options).then(value => {
-        return new Promise((resolve, reject) => {
-            if (thumbnail === true && contentType && contentType.toString().startsWith('image')) {
-                const width = parseInt(request.query.width ? request.query.width : 100);
-                const height = parseInt(request.query.height ? request.query.height : 0);
-                httpsRequest(value, res => {
-                    res.pipe(
-                        sharp().resize(width, height !== 0 ? height : null)
-                    ).pipe(response);
-                }).on("close", resolve).on("error", err => {
-                    reject(err);
-                }).end();
-            } else {
-                response.redirect(value);
+    findById(
+        '_Storage',{id: name, return: []},{bypassDomainVerification: true},options
+    ).then(async (f: Storage) => {
+        try {
+            if (!f) {
+                err({message: 'file not exist'});
+                return;
             }
-        });
+            const furl = await filesAdapter.signedUrl(name, options);
+            if (thumbnail === true && f.type?.toString()?.startsWith('image')) {
+                const width = parseInt(request.query.width ? request.query.width : 100);
+                const height = parseInt(request.query.height ? request.query.height : AUTO);
+                const image = await read(furl);
+                const imageBuffer = await image.resize(width, height).getBufferAsync(f.type);
+                response.set('content-type', f.type);
+                response.set('content-length', f.size);
+                response.set('Content-Disposition', `attachment; filename="${f.name}.${f.extension}"`);
+                response.send(imageBuffer);
+            } else {
+                response.redirect(furl);
+            }
+        } catch (e234) {
+            err(e234);
+        }
     }).catch(reason => {
-        response
-            .status(StatusCodes.EXPECTATION_FAILED)
-            .send({message: reason && reason.message ? reason.message : reason.toString()});
+        err(reason);
     });
 }
 

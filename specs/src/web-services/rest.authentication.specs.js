@@ -1,4 +1,4 @@
-const {config, mongoRepSet, sendRuleRequest} = require('../../mock.config');
+const {config, mongoRepSet, sendRuleRequest} = require('../../mock.config.mjs');
 const {expect, should} = require('chai');
 
 describe('Rest authentication', function () {

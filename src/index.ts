@@ -22,7 +22,7 @@ export {S3StorageFactory} from './factories/s3-storage.factory';
 export * from './adapters/database.adapter';
 export * from './controllers/database.controller';
 // export * from './factory/database.factory';
-export {initialize} from './bfast-database-core';
+export {initialize} from './core';
 export {BFastOptions} from './bfast-database.option';
 export {FactoryIdentifier} from './models/factory-identifier';
 export {Factory} from './factories/factory';

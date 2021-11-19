@@ -1,5 +1,5 @@
 const axios = require("axios");
-const {config, mongoRepSet} = require("../../mock.config");
+const {config, mongoRepSet} = require("../../mock.config.mjs");
 const {should, expect} = require("chai");
 const FormData = require('form-data');
 const fs = require('fs');

@@ -1,4 +1,4 @@
-const {mongoRepSet, config} = require('../../mock.config');
+const {mongoRepSet, config} = require('../../mock.config.mjs');
 const {before, after} = require('mocha');
 const {assert, should, expect} = require('chai');
 const {handleStorageRule, AuthFactory, IpfsStorageFactory} = require("../../../dist");

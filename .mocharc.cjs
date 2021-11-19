@@ -5,5 +5,5 @@ module.exports = {
     bail: true,
     timeout: 10000,
     recursive: true,
-    require: 'specs/hook.js'
+    require: 'specs/hook.mjs'
 }
