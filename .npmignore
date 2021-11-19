@@ -16,5 +16,5 @@ index.d.ts
 video.mp4
 .nyc_output
 nycrc
-bkwebpack.cjs
+webpack.js
 README.md

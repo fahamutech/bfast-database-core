@@ -4,7 +4,7 @@ import {ContextBlock} from '../models/rules.model';
 import mime from 'mime';
 import {StatusCodes} from 'http-status-codes';
 import {BFastOptions} from '../bfast-database.option';
-import {read, AUTO} from 'jimp/es';
+import Jimp from 'jimp';
 import {Buffer} from "buffer";
 import {Request, Response} from 'express'
 import {Storage} from "../models/storage";
@@ -101,30 +101,36 @@ export function handleGetFileRequest(
     options: BFastOptions
 ): void {
     function err(r) {
+        console.log(r, 'get file request');
         response.status(StatusCodes.EXPECTATION_FAILED)
             .send({message: r && r.message ? r.message : r.toString()});
     }
 
     const name = request.params.filename;
     findById(
-        '_Storage',{id: name, return: []},{bypassDomainVerification: true},options
+        '_Storage', {id: name, return: []}, {bypassDomainVerification: true}, options
     ).then(async (f: Storage) => {
         try {
             if (!f) {
-                err({message: 'file not exist'});
+                err({message: 'File not found'});
                 return;
             }
             if (thumbnail === true && f.type?.toString()?.startsWith('image')) {
                 const width = parseInt(request.query.width ? request.query.width : 100);
-                const height = parseInt(request.query.height ? request.query.height : AUTO);
+                const height = parseInt(request.query.height ? request.query.height : Jimp.AUTO);
                 const value = await filesAdapter.getFileData(name, false, options);
-                const image = await read(value as any);
+                const image = await Jimp.read(value.data as any);
                 const imageBuffer = await image.resize(width, height).getBufferAsync(f.type);
+                response.set({
+                    'Content-Disposition': `attachment; filename="${f.name}.${f.extension}"`,
+                });
                 response.send(imageBuffer);
             } else {
-                response.set('content-type', f.type);
-                response.set('content-length', f.size);
-                response.set('Content-Disposition', `attachment; filename="${f.name}.${f.extension}"`);
+                response.set({
+                    'Content-Type': f.type,
+                    'Content-Length': f.size,
+                    'Content-Disposition': `attachment; filename="${f.name}.${f.extension}"`,
+                });
                 const fstrm = await filesAdapter.getFileData(name, true, options);
                 // @ts-ignore
                 fstrm.data.pipe(response);
@@ -218,28 +224,29 @@ export function handleGetFileBySignedUrl(
     request: any, response: any, thumbnail: boolean, filesAdapter: FilesAdapter, options: BFastOptions
 ): void {
     function err(r) {
+        console.log(r, 'Get file by url');
         response.status(StatusCodes.EXPECTATION_FAILED)
             .send({message: r && r.message ? r.message : r.toString()});
     }
 
     const name = request.params.filename;
     findById(
-        '_Storage',{id: name, return: []},{bypassDomainVerification: true},options
+        '_Storage', {id: name, return: []}, {bypassDomainVerification: true}, options
     ).then(async (f: Storage) => {
         try {
             if (!f) {
-                err({message: 'file not exist'});
+                err({message: 'File not found'});
                 return;
             }
             const furl = await filesAdapter.signedUrl(name, options);
             if (thumbnail === true && f.type?.toString()?.startsWith('image')) {
                 const width = parseInt(request.query.width ? request.query.width : 100);
-                const height = parseInt(request.query.height ? request.query.height : AUTO);
-                const image = await read(furl);
+                const height = parseInt(request.query.height ? request.query.height : Jimp.AUTO);
+                const image = await Jimp.read(furl);
                 const imageBuffer = await image.resize(width, height).getBufferAsync(f.type);
-                response.set('content-type', f.type);
-                response.set('content-length', f.size);
-                response.set('Content-Disposition', `attachment; filename="${f.name}.${f.extension}"`);
+                response.set({
+                    'Content-Disposition': `attachment; filename="${f.name}.${f.extension}"`,
+                });
                 response.send(imageBuffer);
             } else {
                 response.redirect(furl);

@@ -1,7 +1,7 @@
 const {getEnv, loadEnv} = require("../../../dist");
 
 const {assert, expect, should} = require('chai');
-const {config} = require("../../mock.config.mjs");
+const {config} = require("../../mock.config.js");
 
 describe('EnvUtil', function () {
     before(async function () {

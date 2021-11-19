@@ -1,6 +1,6 @@
 const bfast = require("bfast");
 const {expect, should} = require('chai');
-const {config} = require("../../mock.config.mjs");
+const {config} = require("../../mock.config.js");
 const {AppEventsFactory} = require("../../../dist/factories/app-events.factory");
 
 

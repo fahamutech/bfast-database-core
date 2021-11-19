@@ -1,5 +1,5 @@
 const axios = require("axios");
-const {config, mongoRepSet} = require("../../mock.config.mjs");
+const {config, mongoRepSet} = require("../../mock.config.js");
 const {should, expect} = require("chai");
 const FormData = require('form-data');
 const fs = require('fs');
@@ -112,7 +112,10 @@ describe('StorageWebService', function () {
     describe('handleGetFile', function () {
         before(async function () {
             const form = new FormData();
-            form.append('bfast.txt', Buffer.from('Hello, BFast!'));
+            form.append('bfast.txt', Buffer.from('Hello, BFast!'),{
+                contentType: 'text/plain',
+                filename: 'bfast.txt'
+            });
             const response = await axios.post(
                 `http://localhost:${config.port}/storage/${config.applicationId}?pn=true`,
                 form,

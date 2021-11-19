@@ -1,6 +1,6 @@
 ## Get stated
 This repository use mongodb as a database engine so you need to have it localy
-even though it spin its own in memory latest mongodb when run test ( test for ubuntu & debian OS & Chrome OS ). In  chrome os you need to install mongodb in your machine and update this file [config-mock](./specs/mock.config.mjs). That file contain more configuration for tests.
+even though it spin its own in memory latest mongodb when run test ( test for ubuntu & debian OS & Chrome OS ). In  chrome os you need to install mongodb in your machine and update this file [config-mock](./specs/mock.config.js). That file contain more configuration for tests.
 
 NOTE: Your mongo instance must be in Replica mode fot transactions and stream changes tests to work.
 

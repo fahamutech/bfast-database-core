@@ -1,6 +1,7 @@
-import {start} from "bfast-function";
-import {config} from './mock.config.mjs';
-export const mochaHooks = {
+const {start} = require("bfast-function");
+const {config} = require('./mock.config');
+
+module.exports.mochaHooks = {
     async beforeAll() {
         process.env.APPLICATION_ID = config.applicationId;
         process.env.PROJECT_ID = config.projectId;
