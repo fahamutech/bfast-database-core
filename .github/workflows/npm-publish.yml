@@ -33,7 +33,7 @@ jobs:
           jsipfs daemon &
           yarn install
           yarn test
-          yarn publish --non-interactive
+          yarn chapisha
 
         #jsipfs config --json API.HTTPHeaders.Access-Control-Allow-Origin '["*"]'
         env:

@@ -1,6 +1,6 @@
 {
   "name": "bfast-database-core",
-  "version": "3.0.0-alpha.8",
+  "version": "3.0.0-alpha.11",
   "main": "./index.js",
   "types": "./index.d.ts",
   "license": "MIT",
@@ -18,14 +18,11 @@
     "fahamutech(https://github.com/fahamutech)"
   ],
   "scripts": {
-    "build": "gulp build && yarn build:esm",
+    "build": "gulp build && npm run build:esm",
     "build:esm": "tsc -p tsconfig.json --declaration",
-    "build:cjs": "npx webpack --config webpack.js",
     "test": "yarn run build && nyc mocha  specs/src/*",
-    "prestart": "yarn run build",
-    "prepublishOnly": "npm run build",
-    "publish:beta": "yarn publish --tag beta",
-    "publish": "npm run build && cd dist && npm publish"
+    "chapisha:beta": "npm run build && cd dist && npm publish --tag beta",
+    "chapisha": "npm run build && cd dist && npm publish"
   },
   "dependencies": {
     "base64url": "~3.0.1",
