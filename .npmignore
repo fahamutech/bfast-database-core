@@ -2,7 +2,7 @@ specs
 .dockerignore
 devStart.sh
 Dockerfile
-gulpfile.js
+gulpfile.mjs
 pkg.js
 tsconfig.json
 yarn.lock
@@ -15,3 +15,6 @@ index.d.ts
 **.log
 video.mp4
 .nyc_output
+nycrc
+webpack.js
+README.md

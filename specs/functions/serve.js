@@ -1,6 +1,6 @@
 const {initialize, loadEnv} = require('../../dist');
 const bfast = require("bfast");
-const {config} = require("../mock.config");
+const {config} = require("../mock.config.js");
 let myConfig = loadEnv();
 myConfig = Object.assign(config, myConfig)
 const webService = initialize(myConfig);

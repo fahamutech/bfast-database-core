@@ -123,14 +123,13 @@ export function multipartForm(
                 request.body.context.storage = {preserveName: false};
             }
             for (const file of Object.values<any>(files)) {
+                // console.log(JSON.stringify(file, null, 4),'FILE')
                 const fileMeta: { name: string, type: string } = {name: undefined, type: undefined};
                 const regx = /[^0-9a-z.]/gi;
-                fileMeta.name = file.name ? file.name : 'noname'
-                    .toString()
-                    .replace(regx, '');
+                fileMeta.name = file.originalFilename ? file.originalFilename : file.newFilename.toString().replace(regx, '');
                 fileMeta.type = file.type;
                 const result = await saveFromBuffer({
-                        data: await promisify(readFile)(file.path),
+                        data: await promisify(readFile)(file.filepath),
                         type: fileMeta.type,
                         size: file.size,
                         name: fileMeta.name
@@ -141,6 +140,7 @@ export function multipartForm(
                 urls.push(result);
             }
             for (const f_key of Object.keys(fields)) {
+                // console.log(JSON.stringify(f_key, null, 4),'FKEY')
                 const fileMeta: { name: string, type: string } = {name: undefined, type: undefined};
                 const regx = /[^0-9a-z.]/gi;
                 fileMeta.name = f_key

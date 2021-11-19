@@ -7,7 +7,7 @@ export type InitDatabaseFn = (options: BFastOptions) => Promise<any>;
 
 export type PurgeDataFn = (table: string, id: string, options: BFastOptions) => Promise<{ _id: string }>;
 export type PurgeManyDataFn = (table: string, query: Data, options: BFastOptions) => Promise<{ _id: string }[]>;
-export type GetDataFn = (table: string, id: string, options: BFastOptions) => Promise<Data>;
+export type GetDataFn = (table: string, id: string, options: BFastOptions) => Promise<any>;
 export type FindDataFn = (table: string, query: QueryModel<Data>, options: BFastOptions) => Promise<Data[]>;
 export type CreateDataFn = (table: string, data: Data, options: BFastOptions) => Promise<Data>;
 // export type CreateManyDataFn = (table: string, datas: Array<Data>, options: BFastOptions) => Promise<Data[]>;

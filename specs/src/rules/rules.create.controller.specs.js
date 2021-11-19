@@ -1,6 +1,6 @@
-const {mongoRepSet, config} = require('../../mock.config');
+const {mongoRepSet, config} = require('../../mock.config.js');
 const {should, expect} = require("chai");
-const {handleCreateRules, handleQueryRules, handleAuthorizationRule} = require("../../../dist");
+const {handleCreateRules, handleAuthorizationRule} = require("../../../dist/index");
 
 describe('RulesController', function () {
     let mongoMemoryReplSet
@@ -11,13 +11,15 @@ describe('RulesController', function () {
     after(async function () {
         await mongoMemoryReplSet.stop();
     });
-
     describe('Create::Anonymous', function () {
         it('should save single document', async function () {
+            const date = new Date().toISOString();
             const results = await handleCreateRules({
                     createTest: {
                         name: 'doe',
                         age: 20,
+                        createdAt: date,
+                        updatedAt: date,
                         return: []
                     }
                 },
@@ -29,6 +31,8 @@ describe('RulesController', function () {
             expect(typeof results.createTest['id']).equal('string');
             expect(results.createTest['name']).equals('doe');
             expect(results.createTest['age']).equal(20);
+            expect(results.createTest['createdAt']).eql(new Date(date));
+            expect(results.createTest['updatedAt']).eql(new Date(date));
         });
         it('should save single document with custom id', async function () {
             const results = await handleCreateRules({
@@ -134,7 +138,6 @@ describe('RulesController', function () {
         //     expect(_results.queryTest).equal(1);
         // });
     });
-
     describe('Create::Secured', function () {
         before(async function () {
             const r = await handleAuthorizationRule(

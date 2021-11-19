@@ -5,7 +5,7 @@ logs
 *.log
 *.log.*
 *.err.*
-dist
+/dist
 docker-compose.yml
 devStart.sh
 .env
