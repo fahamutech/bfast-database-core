@@ -33,7 +33,7 @@ describe('Storage', function () {
             should().exist(results.files);
             should().exist(results.files.save);
             expect(typeof results.files.save).equal("string");
-            expect(results.files.save.toString().startsWith('/storage/bfast_test/file')).equal(true);
+            expect(results.files.save.toString().startsWith('/storage/bfast/file')).equal(true);
         });
     });
 
@@ -144,7 +144,7 @@ describe('Storage', function () {
                 new IpfsStorageFactory(),
                 config
             );
-            name = v.files.save.toString().replace('/storage/bfast_test/file/', '');
+            name = v.files.save.toString().replace('/storage/bfast/file/', '');
         });
         it('should delete a file', async function () {
             const results = {errors: {}};

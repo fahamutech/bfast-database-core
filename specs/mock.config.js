@@ -7,11 +7,11 @@ const {expect} = require("chai");
 const mongoMemoryReplSet = () => {
     return {
         getUri: function () {
-            return 'mongodb://localhost/_test';
+            return 'mongodb://localhost/bfast';
         },
         start: async function () {
             const conn = await mongodb.MongoClient.connect(this.getUri());
-            await conn.db('_test').dropDatabase();
+            await conn.db('bfast').dropDatabase();
         },
         stop: async function () {
         }
@@ -22,18 +22,18 @@ module.exports.serverUrl = 'http://localhost:3111/v2';
 module.exports.mongoRepSet = mongoMemoryReplSet;
 
 module.exports.config = {
-    applicationId: 'bfast_test',
+    applicationId: 'bfast',
     useLocalIpfs: true,
-    projectId: 'bfast_test',
+    projectId: 'bfast',
     port: '3111',
     logs: false,
     web3Token: getEnv(process.env['WEB_3_TOKEN']),
     adapters: {
         s3Storage: undefined
     },
-    masterKey: 'bfast_test',
+    masterKey: 'bfast',
     taarifaToken: undefined,
-    databaseURI: 'mongodb://localhost/_test',
+    databaseURI: 'mongodb://localhost/bfast',
     rsaKeyPairInJson: {},
     rsaPublicKeyInJson: {}
 }

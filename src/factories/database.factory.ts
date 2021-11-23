@@ -27,7 +27,7 @@ async function withMongoClient(fn: (conn: MongoClient) => Promise<any>, options:
 
 export const createDataInStore: CreateDataFn = async (table: string, data: Data, options: BFastOptions) => {
     return withMongoClient(async conn => {
-        await conn.db().collection(table).insertOne(data as any);
+        await conn.db(options.projectId).collection(table).insertOne(data as any);
         return data;
     }, options);
 }
@@ -49,7 +49,7 @@ export const updateDataInStore: UpdateDataFn = async (table: string, updateModel
             });
             updateModel.update.$inc = iQ;
         }
-        const d = await conn.db().collection(table).findOneAndUpdate(
+        const d = await conn.db(options.projectId).collection(table).findOneAndUpdate(
             filter,
             updateModel.update,
             {
@@ -64,14 +64,14 @@ export const updateDataInStore: UpdateDataFn = async (table: string, updateModel
 
 export const getDataInStore: GetDataFn = (table, id, options) => {
     return withMongoClient(conn => {
-        return conn.db().collection(table).findOne({_id: id});
+        return conn.db(options.projectId).collection(table).findOne({_id: id});
     }, options);
 }
 
 export const getManyDataInStore: FindDataFn = (table, query, options) => {
     // console.log(query.filter);
     return withMongoClient(async conn => {
-        const cursor = conn.db().collection(table).find(query.filter);
+        const cursor = conn.db(options.projectId).collection(table).find(query.filter);
         if (query && !isNaN(query.size)) {
             cursor.limit(query.size);
         }
@@ -92,28 +92,28 @@ export const getManyDataInStore: FindDataFn = (table, query, options) => {
 
 export const purgeDataInStore: PurgeDataFn = (table, id, options) => {
     return withMongoClient(async conn => {
-        await conn.db().collection(table).deleteOne({_id: id});
+        await conn.db(options.projectId).collection(table).deleteOne({_id: id});
         return {_id: id};
     }, options);
 }
 
 export const purgeManyDataInStore: PurgeManyDataFn = (table, query, options) => {
     return withMongoClient(async conn => {
-        await conn.db().collection(table).deleteMany(query);
+        await conn.db(options.projectId).collection(table).deleteMany(query);
         return 'done';
     }, options);
 }
 
 export const initDatabase: InitDatabaseFn = async (options) => {
     // return withMongoClient(async conn => {
-    //     await conn.db().collection('_User').dropIndexes();
-    //     await conn.db().collection('_User').createIndex({
+    //     await conn.db(options.projectId).collection('_User').dropIndexes();
+    //     await conn.db(options.projectId).collection('_User').createIndex({
     //         username: 1
     //     }, {
     //         unique: true,
     //         // collation: {locale: 'en', strength: 2}
     //     });
-    //     await conn.db().collection('_User').createIndex({
+    //     await conn.db(options.projectId).collection('_User').createIndex({
     //         email: 1
     //     }, {
     //         unique: true,
@@ -126,6 +126,6 @@ export const initDatabase: InitDatabaseFn = async (options) => {
 
 export const aggregate: AggregateDataFn = async (table, pipelines, options) => {
     return withMongoClient(conn => {
-        return conn.db().collection(table).aggregate(pipelines, {allowDiskUse: true}).toArray();
+        return conn.db(options.projectId).collection(table).aggregate(pipelines, {allowDiskUse: true}).toArray();
     }, options);
 }

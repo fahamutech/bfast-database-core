@@ -50,7 +50,7 @@ describe('EnvUtil', function () {
             const options = loadEnv();
             config.useLocalIpfs = options.useLocalIpfs;
             should().exist(options);
-            expect(options.applicationId).eql('bfast_test');
+            expect(options.applicationId).eql('bfast');
             expect(typeof options).equal('object');
             expect(options).eql(config);
         });

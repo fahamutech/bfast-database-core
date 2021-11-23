@@ -354,7 +354,7 @@ describe('Changes', function () {
         })
         it('should count a total listener', function (done) {
             setTimeout(args => {
-                const total = AppEventsFactory.getInstance().connected('_db_changes_test2bfast_test');
+                const total = AppEventsFactory.getInstance().connected('_db_changes_test2' + config.projectId);
                 expect(total).equal(2);
                 done();
             }, 500);
@@ -363,7 +363,7 @@ describe('Changes', function () {
             c1.close();
             bfast.database().table('test2').save({name: 'xps', id: 'josh', createdAt: 'leo', updatedAt: 'leo'});
             setTimeout(args => {
-                const total = AppEventsFactory.getInstance().connected('_db_changes_test2bfast_test');
+                const total = AppEventsFactory.getInstance().connected('_db_changes_test2' + config.projectId);
                 expect(total).equal(1);
                 expect(r2).eql({
                     name: 'create',

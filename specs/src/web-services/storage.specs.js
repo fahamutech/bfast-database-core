@@ -30,7 +30,7 @@ describe('StorageWebService', function () {
             should().exist(data);
             expect(Array.isArray(data.urls)).equal(true);
             expect(data.urls).length(1);
-            expect(data.urls[0].startsWith('/storage/bfast_test/file')).equal(true);
+            expect(data.urls[0].startsWith('/storage/bfast/file')).equal(true);
             console.log(data.urls[0]);
         });
         it('should upload a multipart file and preserve filename', async function () {
@@ -49,7 +49,7 @@ describe('StorageWebService', function () {
             should().exist(data);
             expect(Array.isArray(data.urls)).equal(true);
             expect(data.urls).length(1);
-            expect(data.urls[0]).equal('/storage/bfast_test/file/musicmp3');
+            expect(data.urls[0]).equal('/storage/bfast/file/musicmp3');
         });
         it('should not upload non multipart request', async function () {
             try {
