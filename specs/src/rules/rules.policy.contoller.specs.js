@@ -1,7 +1,7 @@
 const {mongoRepSet, config} = require('../../mock.config.js');
 const {before, after} = require('mocha');
 const {assert, expect, should} = require('chai');
-const {handleAuthorizationRule} = require("../../../dist");
+const {handlePolicyRule} = require("../../../dist");
 
 describe('policy', function () {
 
@@ -16,7 +16,7 @@ describe('policy', function () {
 
     describe('add', function () {
         it('should return added policy when masterKey is valid', async function () {
-            const results = await handleAuthorizationRule({
+            const results = await handlePolicyRule({
                     context: {
                         useMasterKey: true
                     },
@@ -46,7 +46,7 @@ describe('policy', function () {
             });
         });
         it('should return error message when masterKey is invalid', async function () {
-            const results = await handleAuthorizationRule({
+            const results = await handlePolicyRule({
                     context: {
                         useMasterKey: false
                     },
@@ -65,7 +65,7 @@ describe('policy', function () {
     });
     describe('list', function () {
         before(async function () {
-            await handleAuthorizationRule({
+            await handlePolicyRule({
                     context: {
                         useMasterKey: true
                     },
@@ -79,7 +79,7 @@ describe('policy', function () {
             );
         });
         after(async function () {
-            await handleAuthorizationRule({
+            await handlePolicyRule({
                     context: {
                         useMasterKey: true
                     },
@@ -93,7 +93,7 @@ describe('policy', function () {
             );
         });
         it('should return list of policy when masterKey is valid', async function () {
-            const results = await handleAuthorizationRule({
+            const results = await handlePolicyRule({
                     context: {
                         useMasterKey: true
                     },
@@ -112,7 +112,7 @@ describe('policy', function () {
     });
     describe('remove', function () {
         before(async function () {
-            await handleAuthorizationRule({
+            await handlePolicyRule({
                     context: {
                         useMasterKey: true
                     },
@@ -126,7 +126,7 @@ describe('policy', function () {
             );
         });
         after(async function () {
-            await handleAuthorizationRule({
+            await handlePolicyRule({
                     context: {
                         useMasterKey: true
                     },
@@ -140,7 +140,7 @@ describe('policy', function () {
             );
         });
         it('should remove a policy when masterKey is valid', async function () {
-            const results = await handleAuthorizationRule({
+            const results = await handlePolicyRule({
                     context: {
                         useMasterKey: true
                     },
@@ -157,7 +157,7 @@ describe('policy', function () {
             expect(results.policy.remove[0].id).equal('read.category');
         });
         it('should return empty map when remove non exist rule', async function () {
-            const results = await handleAuthorizationRule({
+            const results = await handlePolicyRule({
                     context: {
                         useMasterKey: true
                     },

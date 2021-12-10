@@ -1,7 +1,12 @@
-const {start} = require("bfast-function");
-const {config} = require('./mock.config');
+import {start} from "bfast-function";
+import mock from './mock.config.js';
+import { dirname } from 'path';
+import { fileURLToPath } from 'url';
 
-module.exports.mochaHooks = {
+const {config} = mock;
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+export const mochaHooks = {
     async beforeAll() {
         process.env.APPLICATION_ID = config.applicationId;
         process.env.PROJECT_ID = config.projectId;

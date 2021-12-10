@@ -2,7 +2,7 @@ const {mongoRepSet, config} = require('../../mock.config.js');
 const {assert, should, expect} = require('chai');
 const {handleAuthenticationRule, AuthFactory, handleDeleteRules} = require("../../../dist");
 
-describe('Auth Rule', function () {
+describe('AuthRule Rule', function () {
     let mongoMemoryReplSet
     before(async function () {
         mongoMemoryReplSet = mongoRepSet();
@@ -54,7 +54,6 @@ describe('Auth Rule', function () {
             should().not.exist(results.auth);
             should().exist(results.errors['auth.signUp']);
             assert(results.errors['auth.signUp'].message === 'Email required');
-            assert(typeof results.errors['auth.signUp'].data === 'string');
         });
         it('should return error message when username is not present', async function () {
             const results = {errors: {}};
@@ -74,7 +73,6 @@ describe('Auth Rule', function () {
             should().not.exist(results.auth);
             should().exist(results.errors['auth.signUp']);
             assert(results.errors['auth.signUp'].message === 'Username required');
-            assert(typeof results.errors['auth.signUp'].data === 'string');
         });
         it('should return error message when password is not present', async function () {
             const results = {errors: {}};
@@ -93,7 +91,6 @@ describe('Auth Rule', function () {
             should().not.exist(results.auth);
             should().exist(results.errors['auth.signUp']);
             assert(results.errors['auth.signUp'].message === 'Password required');
-            assert(typeof results.errors['auth.signUp'].data === 'string');
         });
         it('should return error message when signUp is empty object', async function () {
             const results = {errors: {}};
@@ -108,7 +105,6 @@ describe('Auth Rule', function () {
             should().not.exist(results.auth);
             should().exist(results.errors['auth.signUp']);
             assert(results.errors['auth.signUp'].message === 'Empty user is not supported');
-            assert(typeof results.errors['auth.signUp'].data === 'string');
         });
         it('should return error message when signUp is null', async function () {
             const results = {errors: {}};
@@ -210,7 +206,6 @@ describe('Auth Rule', function () {
             should().not.exist(results.auth);
             should().exist(results.errors['auth.signIn']);
             expect(results.errors['auth.signIn'].message).equal('Username required');
-            expect(typeof results.errors['auth.signIn'].data).equal('string');
         });
         it('should return error message when password not supplied', async function () {
             const results = await handleAuthenticationRule({
@@ -227,7 +222,6 @@ describe('Auth Rule', function () {
             should().not.exist(results.auth);
             should().exist(results.errors['auth.signIn']);
             expect(results.errors['auth.signIn'].message).equal('Password required');
-            expect(typeof results.errors['auth.signIn'].data).equal('string');
         });
         it('should return error message when signIn is empty', async function () {
             const results = await handleAuthenticationRule(
@@ -243,7 +237,6 @@ describe('Auth Rule', function () {
             should().not.exist(results.auth);
             should().exist(results.errors['auth.signIn']);
             expect(results.errors['auth.signIn'].message).equal('Empty user is not supported');
-            expect(typeof results.errors['auth.signIn'].data).equal('string');
         });
     });
 });

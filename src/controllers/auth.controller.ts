@@ -1,12 +1,12 @@
-import {ContextBlock} from '../models/rules.model';
-import {BasicUserAttributesModel} from '../models/basic-user-attributes.model';
+import {BasicUser} from '../models/basic-user';
 import {BFastOptions} from "../bfast-database.option";
 import {AuthAdapter} from "../adapters/auth.adapter";
 import {findByFilter, remove, writeOne} from "./database.controller";
+import {RuleContext} from "../models/rule-context";
 
 const policyDomainName = '_Policy';
 
-export function validateData<T extends BasicUserAttributesModel>(data: T, skipEmail = false): void {
+export function validateData<T extends BasicUser>(data: T, skipEmail = false): void {
     if (!data) {
         throw new Error('Invalid user data');
     } else if (Object.keys(data).length === 0) {
@@ -36,7 +36,7 @@ export function sanitizePolicy(_p1) {
 }
 
 export async function addPolicyRule(
-    ruleId: string, rule: string, context: ContextBlock, options: BFastOptions
+    ruleId: string, rule: string, context: RuleContext, options: BFastOptions
 ): Promise<any> {
     const _p1 = await writeOne(
         policyDomainName,
@@ -56,7 +56,7 @@ export async function addPolicyRule(
     return sanitizePolicy(_p1);
 }
 
-export async function listPolicyRule(context: ContextBlock, options: BFastOptions) {
+export async function listPolicyRule(context: RuleContext, options: BFastOptions) {
     const _j1 = await findByFilter(
         '_Policy',
         {
@@ -72,7 +72,7 @@ export async function listPolicyRule(context: ContextBlock, options: BFastOption
     return _j1.map(x => sanitizePolicy(x));
 }
 
-export async function removePolicyRule(ruleId: string, context: ContextBlock, options: BFastOptions) {
+export async function removePolicyRule(ruleId: string, context: RuleContext, options: BFastOptions) {
     const _y89 = await remove(
         '_Policy',
         {
@@ -89,7 +89,7 @@ export async function removePolicyRule(ruleId: string, context: ContextBlock, op
     return _y89.map(z => sanitizePolicy(z));
 }
 
-export async function hasPermission(ruleId: string, context: ContextBlock, options: BFastOptions): Promise<boolean> {
+export async function hasPermission(ruleId: string, context: RuleContext, options: BFastOptions): Promise<boolean> {
     if (context && context?.useMasterKey === true) {
         return true;
     }
@@ -134,28 +134,28 @@ export async function hasPermission(ruleId: string, context: ContextBlock, optio
     return false;
 }
 
-export async function deleteUser(context?: ContextBlock): Promise<any> {
+export async function deleteUser(context?: RuleContext): Promise<any> {
     return Promise.resolve(undefined);
 }
 
-export async function resetPassword(authAdapter: AuthAdapter, email: string, context: ContextBlock): Promise<any> {
+export async function resetPassword(authAdapter: AuthAdapter, email: string, context: RuleContext): Promise<any> {
     if (!email) {
         throw {message: 'email required'};
     }
     return authAdapter.resetPassword(email, context);
 }
 
-export async function sendVerificationEmail(email: string, authAdapter: AuthAdapter, context: ContextBlock, options: BFastOptions): Promise<any> {
+export async function sendVerificationEmail(email: string, authAdapter: AuthAdapter, context: RuleContext, options: BFastOptions): Promise<any> {
     if (!email) {
         throw {message: 'email required'};
     }
     return authAdapter.sendVerificationEmail(email, context, options);
 }
 
-export async function signIn<T extends BasicUserAttributesModel>(
+export async function signIn<T extends BasicUser>(
     userModel: T,
     authAdapter: AuthAdapter,
-    context: ContextBlock,
+    context: RuleContext,
     options: BFastOptions
 ): Promise<T> {
     validateData(userModel, true);
@@ -163,10 +163,10 @@ export async function signIn<T extends BasicUserAttributesModel>(
     return authAdapter.signIn(userModel, context, options);
 }
 
-export async function signUp<T extends BasicUserAttributesModel>(
+export async function signUp<T extends BasicUser>(
     userModel: T,
     authAdapter: AuthAdapter,
-    context: ContextBlock,
+    context: RuleContext,
     options: BFastOptions
 ): Promise<T> {
     validateData(userModel);
@@ -194,12 +194,12 @@ export async function signUp<T extends BasicUserAttributesModel>(
     return await authAdapter.signUp(userModel, context, options);
 }
 
-export async function update<T extends BasicUserAttributesModel>(
+export async function update<T extends BasicUser>(
     userModel: T,
     authAdapter: AuthAdapter,
-    context: ContextBlock,
+    context: RuleContext,
     options: BFastOptions
-): Promise<T> {
+): Promise<any> {
     if (context.auth === true && context.uid && typeof context.uid === 'string') {
         userModel.return = [];
         delete userModel.password;
@@ -214,7 +214,7 @@ export async function update<T extends BasicUserAttributesModel>(
 export async function updatePassword(
     password: string,
     authAdapter: AuthAdapter,
-    context: ContextBlock,
+    context: RuleContext,
     options: BFastOptions
 ): Promise<any> {
     if (context.uid && typeof context.uid === 'string') {

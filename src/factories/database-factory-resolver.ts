@@ -1,24 +1,29 @@
 import {BFastOptions} from "../bfast-database.option";
 import {Factory} from "./factory";
 import {
+    AggregateDataFn,
     CreateDataFn,
-    GetDataFn,
+    CreateManyDataFn,
     FindDataFn,
+    GetDataFn,
     InitDatabaseFn,
     PurgeDataFn,
     PurgeManyDataFn,
-    UpdateDataFn, AggregateDataFn
+    UpdateDataFn,
+    UpdateManyDataFn
 } from "../adapters/database.adapter";
 import {FactoryIdentifier} from "../models/factory-identifier";
 import {
     aggregate,
     createDataInStore,
+    createManyDataInStore,
     getDataInStore,
     getManyDataInStore,
     initDatabase,
     purgeDataInStore,
     purgeManyDataInStore,
     updateDataInStore,
+    updateManyDataInStore,
 } from "./database.factory";
 import {Data} from "../models/data";
 import {QueryModel} from "../models/query-model";
@@ -48,7 +53,15 @@ export const _createData: CreateDataFn = async (table, data, options) => {
     return createDataInStore(table, data, options);
 }
 
-export const _updateData: UpdateDataFn = async (
+export const _createManyData: CreateManyDataFn = (table, data, options) => {
+    const uUd = Factory.get<CreateManyDataFn>(FactoryIdentifier.CreateManyData);
+    if (uUd) {
+        return uUd(table, data, options);
+    }
+    return createManyDataInStore(table, data, options);
+}
+
+export const _updateDataInStore: UpdateDataFn = async (
     table: string, updateModel: UpdateModel, options: BFastOptions
 ) => {
     const uUd = Factory.get<UpdateDataFn>(FactoryIdentifier.UpdateDataFn);
@@ -56,6 +69,16 @@ export const _updateData: UpdateDataFn = async (
         return uUd(table, updateModel, options);
     }
     return updateDataInStore(table, updateModel, options);
+}
+
+export const _updateManyDataInStore: UpdateManyDataFn = async (
+    table: string, updateModel: UpdateModel[], options: BFastOptions
+) => {
+    const uUd = Factory.get<UpdateManyDataFn>(FactoryIdentifier.UpdateManyDataFn);
+    if (uUd) {
+        return uUd(table, updateModel, options);
+    }
+    return updateManyDataInStore(table, updateModel, options);
 }
 
 export const _purgeData: PurgeDataFn = async (table: string, id: string, options: BFastOptions) => {

@@ -4,7 +4,7 @@ export interface UpdateModel {
     $set?: {[key: string]: any},
     $inc?: {[key: string]: any}
   }
-  filter?: any;
+  filter?: {[key: string]: any};
   return?: Array<string>;
   hashes?: Array<string>;
   id?: string;

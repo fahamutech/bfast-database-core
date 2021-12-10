@@ -1,4 +1,4 @@
-export interface BasicAttributesModel {
+export type Basic = {
     id?: string;
     _id?: string;
     createdAt?: string;
@@ -6,6 +6,5 @@ export interface BasicAttributesModel {
     createdBy?: string;
     password?: string;
     return?: string[];
-    $currentDate?: { updatedAt: true };
     [key: string]: any;
 }

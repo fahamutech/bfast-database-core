@@ -1,249 +1,73 @@
-import {RuleResponse, RulesModel} from '../models/rules.model';
 import {DeleteModel} from '../models/delete-model';
 import {BFastOptions} from '../bfast-database.option';
 import {devLog} from "../utils/debug.util";
 import {AuthAdapter} from "../adapters/auth.adapter";
 import {FilesAdapter} from "../adapters/files.adapter";
-import {aggregate, bulk, findByFilter, findById, remove, writeMany, writeOne} from "./database.controller";
-import {handleUpdateRule} from "./update.rule.controller";
-import {addPolicyRule, hasPermission, listPolicyRule, removePolicyRule, signIn, signUp} from "./auth.controller";
-import {deleteFile, listFiles, saveFile} from "./storage.controller";
-import {UpdateModel} from "../models/update-model";
+import {aggregate, bulk, findByFilter, findById, remove} from "./database.controller";
+import {hasPermission} from "./auth.controller";
+import {deleteFile, listFiles, saveFile} from "./storage";
+import {Rules} from "../models/rules";
+import {RuleResponse} from "../models/rule-response";
+import {AuthRule} from "../models/auth-rule";
+import {authRule} from "./rules-auth";
+import {policyRule} from "./rules-policy";
+import {createRule} from "./rules-create";
+import {updateRule} from "./rules-update";
 
-export function getRulesKey(rules: RulesModel): string[] {
+export function getRulesKey(rules: Rules): string[] {
     if (rules) {
         return Object.keys(rules);
     }
     return Object.keys({});
 }
 
-export async function handleAuthenticationRule(
-    rules: RulesModel,
-    ruleResponse: RuleResponse,
-    authAdapter: AuthAdapter,
-    options: BFastOptions,
-): Promise<RuleResponse> {
+async function withRuleResponse(path: string, ruleResponse: RuleResponse, fun: () => any): Promise<any> {
     try {
-        return processAuthenticationBlock(
-            ruleResponse,
-            rules,
-            authAdapter,
-            options
-        );
+        return await fun();
     } catch (e) {
-        ruleResponse.errors.auth = {
+        devLog(e);
+        ruleResponse.errors[path] = {
             message: e.message ? e.message : e.toString(),
-            path: 'auth',
-            data: null
         };
-        return ruleResponse;
     }
 }
 
-export async function processAuthenticationBlock(
-    ruleResponse: RuleResponse,
-    rules: RulesModel,
-    authAdapter: AuthAdapter,
-    options: BFastOptions,
-) {
-    const authenticationRules = getRulesKey(rules).filter(rule => rule.startsWith('auth'));
-    if (authenticationRules.length === 0) {
+export async function handleAuthenticationRule(
+    rules: Rules, ruleResponse: RuleResponse, authAdapter: AuthAdapter, options: BFastOptions,
+): Promise<RuleResponse> {
+    const authRulesNames: string[] = getRulesKey(rules).filter(rule => rule.startsWith('auth'));
+    if (authRulesNames.length === 0) {
         return ruleResponse;
     }
-    const authenticationRule = authenticationRules[0];
-    const authRule = rules[authenticationRule];
-    for (const action of Object.keys(authRule)) {
-        const data = authRule[action];
-        try {
-            if (action === 'signUp') {
-                const signUpResponse = await signUp(
-                    data,
-                    authAdapter,
-                    rules.context,
-                    options
-                );
-                ruleResponse.auth = {};
-                ruleResponse.auth.signUp = signUpResponse;
-            } else if (action === 'signIn') {
-                const signInResponse = await signIn(
-                    data,
-                    authAdapter,
-                    rules.context,
-                    options
-                );
-                ruleResponse.auth = {};
-                ruleResponse.auth.signIn = signInResponse;
-            } else if (action === 'reset') {
-                throw {message: 'Reset not supported yet'};
-                // ruleResponse.auth = {};
-                // ruleResponse.auth.resetPassword = await authController.resetPassword(data.email ? data.email : data);
-            }
-        } catch (e) {
-            devLog(e);
-            ruleResponse.errors[`auth.${action}`] = {
-                message: e.message ? e.message : e.toString(),
-                path: `auth.${action}`,
-                data: JSON.stringify(data, null, 2)
-            };
-        }
+    const rule: AuthRule = rules[authRulesNames[0]];
+    for (const action of Object.keys(rule)) {
+        const data = rule[action];
+        await withRuleResponse(`auth.${action}`, ruleResponse, async () => {
+            await authRule(action, data, ruleResponse, authAdapter, rules.context, options);
+        });
     }
     return ruleResponse;
 }
 
-export async function handleAuthorizationRule(
-    rules: RulesModel,
-    ruleResponse: RuleResponse,
-    options: BFastOptions,
+export async function handlePolicyRule(
+    rules: Rules, ruleResponse: RuleResponse, options: BFastOptions,
 ): Promise<RuleResponse> {
-    try {
-        const policyRules = getRulesKey(rules).filter(rule => rule.startsWith('policy'));
-        if (policyRules.length === 0) {
-            return ruleResponse;
-        }
-        if (!(rules.context && rules.context.useMasterKey === true)) {
-            ruleResponse.errors.policy = {
-                message: 'policy rule require masterKey',
-                path: 'policy',
-                data: null
-            };
-            return ruleResponse;
-        }
-        const authorizationRule = policyRules[0];
-        const policy = rules[authorizationRule];
-        for (const action of Object.keys(policy)) {
-            const data = policy[action];
-            try {
-                if (action === 'add' && typeof data === 'object') {
-                    const authorizationResults = {};
-                    for (const rule of Object.keys(data)) {
-                        authorizationResults[rule] = await addPolicyRule(
-                            rule,
-                            data[rule],
-                            rules.context,
-                            options
-                        );
-                    }
-                    ruleResponse.policy = {};
-                    ruleResponse.policy[action] = authorizationResults;
-                } else if (action === 'list' && typeof data === 'object') {
-                    const listResponse = await listPolicyRule(
-                        rules.context,
-                        options
-                    );
-                    ruleResponse.policy = {};
-                    ruleResponse.policy[action] = listResponse
-                } else if (action === 'remove' && typeof data === 'object') {
-                    const removeResponse = await removePolicyRule(
-                        data.ruleId,
-                        rules.context,
-                        options
-                    );
-                    ruleResponse.policy = {};
-                    ruleResponse.policy[action] = removeResponse;
-                }
-            } catch (e) {
-                devLog(e);
-                ruleResponse.errors[`policy.${action}`] = {
-                    message: e.message ? e.message : e.toString(),
-                    path: `policy.${action}`,
-                    data
-                };
-            }
-        }
-        return ruleResponse;
-    } catch (e) {
-        devLog(e);
-        ruleResponse.errors.policy = {
-            message: e.message ? e.message : e.toString(),
-            path: 'policy',
-            data: null
-        };
+    const policyRules = getRulesKey(rules).filter(rule => rule.startsWith('policy'));
+    if (policyRules.length === 0) {
         return ruleResponse;
     }
-}
-
-export async function handleCreateRules(
-    rules: RulesModel,
-    ruleResponse: RuleResponse,
-    options: BFastOptions,
-    transactionSession: any
-): Promise<RuleResponse> {
-    try {
-        const createRules = getRulesKey(rules).filter(rule => rule.startsWith('create'));
-        if (createRules.length === 0) {
-            return ruleResponse;
-        }
-        for (const createRule of createRules) {
-            const domain = extractDomain(createRule, 'create');
-            const createRuleRequest = rules[createRule];
-            const allowed = await hasPermission(
-                `create.${domain}`,
-                rules?.context,
-                options
-            );
-            if (allowed !== true) {
-                ruleResponse.errors[`${transactionSession ? 'transaction.' : ''}create.${domain}`] = {
-                    message: 'You have insufficient permission to this resource',
-                    path: `${transactionSession ? 'transaction.' : ''}create.${domain}`,
-                    data: createRuleRequest
-                };
-                return ruleResponse;
-            }
-            try {
-                let result;
-                if (createRuleRequest && Array.isArray(createRuleRequest)) {
-                    result = await writeMany(
-                        domain,
-                        createRuleRequest,
-                        false,
-                        rules?.context,
-                        {
-                            bypassDomainVerification: rules?.context?.useMasterKey === true,
-                            transaction: transactionSession
-                        },
-                        options);
-                } else {
-                    result = await writeOne(
-                        domain,
-                        createRuleRequest,
-                        false,
-                        rules?.context,
-                        {
-                            bypassDomainVerification: rules?.context?.useMasterKey === true,
-                            transaction: transactionSession
-                        },
-                        options);
-                }
-                ruleResponse[createRule] = result;
-            } catch (e) {
-                devLog(e);
-                ruleResponse.errors[`${transactionSession ? 'transaction.' : ''}create.${domain}`] = {
-                    message: e.message ? e.message : e.toString(),
-                    path: `${transactionSession ? 'transaction.' : ''}create.${domain}`,
-                    data: createRuleRequest
-                };
-                if (transactionSession) {
-                    throw e;
-                }
-            }
-        }
-        return ruleResponse;
-    } catch (e) {
-        devLog(e);
-        ruleResponse.errors[`${transactionSession ? 'transaction.' : ''}create`] = {
-            message: e.message ? e.message : e.toString(),
-            path: `${transactionSession ? 'transaction.' : ''}create`,
-            data: null
-        };
-        if (transactionSession) {
-            throw e;
-        }
-        return ruleResponse;
+    const policy = rules[policyRules[0]];
+    for (const action of Object.keys(policy)) {
+        const data = policy[action];
+        await withRuleResponse('policy', ruleResponse, async () => {
+            await policyRule(action, data, ruleResponse, rules.context, options);
+        });
     }
+    return ruleResponse;
 }
 
 export async function handleDeleteRules(
-    rulesBlockModel: RulesModel,
+    rulesBlockModel: Rules,
     ruleResultModel: RuleResponse,
     options: BFastOptions,
     transactionSession: any
@@ -264,8 +88,8 @@ export async function handleDeleteRules(
             if (allowed !== true) {
                 ruleResultModel.errors[`${transactionSession ? 'transaction.' : ''}delete.${domain}`] = {
                     message: 'You have insufficient permission to this resource',
-                    path: `${transactionSession ? 'transaction.' : ''}delete.${domain}`,
-                    data: rulesBlockModelElement
+                    // path: `${transactionSession ? 'transaction.' : ''}delete.${domain}`,
+                    // data: rulesBlockModelElement
                 };
                 return ruleResultModel;
             }
@@ -310,8 +134,8 @@ export async function handleDeleteRules(
                 devLog(e);
                 ruleResultModel.errors[`${transactionSession ? 'transaction.' : ''}delete.${domain}`] = {
                     message: e.message ? e.message : e.toString(),
-                    path: `${transactionSession ? 'transaction.' : ''}delete.${domain}`,
-                    data: rulesBlockModelElement
+                    // path: `${transactionSession ? 'transaction.' : ''}delete.${domain}`,
+                    // data: rulesBlockModelElement
                 };
                 if (transactionSession) {
                     throw e;
@@ -323,8 +147,8 @@ export async function handleDeleteRules(
         devLog(e);
         ruleResultModel.errors[`${transactionSession ? 'transaction.' : ''}delete`] = {
             message: e.message ? e.message : e.toString(),
-            path: `${transactionSession ? 'transaction.' : ''}delete`,
-            data: null
+            // path: `${transactionSession ? 'transaction.' : ''}delete`,
+            // data: null
         };
         if (transactionSession) {
             throw e;
@@ -334,7 +158,7 @@ export async function handleDeleteRules(
 }
 
 export async function handleQueryRules(
-    rulesBlockModel: RulesModel,
+    rulesBlockModel: Rules,
     ruleResultModel: RuleResponse,
     options: BFastOptions,
     transactionSession: any
@@ -355,8 +179,8 @@ export async function handleQueryRules(
             if (allowed !== true) {
                 ruleResultModel.errors[`${transactionSession ? 'transactionSession.' : ''}query.${domain}`] = {
                     message: 'You have insufficient permission to this resource',
-                    path: `${transactionSession ? 'transactionSession.' : ''}query.${domain}`,
-                    data: rulesBlockModelElement
+                    // path: `${transactionSession ? 'transactionSession.' : ''}query.${domain}`,
+                    // data: rulesBlockModelElement
                 };
                 return ruleResultModel;
             }
@@ -364,8 +188,8 @@ export async function handleQueryRules(
                 if (rulesBlockModelElement && Array.isArray(rulesBlockModelElement)) {
                     ruleResultModel.errors[queryRule] = {
                         message: 'query data must be a map',
-                        path: queryRule,
-                        data: rulesBlockModelElement,
+                        // path: queryRule,
+                        // data: rulesBlockModelElement,
                     };
                 } else {
                     if (rulesBlockModelElement.hasOwnProperty('id')) {
@@ -407,8 +231,8 @@ export async function handleQueryRules(
                 devLog(e);
                 ruleResultModel.errors[`${transactionSession ? 'transactionSession.' : ''}query.${domain}`] = {
                     message: e.message ? e.message : e.toString(),
-                    path: `${transactionSession ? 'transactionSession.' : ''}query.${domain}`,
-                    data: rulesBlockModelElement
+                    // path: `${transactionSession ? 'transactionSession.' : ''}query.${domain}`,
+                    // data: rulesBlockModelElement
                 };
                 if (transactionSession) {
                     throw e;
@@ -420,8 +244,8 @@ export async function handleQueryRules(
         devLog(e);
         ruleResultModel.errors[`${transactionSession ? 'transactionSession.' : ''}query`] = {
             message: e.message ? e.message : e.toString(),
-            path: `${transactionSession ? 'transactionSession.' : ''}query`,
-            data: null
+            // path: `${transactionSession ? 'transactionSession.' : ''}query`,
+            // data: null
         };
         if (transactionSession) {
             throw e;
@@ -431,7 +255,7 @@ export async function handleQueryRules(
 }
 
 export async function handleBulkRule(
-    rulesBlockModel: RulesModel, ruleResultModel: RuleResponse, options: BFastOptions,
+    rulesBlockModel: Rules, ruleResultModel: RuleResponse, options: BFastOptions,
 ): Promise<RuleResponse> {
     try {
         const transactionRules = getRulesKey(rulesBlockModel).filter(rule => rule.startsWith('transaction'));
@@ -478,92 +302,54 @@ export async function handleBulkRule(
         devLog(e);
         ruleResultModel.errors.transaction = {
             message: e.message ? e.message : e.toString(),
-            path: 'transaction',
-            data: null
+            // path: 'transaction',
+            // data: null
         };
         return ruleResultModel;
     }
 }
 
+export async function handleCreateRules(
+    rules: Rules, ruleResponse: RuleResponse, options: BFastOptions, transactionSession: any
+): Promise<RuleResponse> {
+    const createRules = getRulesKey(rules).filter(rule => rule.startsWith('create'));
+    if (createRules.length === 0) {
+        return ruleResponse;
+    }
+    for (const rule of createRules) {
+        const domain = extractDomain(rule, 'create');
+        const ePath = `${transactionSession ? 'transaction.' : ''}create.${domain}`;
+        await withRuleResponse(ePath, ruleResponse, async () => {
+            const ruleData = rules[rule];
+            await createRule(domain, ruleData, ruleResponse, rules.context, options);
+        });
+    }
+    return ruleResponse;
+}
+
 export async function handleUpdateRules(
-    rules: RulesModel,
+    rules: Rules,
     ruleResponse: RuleResponse,
     options: BFastOptions,
     transactionSession: any
 ): Promise<RuleResponse> {
-    try {
-        const updateRules = getRulesKey(rules).filter(rule => rule.startsWith('update'));
-        if (updateRules.length === 0) {
-            return ruleResponse;
-        }
-        for (const updateRule of updateRules) {
-            const domain = extractDomain(updateRule, 'update');
-            const updateRuleRequests: UpdateModel = rules[updateRule];
-            const allowed = await hasPermission(
-                `update.${domain}`,
-                rules.context,
-                options
-            );
-            if (allowed !== true) {
-                ruleResponse.errors[`${transactionSession ? 'transaction.' : ''}update.${domain}`] = {
-                    message: 'You have insufficient permission to this resource',
-                    path: `${transactionSession ? 'transaction.' : ''}update.${domain}`,
-                    data: updateRuleRequests
-                };
-                return ruleResponse;
-            }
-            try {
-                if (updateRuleRequests && Array.isArray(updateRuleRequests)) {
-                    const partialResults = [];
-                    for (const value of updateRuleRequests) {
-                        const response = await handleUpdateRule(
-                            rules,
-                            domain,
-                            value,
-                            null,
-                            options
-                        );
-                        partialResults.push(response);
-                    }
-                    ruleResponse[updateRule] = partialResults;
-                } else {
-                    ruleResponse[updateRule] = await handleUpdateRule(
-                        rules,
-                        domain,
-                        updateRuleRequests,
-                        null,
-                        options
-                    );
-                }
-            } catch (e) {
-                // console.log(e);
-                ruleResponse.errors[`${transactionSession ? 'transaction.' : ''}update.${domain}`] = {
-                    message: e.message ? e.message : e.toString(),
-                    path: `${transactionSession ? 'transaction.' : ''}update.${domain}`,
-                    data: updateRuleRequests
-                };
-                if (transactionSession) {
-                    throw e;
-                }
-            }
-        }
-        return ruleResponse;
-    } catch (e) {
-        console.log(e);
-        ruleResponse.errors[`${transactionSession ? 'transaction.' : ''}update`] = {
-            message: e.message ? e.message : e.toString(),
-            path: `${transactionSession ? 'transaction.' : ''}update`,
-            data: null
-        };
-        if (transactionSession) {
-            throw e;
-        }
+    const updateRules = getRulesKey(rules).filter(rule => rule.startsWith('update'));
+    if (updateRules.length === 0) {
         return ruleResponse;
     }
+    for (const rule of updateRules) {
+        const domain = extractDomain(rule, 'update');
+        const ePath = `${transactionSession ? 'transaction.' : ''}update.${domain}`;
+        await withRuleResponse(ePath, ruleResponse, async () => {
+            const ruleData = rules[rule];
+            await updateRule(domain, ruleData, ruleResponse, rules.context, options);
+        })
+    }
+    return ruleResponse;
 }
 
 export async function handleStorageRule(
-    rulesBlockModel: RulesModel, ruleResultModel: RuleResponse,
+    rulesBlockModel: Rules, ruleResultModel: RuleResponse,
     authAdapter: AuthAdapter, filesAdapter: FilesAdapter, options: BFastOptions,
 ): Promise<RuleResponse> {
     try {
@@ -585,8 +371,8 @@ export async function handleStorageRule(
                     if (allowed !== true) {
                         ruleResultModel.errors[`files.save`] = {
                             message: 'You have insufficient permission to save file',
-                            path: `files.save`,
-                            data
+                            // path: `files.save`,
+                            // data
                         };
                     } else {
                         ruleResultModel.files = {};
@@ -606,8 +392,8 @@ export async function handleStorageRule(
                     if (allowed !== true) {
                         ruleResultModel.errors[`files.delete`] = {
                             message: 'You have insufficient permission delete file',
-                            path: `files.delete`,
-                            data
+                            // path: `files.delete`,
+                            // data
                         };
                     } else {
                         ruleResultModel.files = {};
@@ -627,8 +413,8 @@ export async function handleStorageRule(
                     if (allowed !== true) {
                         ruleResultModel.errors[`files.list`] = {
                             message: 'You have insufficient permission list files',
-                            path: `files.delete`,
-                            data
+                            // path: `files.delete`,
+                            // data
                         };
                     } else {
                         ruleResultModel.files = {};
@@ -647,8 +433,8 @@ export async function handleStorageRule(
                 devLog(e);
                 ruleResultModel.errors[`files.${action}`] = {
                     message: e.message ? e.message : e.toString(),
-                    path: `files.${action}`,
-                    data: JSON.stringify(data, null, 2)
+                    // path: `files.${action}`,
+                    // data: JSON.stringify(data, null, 2)
                 };
             }
         }
@@ -657,15 +443,15 @@ export async function handleStorageRule(
         devLog(e);
         ruleResultModel.errors.files = {
             message: e.message ? e.message : e.toString(),
-            path: 'files',
-            data: null
+            // path: 'files',
+            // data: null
         };
         return ruleResultModel;
     }
 }
 
 export async function handleAggregationRules(
-    rulesBlockModel: RulesModel, ruleResultModel: RuleResponse, options: BFastOptions
+    rulesBlockModel: Rules, ruleResultModel: RuleResponse, options: BFastOptions
 ): Promise<RuleResponse> {
     try {
         const aggregateRules = getRulesKey(rulesBlockModel).filter(rule => rule.startsWith('aggregate'));
@@ -678,8 +464,8 @@ export async function handleAggregationRules(
             if (allowed !== true) {
                 ruleResultModel.errors[`aggregate.${domain}`] = {
                     message: 'You have insufficient permission to this resource',
-                    path: `aggregate.${domain}`,
-                    data: rulesBlockModel[aggregateRule]
+                    // path: `aggregate.${domain}`,
+                    // data: rulesBlockModel[aggregateRule]
                 };
                 return ruleResultModel;
             }
@@ -711,8 +497,8 @@ export async function handleAggregationRules(
                 devLog(e);
                 ruleResultModel.errors[`aggregate.${domain}`] = {
                     message: e.message ? e.message : e.toString(),
-                    path: `aggregate.${domain}`,
-                    data
+                    // path: `aggregate.${domain}`,
+                    // data
                 };
             }
         }
@@ -721,8 +507,8 @@ export async function handleAggregationRules(
         devLog(e);
         ruleResultModel.errors[`aggregate`] = {
             message: e.message ? e.message : e.toString(),
-            path: `aggregate`,
-            data: null
+            // path: `aggregate`,
+            // data: null
         };
         return ruleResultModel;
     }

@@ -54,8 +54,7 @@ describe('RulesController', function () {
                 null
             );
             should().exist(results.updateProduct);
-            expect(results.updateProduct.name).equal('apple');
-            expect(results.updateProduct.price).equal(50);
+            expect(results.updateProduct.modified).equal(1);
         });
         it('should update a document by id with dates', async function () {
             const results = await handleUpdateRules({
@@ -73,9 +72,7 @@ describe('RulesController', function () {
                 null
             );
             should().exist(results.updateProduct);
-            expect(results.updateProduct.name).equal('ethan');
-            expect(results.updateProduct.price).equal(60);
-            expect(results.updateProduct.createdAt).eql(leo);
+            expect(results.updateProduct.modified).equal(1);
         });
         it('should update a documents by filter', async function () {
             const results = await handleUpdateRules({
@@ -96,11 +93,9 @@ describe('RulesController', function () {
                 null
             );
             should().exist(results.updateProduct);
-            expect(results.updateProduct).length(3);
-            expect(results.updateProduct.map(x1 => x1.status)).to.have.members(['old', 'old', 'old']);
-            expect(results.updateProduct.map(x1 => x1.name)).to.have.members(['apple', 'apple', 'apple']);
+            expect(results.updateProduct.modified).equal(3);
         });
-        it('should update many documents by filter', async function () {
+        it('should update bulk documents by filter', async function () {
             const results = await handleUpdateRules({
                     updateProduct: [
                         {
@@ -131,18 +126,13 @@ describe('RulesController', function () {
                 null
             );
             should().exist(results.updateProduct);
-            expect(Array.isArray(results.updateProduct)).equal(true);
-            expect(results.updateProduct.length).equal(2);
-            expect(results.updateProduct[0]).length(5);
-            results.updateProduct[0].map(_e3 => expect(typeof _e3.id).equal('string'));
-            expect(results.updateProduct[1]).length(5);
+            expect(results.updateProduct.modified).equal(10);
         });
         it('should update many documents by id', async function () {
             const results = await handleUpdateRules({
                     updateProduct: [
                         {
                             id: 'xyz',
-                            // filter: {},
                             update: {
                                 $set: {
                                     name: 'apple',
@@ -150,28 +140,13 @@ describe('RulesController', function () {
                                 }
                             },
                         },
-                        // {
-                        //     filter: {
-                        //         status: 'new'
-                        //     },
-                        //     update: {
-                        //         $set: {
-                        //             name: 'apple',
-                        //             status: 'old'
-                        //         }
-                        //     },
-                        // }
                     ]
                 }, {errors: {}},
                 config,
                 null
             );
-            // console.log(results.updateProduct)
             should().exist(results.updateProduct);
-            expect(Array.isArray(results.updateProduct)).equal(true);
-            expect(results.updateProduct.length).equal(1);
-            expect(results.updateProduct[0].id).equal('xyz');
-            // expect(results.updateProduct[1]).length(4);
+            expect(results.updateProduct.modified).equal(1);
         });
         it('should not update many documents when empty filter exist', async function () {
             const results = await handleUpdateRules({
@@ -230,8 +205,7 @@ describe('RulesController', function () {
                 null
             );
             should().exist(results.updateProduct);
-            assert(results.updateProduct['id'] === 'xyz');
-            assert(typeof results.updateProduct === 'object');
+            assert(results.updateProduct.modified === 1);
         });
         it('should create document if not exist and upsert is true, with query by id', async function () {
             const _date = new Date().toISOString();
@@ -253,19 +227,7 @@ describe('RulesController', function () {
                 null
             );
             should().exist(results.updateProduct);
-            expect(results.updateProduct.name).equal('apple');
-            expect(results.updateProduct.id).equal('xyz123');
-            should().exist(results.updateProduct.createdAt);
-            should().exist(results.updateProduct.createdAt);
-            expect(typeof results.updateProduct.createdAt).equal('object');
-            expect(typeof results.updateProduct.updatedAt).equal('object');
-            expect(results.updateProduct).eql({
-                id: 'xyz123',
-                name: 'apple',
-                createdAt: new Date(_date),
-                // createdBy: null,
-                updatedAt: new Date(_date)
-            });
+            expect(results.updateProduct.modified).equal(1);
         });
         it('should not create document if not exist and upsert is false, with query by id', async function () {
             const _date = new Date();
@@ -286,7 +248,8 @@ describe('RulesController', function () {
                 config,
                 null
             );
-            should().not.exist(results.updateProduct);
+            should().exist(results.updateProduct);
+            expect(results.updateProduct.modified).equal(0)
         });
         it('should create documents if not exist and upsert is true, with query by filter', async function () {
             const results = await handleUpdateRules(
@@ -323,9 +286,7 @@ describe('RulesController', function () {
                 null
             );
             should().exist(results.updateProduct);
-            expect(results.updateProduct).length(1);
-            expect(r.queryProduct[0].status).equal('mixer');
-            expect(typeof r.queryProduct[0].id).equal('string');
+            expect(results.updateProduct.modified).equal(1);
         });
         it('should increment a number field if $inc operation provided and field exist in a doc ', async function () {
             // const _date = new Date();
@@ -344,7 +305,7 @@ describe('RulesController', function () {
                 null
             );
             should().exist(results.updateProduct);
-            expect(results.updateProduct.price).equal(70);
+            expect(results.updateProduct.modified).equal(1);
         });
         it('should increment a number field if $inc operation provided and field exist in a inner doc ', async function () {
             const results = await handleUpdateRules({
@@ -364,7 +325,7 @@ describe('RulesController', function () {
                 null
             );
             should().exist(results.updateProduct);
-            expect(results.updateProduct.a.b).equal(11);
+            expect(results.updateProduct.modified).equal(1);
         });
         it('should increment near and far field in a doc ', async function () {
             // const _date = new Date();
@@ -386,11 +347,9 @@ describe('RulesController', function () {
                 null
             );
             should().exist(results.updateProduct);
-            expect(results.updateProduct.a.b).equal(21);
-            expect(results.updateProduct.price).equal(80);
+            expect(results.updateProduct.modified).equal(1);
         });
         it('should increment not exist field', async function () {
-            // const _date = new Date();
             const results = await handleUpdateRules({
                     updateProduct: {
                         id: 'josh',
@@ -406,7 +365,7 @@ describe('RulesController', function () {
                 null
             );
             should().exist(results.updateProduct);
-            expect(results.updateProduct.c).equal(10);
+            expect(results.updateProduct.modified).equal(1);
         });
         it('should increment not exist inner field', async function () {
             const results = await handleUpdateRules({
@@ -430,19 +389,7 @@ describe('RulesController', function () {
                 null
             );
             should().exist(results.updateProduct);
-            expect(results.updateProduct.c).equal(20);
-            expect(results.updateProduct.e.a).equal(10);
-            expect(results.updateProduct).eql({
-                id: 'josh',
-                name: 'ethan',
-                price: 80,
-                a: {b: 21},
-                c: 20,
-                e: {a: 10},
-                createdAt: leo,
-                // createdBy: null,
-                updatedAt: leo
-            })
+            expect(results.updateProduct.modified).equal(1);
         });
         it('should not increment non number field', async function () {
             const results = await handleUpdateRules({
@@ -461,7 +408,6 @@ describe('RulesController', function () {
             );
             should().not.exist(results.updateProduct);
             should().exist(results.errors['update.Product']);
-            // expect(results.updateProduct.name).equal('ethan');
         });
         it('should upsert and increment field when upsert is true and use id', async function () {
             const results = await handleUpdateRules({
@@ -480,7 +426,7 @@ describe('RulesController', function () {
                 null
             );
             should().exist(results.updateProduct);
-            expect(results.updateProduct.age).equal(10);
+            expect(results.updateProduct.modified).equal(1);
         });
         it('should upsert and increment field when upsert is true and use filter', async function () {
             const results = await handleUpdateRules({
@@ -501,8 +447,7 @@ describe('RulesController', function () {
                 null
             );
             should().exist(results.updateProduct);
-            expect(results.updateProduct[0].age).equal(10);
-            expect(results.updateProduct[0].name).equal('night');
+            expect(results.updateProduct.modified).equal(1);
         });
     });
     describe('$unset', function () {
@@ -523,9 +468,7 @@ describe('RulesController', function () {
                 null
             );
             should().exist(results.updateProduct);
-            should().not.exist(results.updateProduct.status);
-            // expect(results.updateProduct.name).equal('xyz');
-            expect(results.updateProduct.price).equal(50);
+            expect(results.updateProduct.modified).equal(1);
         });
         it('should remove embedded field in a document', async function () {
             const results = await handleUpdateRules({
@@ -544,14 +487,7 @@ describe('RulesController', function () {
                 null
             );
             should().exist(results.updateProduct);
-            should().not.exist(results.updateProduct.flags.a.q);
-            // expect(results.updateProduct.name).equal('josh');
-            expect(results.updateProduct.price).equal(50);
-            expect(results.updateProduct.flags).eql({
-                a: {
-                    g: 2
-                }
-            })
+            expect(results.updateProduct.modified).equal(1);
         });
     });
 });

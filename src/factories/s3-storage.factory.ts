@@ -4,6 +4,7 @@ import * as Minio from 'minio';
 import {Client} from 'minio';
 import {Buffer} from "buffer";
 import {Storage} from "../models/storage";
+import {ReadableStream} from 'stream/web';
 
 const url = require('url');
 
@@ -18,7 +19,7 @@ export class S3StorageFactory implements FilesAdapter {
 
     async createFile(
         name: string, size: number, data: Buffer, contentType: string, pn: boolean, options: BFastOptions
-    ): Promise<Storage> {
+    ): Promise<Storage<any>> {
         const bucket = options?.adapters?.s3Storage?.bucket;
         await this.createBucket(bucket, options);
         await this.validateFilename(name);
@@ -34,7 +35,7 @@ export class S3StorageFactory implements FilesAdapter {
         return this.s3.removeObject(bucket, filename);
     }
 
-    async fileInfo(name: string, options: BFastOptions): Promise<Storage> {
+    async fileInfo(name: string, options: BFastOptions): Promise<Storage<any>> {
         const bucket = options?.adapters?.s3Storage?.bucket;
         await this.createBucket(bucket, options);
         const stats = await this.s3.statObject(bucket, name);
@@ -42,26 +43,13 @@ export class S3StorageFactory implements FilesAdapter {
         return {size: stats.size, name: name}
     }
 
-    async getFileData(id: string, asStream: boolean, options: BFastOptions): Promise<any> {
-        const bucket = options?.adapters?.s3Storage?.bucket;
-        await this.createBucket(bucket, options);
-        return this.s3.getObject(bucket, id);
-    }
-
     async getFileLocation(filename: string, configAdapter: BFastOptions): Promise<string> {
         return '/storage/' + configAdapter.applicationId + '/file/' + encodeURIComponent(filename);
     }
 
-    async validateFilename(filename: string): Promise<any> {
-        if (filename.length > 128) {
-            throw new Error('Filename too long.');
-        }
-
-        const regx = /^[_a-zA-Z0-9][a-zA-Z0-9@. ~_-]*$/;
-        if (!filename.match(regx)) {
-            throw new Error('Filename contains invalid characters.');
-        }
-        return null;
+     validateFilename(filename: string): string {
+        const regx = /[^a-zA-Z0-9]/;
+        return filename.replace(new RegExp(regx),'');
     }
 
     handleFileStream(
@@ -149,11 +137,26 @@ export class S3StorageFactory implements FilesAdapter {
         });
     }
 
+    async getFileData(id: string, asStream: boolean, options: BFastOptions): Promise<any> {
+        const bucket = options?.adapters?.s3Storage?.bucket;
+        await this.createBucket(bucket, options);
+        return this.s3.getObject(bucket, id);
+    }
+
+
+    getFileBuffer(file: any, options: BFastOptions): Promise<Buffer> {
+        return this.getFileData(file, true, options);
+    }
+
+    getFileStream(id: any, options: BFastOptions): Promise<ReadableStream> {
+        return this.getFileData(id, true, options);
+    }
+
     private async saveFile(
         filename: string, data: Buffer,
         bucket: string,
         options: BFastOptions
-    ): Promise<Storage> {
+    ): Promise<Storage<any>> {
         await this.createBucket(bucket, options);
         const v = await this.s3.putObject(bucket, filename, data);
         // @ts-ignore

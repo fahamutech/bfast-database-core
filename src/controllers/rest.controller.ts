@@ -1,5 +1,4 @@
 import httpStatus, {StatusCodes} from 'http-status-codes';
-import {RuleResponse} from '../models/rules.model';
 import formidable from 'formidable';
 import {readFile} from 'fs';
 import {promisify} from "util";
@@ -13,7 +12,7 @@ import {hasPermission} from "./auth.controller";
 import {
     handleAggregationRules,
     handleAuthenticationRule,
-    handleAuthorizationRule,
+    handlePolicyRule,
     handleBulkRule,
     handleCreateRules,
     handleDeleteRules,
@@ -22,60 +21,44 @@ import {
     handleUpdateRules
 } from "./rules.controller";
 import {
-    fileInfo,
     handleGetFileBySignedUrl,
     handleGetFileRequest,
     isS3,
     listFiles,
     saveFromBuffer
-} from "./storage.controller";
+} from "./storage";
 import {devLog} from "../utils/debug.util";
+import {Buffer} from "buffer";
+import {ReadableStream} from "stream/web";
+import {Storage} from "../models/storage";
+import {findById} from "./database.controller";
+import {RuleResponse} from "../models/rule-response";
 
-export function getFile(
-    request: Request, response: Response, _: NextFunction, filesAdapter: FilesAdapter, options
-): void {
-    if (request?.method?.toString()?.toLowerCase() === 'head') {
-        fileInfo(request, response, filesAdapter, options);
-    } else if (isS3(filesAdapter) === true) {
-        handleGetFileBySignedUrl(
-            request,
-            response,
-            false,
-            filesAdapter,
-            options
-        );
-    } else {
-        handleGetFileRequest(
-            request,
-            response,
-            false,
-            filesAdapter,
-            options
-        );
-    }
-}
+// export async function getFile(
+//     name: string, filesAdapter: FilesAdapter, options: BFastOptions
+// ): Promise<Buffer | ReadableStream | string> {
+//     if (isS3(filesAdapter) === true) {
+//         return handleGetFileBySignedUrl<any>(name, null, null, false, filesAdapter, options);
+//     } else {
+//         const f = await getStorage(name, options);
+//         return handleGetFileRequest(f, null, null, false, filesAdapter, options);
+//     }
+// }
 
-export function getThumbnail(
-    request: Request, response: Response, _: NextFunction, filesAdapter: FilesAdapter, options: BFastOptions
-): void {
-    if (isS3(filesAdapter) === true) {
-        handleGetFileBySignedUrl(
-            request,
-            response,
-            true,
-            filesAdapter,
-            options
-        );
-    } else {
-        handleGetFileRequest(
-            request,
-            response,
-            true,
-            filesAdapter,
-            options
-        );
-    }
-}
+// export async function getThumbnail(
+//     name: string,
+//     width: number,
+//     height: number,
+//     filesAdapter: FilesAdapter,
+//     options: BFastOptions
+// ): Promise<Buffer | ReadableStream | string> {
+//     if (isS3(filesAdapter) === true) {
+//         return handleGetFileBySignedUrl(name, width, height, true, filesAdapter, options);
+//     } else {
+//         const f = await getStorage(name, options);
+//         return handleGetFileRequest(f, width, height, true, filesAdapter, options);
+//     }
+// }
 
 export function getAllFiles(
     request: any, response: any, _: NextFunction, filesAdapter: FilesAdapter, options: BFastOptions
@@ -266,7 +249,7 @@ export function handleRuleBlocks(
     }
     const results: RuleResponse = {errors: {}};
     handleAuthenticationRule(body, results, authAdapter, options).then(_1 => {
-        return handleAuthorizationRule(body, results, options);
+        return handlePolicyRule(body, results, options);
     }).then(_2 => {
         return handleCreateRules(body, results, options, null);
     }).then(_3 => {

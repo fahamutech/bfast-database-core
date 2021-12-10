@@ -1,10 +1,10 @@
 import {AuthAdapter} from '../adapters/auth.adapter';
-import {BasicUserAttributesModel} from '../models/basic-user-attributes.model';
-import {ContextBlock} from '../models/rules.model';
+import {BasicUser} from '../models/basic-user';
 import {BFastOptions} from "../bfast-database.option";
-import {findByFilter, updateOne, writeOne} from "../controllers/database.controller";
+import {findByFilter, updateData, writeOne} from "../controllers/database.controller";
 
 import {comparePassword, getToken, hashPlainText} from "../controllers/security.controller";
+import {RuleContext} from "../models/rule-context";
 
 export class AuthFactory implements AuthAdapter {
     private domainName = '_User';
@@ -12,13 +12,13 @@ export class AuthFactory implements AuthAdapter {
     constructor() {
     }
 
-    async resetPassword(email: string, context?: ContextBlock): Promise<any> {
+    async resetPassword(email: string, context?: RuleContext): Promise<any> {
         return undefined;
     }
 
-    async signIn<T extends BasicUserAttributesModel>(
+    async signIn<T extends BasicUser>(
         userModel: T,
-        context: ContextBlock,
+        context: RuleContext,
         options: BFastOptions
     ): Promise<T> {
         const users = await findByFilter(
@@ -52,8 +52,8 @@ export class AuthFactory implements AuthAdapter {
         }
     }
 
-    async signUp<T extends BasicUserAttributesModel>(
-        userModel: T, context: ContextBlock, options: BFastOptions
+    async signUp<T extends BasicUser>(
+        userModel: T, context: RuleContext, options: BFastOptions
     ): Promise<T> {
         userModel.password = await hashPlainText(userModel?.password);
         const user = await writeOne(
@@ -69,16 +69,16 @@ export class AuthFactory implements AuthAdapter {
         return user;
     }
 
-    async sendVerificationEmail(email: string, context?: ContextBlock): Promise<any> {
+    async sendVerificationEmail(email: string, context?: RuleContext): Promise<any> {
         return undefined;
     }
 
-    async update<T extends BasicUserAttributesModel>(
+    async update<T extends BasicUser>(
         userModel: T,
-        context: ContextBlock,
+        context: RuleContext,
         options: BFastOptions
-    ): Promise<T> {
-        return updateOne(
+    ): Promise<{message: string, modified: number}> {
+        return updateData(
             this.domainName,
             {
                 id: context.uid,
@@ -95,11 +95,11 @@ export class AuthFactory implements AuthAdapter {
 
     async updatePassword(
         password: string,
-        context: ContextBlock,
+        context: RuleContext,
         options: BFastOptions
     ): Promise<any> {
         const hashedPassword = await hashPlainText(password);
-        return updateOne(
+        return updateData(
             this.domainName,
             {
                 id: context.uid,

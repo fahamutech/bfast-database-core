@@ -4,12 +4,28 @@ import {FilesAdapter} from "../adapters/files.adapter";
 import {
     filePolicy,
     getAllFiles,
-    getFile,
-    getThumbnail,
     multipartForm,
     verifyApplicationId,
     verifyRequestToken
 } from "../controllers/rest.controller";
+import {fileInfo, handleGetFileBySignedUrl, handleGetFileRequest, isS3} from "../controllers/storage";
+import httpStatus from "http-status-codes";
+import {ReadableStream} from "stream/web";
+import {pipeline, Readable} from "stream";
+import {Buffer} from "buffer";
+import {Storage} from "../models/storage";
+import {findById} from "../controllers/database.controller";
+
+async function getStorage(id: string, options: BFastOptions) {
+    const f: Storage<any> = await findById(
+        '_Storage', {id: id, return: []}, {bypassDomainVerification: true},
+        options
+    );
+    if (!f) {
+        throw {message: "File not found"};
+    }
+    return f;
+}
 
 export function handleGetFile(filesAdapter: FilesAdapter, options: BFastOptions): any[] {
     return [
@@ -21,8 +37,56 @@ export function handleGetFile(filesAdapter: FilesAdapter, options: BFastOptions)
         (rq, rs, n) => verifyApplicationId(rq, rs, n, options),
         (rq, rs, n) => verifyRequestToken(rq, rs, n, options),
         (rq, rs, n) => filePolicy(rq, rs, n, options),
-        (rq, rs, n) => getFile(rq, rs, n, filesAdapter, options)
+        (request, response) => {
+            if (request.method.toLowerCase() === 'head') {
+                fileInfo(request, response, filesAdapter, options);
+            } else {
+                const filename = request.params.filename;
+                if (isS3(filesAdapter) === true) {
+                    return handleGetFileBySignedUrl(
+                        filename, null, null, false, filesAdapter, options
+                    );
+                } else {
+                    getStorage(filename, options).then(f => {
+                        response.set({
+                            'Content-Type': f.type,
+                            'Content-Length': f.size,
+                            'Content-Disposition': `attachment; filename="${f.name}.${f.extension}"`,
+                        });
+                        return handleGetFileRequest(f, null, null, false, filesAdapter, options);
+                    }).then(value => {
+                        returnFile(value, response);
+                    }).catch(reason => {
+                        // console.log(reason);
+                        response.status(httpStatus.BAD_REQUEST).send(reason);
+                    });
+                }
+            }
+        }
     ];
+}
+
+function returnFile(value: Buffer | ReadableStream | string, response) {
+    if (typeof value === "string") {
+        response.redirect(value);
+    } else {
+        if (value instanceof Buffer) {
+            response.status(httpStatus.OK).send(value);
+        } else if (value instanceof Readable) {
+            value.pipe(response)
+            // pipeline(value, response, err => {
+            //     if (err) {
+            //         console.log(err);
+            //         try {
+            //             response.end()
+            //         } catch (_) {
+            //         }
+            //     }
+            // });
+        } else {
+            throw {message: 'file data can not be determined'}
+        }
+    }
 }
 
 export function handleUploadFile(filesAdapter: FilesAdapter, options: BFastOptions): any[] {
@@ -49,7 +113,34 @@ export function handleGetThumbnail(filesAdapter: FilesAdapter, options: BFastOpt
         (rq, rs, n) => verifyApplicationId(rq, rs, n, options),
         (rq, rs, n) => verifyRequestToken(rq, rs, n, options),
         (rq, rs, n) => filePolicy(rq, rs, n, options),
-        (rq, rs, n) => getThumbnail(rq, rs, n, filesAdapter, options)
+        (request, response) => {
+            if (request.method.toLowerCase() === 'head') {
+                fileInfo(request, response, filesAdapter, options);
+            } else {
+                const width = parseInt(request.query.width ? request.query.width : 100);
+                let height = parseInt(request.query.height ? request.query.height : -1);
+                if (height === -1) {
+                    height = undefined
+                }
+                const filename = request.params.filename;
+                if (isS3(filesAdapter) === true) {
+                    return handleGetFileBySignedUrl(
+                        filename, null, null, true, filesAdapter, options
+                    );
+                } else {
+                    getStorage(filename, options).then(f => {
+                        response.set({
+                            'Content-Disposition': `attachment; filename="${f.name}.${f.extension}"`,
+                        });
+                        return handleGetFileRequest(f, width, height, true, filesAdapter, options);
+                    }).then(value => {
+                        returnFile(value, response);
+                    }).catch(reason => {
+                        response.status(httpStatus.BAD_REQUEST).send(reason);
+                    });
+                }
+            }
+        }
     ];
 }
 

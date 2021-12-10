@@ -2,6 +2,7 @@ import {BFastOptions} from '../bfast-database.option';
 import {Buffer} from "buffer";
 import {Storage} from "../models/storage";
 import {Request, Response} from 'express'
+import {ReadableStream} from "stream/web";
 
 export abstract class FilesAdapter {
 
@@ -12,11 +13,13 @@ export abstract class FilesAdapter {
 
     abstract createFile(
         name: string, size: number, data: Buffer, contentType: string, pN: boolean, options: BFastOptions
-    ): Promise<Storage>;
+    ): Promise<Storage<any>>;
 
-    abstract deleteFile(id: string, options: BFastOptions): Promise<{id: string}>;
+    abstract deleteFile(id: string, options: BFastOptions): Promise<{ id: string }>;
 
-    abstract getFileData(name: string, asStream: boolean, options: BFastOptions): Promise<Storage>;
+    abstract getFileBuffer(file: Storage<any>, options: BFastOptions): Promise<Buffer>;
+
+    abstract getFileStream(file: Storage<any>, options: BFastOptions): Promise<ReadableStream>;
 
     abstract getFileLocation(id: string, config: BFastOptions): Promise<string>;
 
@@ -26,9 +29,9 @@ export abstract class FilesAdapter {
 
     abstract listFiles(
         query: { prefix: string, size: number, skip: number, after: string }, options: BFastOptions
-    ): Promise<Storage[]>;
+    ): Promise<Storage<any>[]>;
 
-    abstract validateFilename(id: string, options: BFastOptions): Promise<any>;
+    abstract validateFilename(id: string, options: BFastOptions): string;
 
-    abstract fileInfo(name: string, options: BFastOptions): Promise<Storage>;
+    abstract fileInfo(name: string, options: BFastOptions): Promise<Storage<any>>;
 }

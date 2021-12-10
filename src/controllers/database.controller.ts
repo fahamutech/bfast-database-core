@@ -1,5 +1,4 @@
-import {BasicAttributesModel} from '../models/basic-attributes.model';
-import {ContextBlock} from '../models/rules.model';
+import {Basic} from '../models/basic';
 import {DeleteModel} from '../models/delete-model';
 import {QueryModel} from '../models/query-model';
 import {generateUUID} from './security.controller';
@@ -13,15 +12,17 @@ import {DatabaseBasicOptions} from "../models/database-basic-options";
 import {DatabaseChangesOptions} from "../models/database-changes-options";
 import {
     _aggregate,
-    _createData,
+    _createData, _createManyData,
     _getData,
     _getManyData,
     _init,
     _purgeData,
-    _updateData
+    _updateDataInStore, _updateManyDataInStore
 } from "../factories/database-factory-resolver";
 import {UpdateModel} from "../models/update-model";
 import moment from 'moment';
+import {RuleContext} from "../models/rule-context";
+import {TreeController} from "bfast-database-tree";
 
 export async function handleDomainValidation(domain: string): Promise<any> {
     if (!validDomain(domain)) {
@@ -42,11 +43,11 @@ export async function checkPolicyInDomain(domain: string, options: DatabaseWrite
     }
 }
 
-export async function writeOne<T extends BasicAttributesModel>(
+export async function writeOne<T extends Basic>(
     domain: string,
     data: T,
     cids: boolean,
-    context: ContextBlock,
+    context: RuleContext,
     writeOptions: DatabaseWriteOptions = {bypassDomainVerification: false},
     options: BFastOptions
 ): Promise<T> {
@@ -54,81 +55,118 @@ export async function writeOne<T extends BasicAttributesModel>(
     const returnFields = getReturnFields(data);
     const sanitizedDataWithCreateMetadata = addCreateMetadata(data, context);
     const sanitizedData: any = sanitize4Db(sanitizedDataWithCreateMetadata);
-
     const savedData: any = await _createData(domain, sanitizeDate(sanitizedData), options);
-    const cleanDoc: any = sanitize4User(savedData, returnFields) as T;
+    const cleanDoc: any = sanitize4User(savedData, returnFields);
     publishChanges(domain, {
-        _id: cleanDoc?.id,
-        fullDocument: cleanDoc,
-        documentKey: cleanDoc?.id,
-        operationType: "create"
+        _id: cleanDoc?.id, fullDocument: cleanDoc, documentKey: cleanDoc?.id, operationType: "create"
     }, options);
     return cleanDoc;
 }
 
-export async function writeMany<T extends BasicAttributesModel>(
-    domain: string,
-    data: T[],
-    cids: boolean,
-    context: ContextBlock,
+export async function writeMany<T extends Basic>(
+    domain: string, data: T[], cids: boolean, context: RuleContext,
     writeOptions: DatabaseWriteOptions = {bypassDomainVerification: false},
     options: BFastOptions
 ): Promise<any[]> {
-    const dP = data.map(d => writeOne(domain, d, cids, context, writeOptions, options));
-    return Promise.all(dP);
+    if (data.length === 0) {
+        return [];
+    }
+    await checkPolicyInDomain(domain, writeOptions);
+    const returnFields = getReturnFields(data[0]);
+    const sanitizedData: any[] = data.map(x => {
+        x = addCreateMetadata(x, context);
+        x = sanitize4Db(x)
+        return sanitizeDate(x);
+    });
+    const savedData = await _createManyData(domain, sanitizedData, options)
+    return savedData.map(d => {
+        publishChanges(domain, {
+            _id: d._id, fullDocument: d, documentKey: {_id: d._id}, operationType: "create"
+        }, options);
+        return sanitize4User(d, returnFields)
+    });
 }
 
-export async function updateOne(
-    domain: string,
-    updateModel: UpdateModel,
-    context: ContextBlock,
-    updateOptions: DatabaseUpdateOptions = {bypassDomainVerification: false},
-    options: BFastOptions
-): Promise<any> {
-    await checkPolicyInDomain(domain, updateOptions);
+async function sanitizeUpdateModel(uModel: UpdateModel): Promise<UpdateModel> {
+    let updateModel = JSON.parse(JSON.stringify(uModel));
     if (updateModel.upsert === true) {
         if (!updateModel.update.hasOwnProperty('$set')) {
             updateModel.update.$set = {_id: updateModel.id ? updateModel.id : generateUUID()}
         }
     }
-    const returnFields = getReturnFields(updateModel as any);
     updateModel = altUpdateModel(updateModel);
-    // console.log(updateModel);
     updateModel.update.$set = sanitizeDate(updateModel.update.$set);
-    const updatedDoc = await _updateData(domain, updateModel, options);
-    const cleanDoc = sanitize4User(updatedDoc, returnFields);
-    publishChanges(domain, {
-        _id: updatedDoc?._id,
-        fullDocument: updatedDoc,
-        operationType: "update"
-    }, options);
-    return cleanDoc;
+    let filter: any = {};
+    if (updateModel && typeof updateModel.filter === "object") {
+        filter = updateModel.filter;
+    }
+    if (updateModel && updateModel.id) {
+        filter._id = updateModel.id;
+    }
+    updateModel.filter = filter;
+    if (typeof updateModel?.update?.$inc === "object") {
+        let iQ = await new TreeController().query('', updateModel.update.$inc);
+        Object.keys(iQ).forEach(x => {
+            iQ[x.substr(1, x.length).replace('/', '.')] = iQ[x];
+            delete iQ[x];
+        });
+        updateModel.update.$inc = iQ;
+    }
+    return updateModel;
 }
 
-export async function updateMany(
+export async function updateData(
     domain: string,
     updateModel: UpdateModel,
-    context: ContextBlock,
+    context: RuleContext,
     updateOptions: DatabaseUpdateOptions = {bypassDomainVerification: false},
     options: BFastOptions
-): Promise<any> {
+): Promise<{ message: string, modified: number }> {
     await checkPolicyInDomain(domain, updateOptions);
-    let oldDocs: any[] = await findByFilter(domain, updateModel, context, updateOptions, options);
-    if (!Array.isArray(oldDocs)) {
-        return [];
+    // const returnFields = getReturnFields(updateModel);
+    updateModel = await sanitizeUpdateModel(updateModel);
+    const a = await _updateDataInStore(domain, updateModel, options);
+    return {message: 'done update', modified: a.modified};
+    // if (updateModel.hasOwnProperty('id')) {
+    //     const cleanDoc = await findById(
+    //         domain, {id: updateModel.id, return: returnFields}, updateOptions, options
+    //     );
+    //     publishChanges(domain, {
+    //         _id: cleanDoc.id,
+    //         fullDocument: cleanDoc,
+    //         operationType: "update"
+    //     }, options);
+    //     return cleanDoc;
+    // } else {
+    //     const cleanDocs = await findByFilter(
+    //         domain, {return: returnFields, filter: updateModel.filter}, context, updateOptions, options
+    //     );
+    //     return cleanDocs.map(z => {
+    //         publishChanges(domain, {
+    //             _id: z.id,
+    //             fullDocument: z,
+    //             operationType: "update"
+    //         }, options);
+    //         return z;
+    //     });
+    // }
+}
+
+
+export async function updateManyData(
+    domain: string,
+    updateModels: UpdateModel[],
+    context: RuleContext,
+    updateOptions: DatabaseUpdateOptions = {bypassDomainVerification: false},
+    options: BFastOptions
+): Promise<{ message: string, modified: number }> {
+    await checkPolicyInDomain(domain, updateOptions);
+    if (updateModels.length === 0) {
+        return {message: 'done update', modified: 0};
     }
-    if (oldDocs.length === 0 && updateModel.upsert === true) {
-        oldDocs = [{id: generateUUID()}];
-    }
-    oldDocs = oldDocs.map(old => old.id);
-    oldDocs = Array.from(oldDocs.reduce((a, b) => a.add(b), new Set()));
-    const _p = oldDocs.map(_id => {
-        const uM = JSON.parse(JSON.stringify(updateModel));
-        uM.id = _id;
-        return updateOne(domain, uM, context, updateOptions, options);
-    });
-    const _a = await Promise.all(_p);
-    return _a.filter(_a1 => _a1 !== null);
+    updateModels = await Promise.all(updateModels.map(x => sanitizeUpdateModel(x)));
+    const a = await _updateManyDataInStore(domain, updateModels, options);
+    return {message: 'done update', modified: a.modified};
 }
 
 function altUpdateModel(updateModel: UpdateModel): UpdateModel {
@@ -139,7 +177,7 @@ function altUpdateModel(updateModel: UpdateModel): UpdateModel {
 }
 
 export async function remove(
-    domain: string, deleteModel: DeleteModel<any>, context: ContextBlock,
+    domain: string, deleteModel: DeleteModel<any>, context: RuleContext,
     basicOptions: DatabaseBasicOptions = {bypassDomainVerification: false}, options: BFastOptions
 ): Promise<any> {
     await checkPolicyInDomain(domain, basicOptions);
@@ -231,7 +269,7 @@ export async function findById(
 }
 
 export async function findByFilter(
-    domain: string, queryModel: QueryModel<any>, context: ContextBlock,
+    domain: string, queryModel: QueryModel<any>, context: RuleContext,
     writeOptions: DatabaseWriteOptions = {bypassDomainVerification: false}, options: BFastOptions
 ): Promise<any> {
     const returnFields = getReturnFields(queryModel as any);
@@ -284,7 +322,7 @@ export function sanitizeDate(data: any) {
     return data;
 }
 
-export function addCreateMetadata(data: any, context: ContextBlock) {
+export function addCreateMetadata(data: any, context: RuleContext) {
     let userUpdateDate = data.updatedAt;
     if (moment(userUpdateDate).isValid()) {
         userUpdateDate = moment(userUpdateDate).toDate();

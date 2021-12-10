@@ -57,11 +57,11 @@ export class IpfsFactory {
         }
     }
 
-    async generateDataFromCid(
+    async generateDataFromCid<T>(
         cid: string,
         ipfsOptions: IpfsOption,
         options: BFastOptions
-    ): Promise<object | ReadableStream | Buffer> {
+    ): Promise<T> {
         if ((await this.checkIfWeHaveCidInWeb3(cid, options)) === false) {
             return null;
         }
@@ -82,13 +82,13 @@ export class IpfsFactory {
         }
         if (ipfsOptions?.json === false) {
             if (ipfsOptions?.stream === true) {
-                return itToStream.readable(results);
+                return itToStream.readable(results) as T;
             } else {
                 let buffer = Buffer.alloc(0);
                 for await (const chunk of results) {
                     buffer = Buffer.concat([buffer, chunk]);
                 }
-                return buffer;
+                return buffer as unknown as T;
             }
         }
     }

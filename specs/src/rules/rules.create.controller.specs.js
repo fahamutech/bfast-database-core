@@ -1,6 +1,6 @@
 const {mongoRepSet, config} = require('../../mock.config.js');
 const {should, expect} = require("chai");
-const {handleCreateRules, handleAuthorizationRule} = require("../../../dist/index");
+const {handleCreateRules, handlePolicyRule} = require("../../../dist/index");
 
 describe('RulesController', function () {
     let mongoMemoryReplSet
@@ -140,7 +140,7 @@ describe('RulesController', function () {
     });
     describe('Create::Secured', function () {
         before(async function () {
-            const r = await handleAuthorizationRule(
+            const r = await handlePolicyRule(
                 {
                     context: {
                         useMasterKey: true
@@ -158,7 +158,7 @@ describe('RulesController', function () {
             should().not.exist(r.errors['policy.add']);
         });
         after(async function () {
-            await handleAuthorizationRule({
+            await handlePolicyRule({
                     context: {
                         useMasterKey: true
                     },
@@ -169,7 +169,7 @@ describe('RulesController', function () {
                     }
                 }, {errors: {}},
             );
-            await handleAuthorizationRule({
+            await handlePolicyRule({
                     context: {
                         useMasterKey: true
                     },
@@ -197,8 +197,6 @@ describe('RulesController', function () {
             should().exist(results.errors['create.Product']);
             expect(results.errors['create.Product']['message'])
                 .equal('You have insufficient permission to this resource');
-            expect(typeof results.errors['create.Product']['data'])
-                .equal("object");
         });
         it('should return saved data when have access to domain domain', async function () {
             const results = await handleCreateRules({
