@@ -6,7 +6,6 @@ import {BFastOptions} from '../bfast-database.option';
 import {Buffer} from "buffer";
 import {Request, Response} from 'express'
 import {Storage} from "../models/storage";
-import {findById} from './database.controller';
 import {ReadableStream} from "stream/web";
 import sharp from 'sharp'
 import {RuleContext} from "../models/rule-context";
@@ -197,6 +196,10 @@ export function isS3(filesAdapter: FilesAdapter): boolean {
     return filesAdapter.isS3;
 }
 
+export function getTypeFromUrl(furl: string) {
+    return mime.getType(furl)
+}
+
 export async function handleGetFileBySignedUrl<T>(
     name: string,
     width: number,
@@ -205,14 +208,15 @@ export async function handleGetFileBySignedUrl<T>(
     filesAdapter: FilesAdapter,
     options: BFastOptions
 ): Promise<Buffer | string> {
-    const f: Storage<any> = await findById(
-        '_Storage', {id: name, return: []}, {bypassDomainVerification: true}, options
-    );
-    if (!f) {
-        throw {message: 'File not found'};
-    }
+    // const f: Storage<any> = await findById(
+    //     '_Storage', {id: name, return: []}, {bypassDomainVerification: true}, options
+    // );
+    // if (!f) {
+    //     throw {message: 'File not found'};
+    // }
     const furl = await filesAdapter.signedUrl(name, options);
-    if (thumbnail === true && f.type?.toString()?.startsWith('image')) {
+    const type = await getTypeFromUrl(furl)
+    if (thumbnail === true && type?.toString()?.startsWith('image')) {
         return compressImageByUrl(furl, width, height, filesAdapter, options);
     } else {
         return furl;
