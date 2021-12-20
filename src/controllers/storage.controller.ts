@@ -220,6 +220,11 @@ export function isS3(filesAdapter: FilesAdapter): boolean {
     return filesAdapter.isS3;
 }
 
+export function getTypeFromUrl(furl: string) {
+    // @ts-ignore
+    return mime.getType(furl)
+}
+
 export function handleGetFileBySignedUrl(
     request: any, response: any, thumbnail: boolean, filesAdapter: FilesAdapter, options: BFastOptions
 ): void {
@@ -234,12 +239,14 @@ export function handleGetFileBySignedUrl(
         '_Storage', {id: name, return: []}, {bypassDomainVerification: true}, options
     ).then(async (f: Storage) => {
         try {
-            if (!f) {
-                err({message: 'File not found'});
-                return;
-            }
+            // if (!f) {
+            //     err({message: 'File not found'});
+            //     return;
+            // }
             const furl = await filesAdapter.signedUrl(name, options);
-            if (thumbnail === true && f.type?.toString()?.startsWith('image')) {
+            // @ts-ignore
+            const type = mime.getType(furl)
+            if (thumbnail === true && type?.toString()?.startsWith('image')) {
                 const width = parseInt(request.query.width ? request.query.width : 100);
                 const height = parseInt(request.query.height ? request.query.height : Jimp.AUTO);
                 const image = await Jimp.read(furl);
