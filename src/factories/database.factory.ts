@@ -9,7 +9,7 @@ import {
     UpdateDataFn, UpdateManyDataFn
 } from '../adapters/database.adapter';
 import {MongoClient} from 'mongodb';
-import {BFastOptions} from '../bfast-database.option';
+import {BFastOptions} from '../bfast-option';
 import {Data} from "../models/data";
 import {UpdateModel} from "../models/update-model";
 
@@ -71,7 +71,6 @@ export const updateManyDataInStore: UpdateManyDataFn
         throw {message: 'bulk write not executed', reason: a.toString()}
     }, options);
 }
-
 
 export const getDataInStore: GetDataFn = (table, id: any, options) => {
     return withMongoClient(async conn => {

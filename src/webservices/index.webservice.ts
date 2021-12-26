@@ -1,7 +1,7 @@
 import {FunctionsModel} from '../models/functions.model';
 import {StorageApiModel} from '../models/storage-api.model';
 import {FilesAdapter} from "../adapters/files.adapter";
-import {BFastOptions} from "../bfast-database.option";
+import {BFastOptions} from "../bfast-option";
 import {AuthAdapter} from "../adapters/auth.adapter";
 import {
     getFileFromStorage,

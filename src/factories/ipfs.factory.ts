@@ -1,7 +1,7 @@
-import {BFastOptions} from "../bfast-database.option";
+import {BFastOptions} from "../bfast-option";
 import {CID, create, IPFSHTTPClient} from "ipfs-http-client";
 import {Buffer} from "buffer";
-import {devLog} from "../utils/debug.util";
+import {devLog} from "../utils/debug";
 import {File as web3File, Web3Storage,} from 'web3.storage';
 import itToStream from 'it-to-stream';
 import {v4} from 'uuid';

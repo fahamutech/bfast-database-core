@@ -1,5 +1,5 @@
 import {FunctionsModel} from '../models/functions.model';
-import {BFastOptions} from "../bfast-database.option";
+import {BFastOptions} from "../bfast-option";
 import {FilesAdapter} from "../adapters/files.adapter";
 import {
     filePolicy,

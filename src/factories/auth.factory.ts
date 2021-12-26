@@ -1,6 +1,6 @@
 import {AuthAdapter} from '../adapters/auth.adapter';
 import {BasicUser} from '../models/basic-user';
-import {BFastOptions} from "../bfast-database.option";
+import {BFastOptions} from "../bfast-option";
 import {findByFilter, updateData, writeOne} from "../controllers/database.controller";
 
 import {comparePassword, getToken, hashPlainText} from "../controllers/security.controller";

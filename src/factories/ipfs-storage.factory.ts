@@ -1,6 +1,6 @@
 import {FilesAdapter} from '../adapters/files.adapter';
 import {pipeline} from 'stream';
-import {BFastOptions} from '../bfast-database.option';
+import {BFastOptions} from '../bfast-option';
 import {Buffer} from "buffer";
 import {IpfsFactory} from "./ipfs.factory";
 import {findByFilter, findById, remove, writeOne} from "../controllers/database.controller";

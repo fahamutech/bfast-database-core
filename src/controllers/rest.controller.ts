@@ -3,7 +3,7 @@ import formidable from 'formidable';
 import {readFile} from 'fs';
 import {promisify} from "util";
 import mime from 'mime';
-import {BFastOptions} from "../bfast-database.option";
+import {BFastOptions} from "../bfast-option";
 import {NextFunction, Request, Response} from 'express'
 import {AuthAdapter} from "../adapters/auth.adapter";
 import {FilesAdapter} from "../adapters/files.adapter";
@@ -27,7 +27,7 @@ import {
     listFiles,
     saveFromBuffer
 } from "./storage";
-import {devLog} from "../utils/debug.util";
+import {devLog} from "../utils/debug";
 import {Buffer} from "buffer";
 import {ReadableStream} from "stream/web";
 import {Storage} from "../models/storage";

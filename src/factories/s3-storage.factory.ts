@@ -1,5 +1,5 @@
 import {FilesAdapter} from '../adapters/files.adapter';
-import {BFastOptions} from '../bfast-database.option';
+import {BFastOptions} from '../bfast-option';
 import * as Minio from 'minio';
 import {Client} from 'minio';
 import {Buffer} from "buffer";

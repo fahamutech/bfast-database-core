@@ -1,6 +1,6 @@
 // @ts-ignore
 import {readFileSync, statSync} from 'fs';
-import {BFastOptions} from "../bfast-database.option";
+import {BFastOptions} from "../bfast-option";
 
 enum EnvNames {
     APPLICATION_ID = 'APPLICATION_ID',
@@ -25,7 +25,7 @@ enum EnvNames {
     PORT = 'PORT',
 }
 
-export function getEnv(name: string): string {
+export function getEnv(name: string): any {
     if (name && name.toString() !== 'undefined' && name.toString() !== 'null') {
         let isFile;
         try {

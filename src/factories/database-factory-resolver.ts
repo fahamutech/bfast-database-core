@@ -1,4 +1,4 @@
-import {BFastOptions} from "../bfast-database.option";
+import {BFastOptions} from "../bfast-option";
 import {Factory} from "./factory";
 import {
     AggregateDataFn,

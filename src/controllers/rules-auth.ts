@@ -1,6 +1,6 @@
 import {RuleResponse} from "../models/rule-response";
 import {AuthAdapter} from "../adapters/auth.adapter";
-import {BFastOptions} from "../bfast-database.option";
+import {BFastOptions} from "../bfast-option";
 import {signIn, signUp} from "./auth.controller";
 import {RuleContext} from "../models/rule-context";
 

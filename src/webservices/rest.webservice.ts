@@ -1,5 +1,5 @@
 import httpStatus from 'http-status-codes';
-import {BFastOptions} from "../bfast-database.option";
+import {BFastOptions} from "../bfast-option";
 import {AuthAdapter} from "../adapters/auth.adapter";
 import {FilesAdapter} from "../adapters/files.adapter";
 import {

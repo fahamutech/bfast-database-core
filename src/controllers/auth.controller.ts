@@ -1,5 +1,5 @@
 import {BasicUser} from '../models/basic-user';
-import {BFastOptions} from "../bfast-database.option";
+import {BFastOptions} from "../bfast-option";
 import {AuthAdapter} from "../adapters/auth.adapter";
 import {findByFilter, remove, writeOne} from "./database.controller";
 import {RuleContext} from "../models/rule-context";

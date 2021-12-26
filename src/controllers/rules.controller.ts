@@ -1,6 +1,6 @@
 import {DeleteModel} from '../models/delete-model';
-import {BFastOptions} from '../bfast-database.option';
-import {devLog} from "../utils/debug.util";
+import {BFastOptions} from '../bfast-option';
+import {devLog} from "../utils/debug";
 import {AuthAdapter} from "../adapters/auth.adapter";
 import {FilesAdapter} from "../adapters/files.adapter";
 import {aggregate, bulk, findByFilter, findById, remove} from "./database.controller";

@@ -1,7 +1,7 @@
 import * as bcrypt from 'bcryptjs';
 import * as uuid from 'uuid';
 import * as _jwt from 'jsonwebtoken';
-import {BFastOptions} from '../bfast-database.option';
+import {BFastOptions} from '../bfast-option';
 import {createHash} from 'crypto';
 
 export function generateUUID(): string {

@@ -2,7 +2,7 @@ export {WebServices} from './webservices/index.webservice';
 export * from './webservices/storage.webservice';
 export * from './webservices/changes.webservice';
 export * from './webservices/rest.webservice';
-export * from './utils/env.util';
+export * from './utils/env';
 
 export {AuthAdapter} from './adapters/auth.adapter';
 export {EmailAdapter} from './adapters/email.adapter';
@@ -22,6 +22,6 @@ export * from './adapters/database.adapter';
 export * from './controllers/database.controller';
 // export * from './factory/database.factory';
 export {initialize} from './core';
-export {BFastOptions} from './bfast-database.option';
+export {BFastOptions} from './bfast-option';
 export {FactoryIdentifier} from './models/factory-identifier';
 export {Factory} from './factories/factory';

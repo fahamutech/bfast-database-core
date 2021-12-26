@@ -9,6 +9,10 @@
     "esModuleInterop": true,
   },
   "include": [
-    "./src"
+    "./src/*"
+  ],
+  "extend": [
+    "**/*.spec.ts",
+    "test.ts"
   ]
 }

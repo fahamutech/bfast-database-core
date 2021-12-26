@@ -1,5 +1,5 @@
 import {BasicUser} from '../models/basic-user';
-import {BFastOptions} from "../bfast-database.option";
+import {BFastOptions} from "../bfast-option";
 import {RuleContext} from "../models/rule-context";
 
 export abstract class AuthAdapter {

@@ -5,7 +5,7 @@ import {generateUUID} from './security.controller';
 import {ChangesModel} from '../models/changes.model';
 import {ChangesDocModel} from "../models/changes-doc.model";
 import {AppEventsFactory} from "../factories/app-events.factory";
-import {BFastOptions} from "../bfast-database.option";
+import {BFastOptions} from "../bfast-option";
 import {DatabaseWriteOptions} from "../models/database-write-options";
 import {DatabaseUpdateOptions} from "../models/database-update-options";
 import {DatabaseBasicOptions} from "../models/database-basic-options";

@@ -1,4 +1,4 @@
-import {BFastOptions} from '../bfast-database.option';
+import {BFastOptions} from '../bfast-option';
 import {Buffer} from "buffer";
 import {Storage} from "../models/storage";
 import {Request, Response} from 'express'

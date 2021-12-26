@@ -1,7 +1,7 @@
 import {hasPermission} from "./auth.controller";
 import {RuleContext} from "../models/rule-context";
 import {RuleResponse} from "../models/rule-response";
-import {BFastOptions} from "../bfast-database.option";
+import {BFastOptions} from "../bfast-option";
 import {UpdateModel} from "../models/update-model";
 import {updateData, updateManyData} from "./database.controller";
 

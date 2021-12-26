@@ -2,7 +2,7 @@ import {FilesAdapter} from '../adapters/files.adapter';
 import {FileModel} from '../models/file-model';
 import mime from 'mime';
 import {StatusCodes} from 'http-status-codes';
-import {BFastOptions} from '../bfast-database.option';
+import {BFastOptions} from '../bfast-option';
 import {Buffer} from "buffer";
 import {Request, Response} from 'express'
 import {Storage} from "../models/storage";

@@ -17,11 +17,7 @@ export const mochaHooks = {
         process.env.RSA_PUBLIC_KEY = JSON.stringify(config.rsaPublicKeyInJson);
         process.env.RSA_KEY = JSON.stringify(config.rsaKeyPairInJson);
         process.env.USE_LOCAL_IPFS = 'true';
-        // process.env.LOGS = '0';
-        console.log('________  START__________');
-        // const r = require('./functions/serve');
-        // console.log(r);
-        // ySocketServer = await startYJsWebsocketServer();
+        console.log('________START__________');
         await start({
             port: config.port,
             functionsConfig: {
@@ -32,7 +28,5 @@ export const mochaHooks = {
     },
     async afterAll() {
         console.log('________END__________');
-        // process.kill(ySocketServer.pid);
-        // await bfastFs.stop();
     }
 };

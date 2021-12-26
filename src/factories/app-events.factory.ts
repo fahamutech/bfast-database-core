@@ -1,6 +1,6 @@
 import EventEmitter from "events";
 import {ChangesModel} from "../models/changes.model";
-import {ConstUtil} from "../utils/const.util";
+import {Const} from "../utils/const";
 
 export class AppEventsFactory {
     readonly eventEmitter;
@@ -31,7 +31,7 @@ export class AppEventsFactory {
     }
 
     public eventName(projectId: string, domain: string): string {
-        return ConstUtil.DB_CHANGES_EVENT.concat(domain).concat(projectId);
+        return Const.DB_CHANGES_EVENT.concat(domain).concat(projectId);
     }
 
     public connected(eventName: string): number {
