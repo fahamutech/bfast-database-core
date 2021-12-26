@@ -11,7 +11,7 @@
   "include": [
     "./src/*"
   ],
-  "extend": [
+  "exclude": [
     "**/*.spec.ts",
     "test.ts"
   ]
