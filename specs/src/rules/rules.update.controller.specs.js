@@ -37,7 +37,7 @@ describe('RulesController', function () {
         await mongoMemoryReplSet.stop();
     });
     describe('update', function () {
-        it('should update a document by id', async function () {
+        it('should updateUserInStore a document by id', async function () {
             const results = await handleUpdateRules({
                     updateProduct: {
                         id: 'xyz',
@@ -56,7 +56,7 @@ describe('RulesController', function () {
             should().exist(results.updateProduct);
             expect(results.updateProduct.modified).equal(1);
         });
-        it('should update a document by id with dates', async function () {
+        it('should updateUserInStore a document by id with dates', async function () {
             const results = await handleUpdateRules({
                     updateProduct: {
                         id: 'josh',
@@ -74,7 +74,7 @@ describe('RulesController', function () {
             should().exist(results.updateProduct);
             expect(results.updateProduct.modified).equal(1);
         });
-        it('should update a documents by filter', async function () {
+        it('should updateUserInStore a documents by filter', async function () {
             const results = await handleUpdateRules({
                     updateProduct: {
                         filter: {
@@ -95,7 +95,7 @@ describe('RulesController', function () {
             should().exist(results.updateProduct);
             expect(results.updateProduct.modified).equal(3);
         });
-        it('should update bulk documents by filter', async function () {
+        it('should updateUserInStore bulk documents by filter', async function () {
             const results = await handleUpdateRules({
                     updateProduct: [
                         {
@@ -128,7 +128,7 @@ describe('RulesController', function () {
             should().exist(results.updateProduct);
             expect(results.updateProduct.modified).equal(10);
         });
-        it('should update many documents by id', async function () {
+        it('should updateUserInStore many documents by id', async function () {
             const results = await handleUpdateRules({
                     updateProduct: [
                         {
@@ -148,7 +148,7 @@ describe('RulesController', function () {
             should().exist(results.updateProduct);
             expect(results.updateProduct.modified).equal(1);
         });
-        it('should not update many documents when empty filter exist', async function () {
+        it('should not updateUserInStore many documents when empty filter exist', async function () {
             const results = await handleUpdateRules({
                     updateProduct: [
                         {
@@ -167,9 +167,9 @@ describe('RulesController', function () {
             );
             assert(results.updateProduct === undefined);
             assert(results.errors !== undefined);
-            assert(results.errors['update.Product']['message'] === 'Empty map is not supported in update rule');
+            assert(results.errors['updateUserInStore.Product']['message'] === 'Empty map is not supported in updateUserInStore rule');
         });
-        it('should not update objects by empty filter', async function () {
+        it('should not updateUserInStore objects by empty filter', async function () {
             const results = await handleUpdateRules({
                     updateProduct: {
                         filter: {},
@@ -186,9 +186,9 @@ describe('RulesController', function () {
             );
             assert(results.updateProduct === undefined);
             assert(results.errors !== undefined);
-            assert(results.errors['update.Product']['message'] === 'Empty map is not supported in update rule');
+            assert(results.errors['updateUserInStore.Product']['message'] === 'Empty map is not supported in updateUserInStore rule');
         });
-        it('should update when empty filter and id is supplied', async function () {
+        it('should updateUserInStore when empty filter and id is supplied', async function () {
             const results = await handleUpdateRules({
                     updateProduct: {
                         id: 'xyz',
@@ -407,7 +407,7 @@ describe('RulesController', function () {
                 null
             );
             should().not.exist(results.updateProduct);
-            should().exist(results.errors['update.Product']);
+            should().exist(results.errors['updateUserInStore.Product']);
         });
         it('should upsert and increment field when upsert is true and use id', async function () {
             const results = await handleUpdateRules({

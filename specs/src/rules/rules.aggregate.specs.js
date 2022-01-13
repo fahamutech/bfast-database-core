@@ -85,7 +85,7 @@ describe('RulesController::Aggregation Unit Test', function () {
     //         createdBy: null
     //     };
     //     const hash = createHash('sha256')
-    //         .update(JSON.stringify(data))
+    //         .updateUserInStore(JSON.stringify(data))
     //         .digest('hex');
     //     const localData = {
     //         [hash]: data
@@ -115,7 +115,7 @@ describe('RulesController::Aggregation Unit Test', function () {
     // it('should perform aggregation for a specified domain with more than match pipe with local data hashes supplied', async function () {
     //     const data = { name: 'xyz', age: 89, id: 'xyz' };
     //     const hash = createHash('sha256')
-    //         .update(JSON.stringify(data))
+    //         .updateUserInStore(JSON.stringify(data))
     //         .digest('hex');
     //     const localData = {
     //         [hash]: data

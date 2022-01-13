@@ -1,7 +1,7 @@
 import {AuthAdapter} from '../adapters/auth.adapter';
 import {BasicUser} from '../models/basic-user';
 import {BFastOptions} from "../bfast-option";
-import {findByFilter, updateDataInStore, writeOneDataInStore} from "../controllers/database.controller";
+import {findByFilter, writeOneDataInStore} from "../controllers/database.controller";
 
 import {comparePassword, getToken, hashPlainText} from "../controllers/security.controller";
 import {RuleContext} from "../models/rule-context";
@@ -9,30 +9,16 @@ import {RuleContext} from "../models/rule-context";
 export class AuthFactory implements AuthAdapter {
     private domainName = '_User';
 
-    constructor() {
-    }
-
-    async resetPassword(email: string, context?: RuleContext): Promise<any> {
-        return undefined;
-    }
+    // async resetPassword(email: string, context?: RuleContext): Promise<any> {
+    //     return undefined;
+    // }
 
     async signIn<T extends BasicUser>(
-        userModel: T,
-        context: RuleContext,
-        options: BFastOptions
+        userModel: T, context: RuleContext, options: BFastOptions
     ): Promise<T> {
-        const users = await findByFilter(
-            this.domainName,
-            {
-                filter: {
-                    username: userModel.username
-                },
-                return: []
-            },
-            context,
-            {bypassDomainVerification: true},
-            options
-        );
+        const queryModel = {filter: {username: userModel.username}, return: []}
+        const wOptions = {bypassDomainVerification: true}
+        const users = await findByFilter(this.domainName, queryModel, context, wOptions, options);
         if (users && Array.isArray(users) && users.length === 1) {
             const user = users[0];
             if (await comparePassword(userModel.password, user.password ? user.password : user._hashed_password)) {
@@ -65,49 +51,49 @@ export class AuthFactory implements AuthAdapter {
         return user;
     }
 
-    async sendVerificationEmail(email: string, context?: RuleContext): Promise<any> {
-        return undefined;
-    }
-
-    async update<T extends BasicUser>(
-        userModel: T,
-        context: RuleContext,
-        options: BFastOptions
-    ): Promise<{ message: string, modified: number }> {
-        return updateDataInStore(
-            this.domainName,
-            {
-                id: context.uid,
-                upsert: false,
-                update: {
-                    $set: userModel
-                }
-            },
-            context,
-            {bypassDomainVerification: true},
-            options
-        );
-    }
-
-    async updatePassword(
-        password: string,
-        context: RuleContext,
-        options: BFastOptions
-    ): Promise<any> {
-        const hashedPassword = await hashPlainText(password);
-        return updateDataInStore(
-            this.domainName,
-            {
-                id: context.uid,
-                update: {
-                    $set: {
-                        password: hashedPassword
-                    }
-                }
-            },
-            context,
-            {bypassDomainVerification: true},
-            options
-        );
-    }
+    // async sendVerificationEmail(email: string, context?: RuleContext): Promise<any> {
+    //     return undefined;
+    // }
+    //
+    // async updateUserInStore<T extends BasicUser>(
+    //     userModel: T,
+    //     context: RuleContext,
+    //     options: BFastOptions
+    // ): Promise<{ message: string, modified: number }> {
+    //     return updateDataInStore(
+    //         this.domainName,
+    //         {
+    //             id: context.uid,
+    //             upsert: false,
+    //             update: {
+    //                 $set: userModel
+    //             }
+    //         },
+    //         context,
+    //         {bypassDomainVerification: true},
+    //         options
+    //     );
+    // }
+    //
+    // async updatePassword(
+    //     password: string,
+    //     context: RuleContext,
+    //     options: BFastOptions
+    // ): Promise<any> {
+    //     const hashedPassword = await hashPlainText(password);
+    //     return updateDataInStore(
+    //         this.domainName,
+    //         {
+    //             id: context.uid,
+    //             update: {
+    //                 $set: {
+    //                     password: hashedPassword
+    //                 }
+    //             }
+    //         },
+    //         context,
+    //         {bypassDomainVerification: true},
+    //         options
+    //     );
+    // }
 }

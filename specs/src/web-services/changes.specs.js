@@ -147,7 +147,7 @@ describe('Changes', function () {
             });
         });
     });
-    // describe('update', function () {
+    // describe('updateUserInStore', function () {
     //     it('should receive updated doc', function (done) {
     //         const changes = bfast.database()
     //             .table('test')
@@ -161,7 +161,7 @@ describe('Changes', function () {
     //                         .updateBuilder()
     //                         .set('age', 20)
     //                         .set('updatedAt', 'leo')
-    //                         .update();//.then(console.log);
+    //                         .updateUserInStore();//.then(console.log);
     //                 },
     //                 () => {
     //                 }
@@ -202,7 +202,7 @@ describe('Changes', function () {
     //                                     filter: {
     //                                         createdAt: 'leo'
     //                                     },
-    //                                     update: {
+    //                                     updateUserInStore: {
     //                                         $set: {
     //                                             updatedAt: 'kesho'
     //                                         }
@@ -226,7 +226,7 @@ describe('Changes', function () {
     //             should().exist(response.body.change);
     //             expect([
     //                 {
-    //                     name: 'update',
+    //                     name: 'updateUserInStore',
     //                     snapshot: {
     //                         id: 'ethan',
     //                         name: 'joshua',
@@ -237,7 +237,7 @@ describe('Changes', function () {
     //                     }
     //                 },
     //                 {
-    //                     name: 'update',
+    //                     name: 'updateUserInStore',
     //                     snapshot: {
     //                         id: 'zai',
     //                         name: 'tuni',

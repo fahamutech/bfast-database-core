@@ -14,10 +14,10 @@ async function checkUpdatePermission(domain: string, context: RuleContext, optio
 
 function sanitizeUpdateModel(data: UpdateModel): UpdateModel {
     if (!data?.update) {
-        throw {message: 'Please update field is required, which contains properties to update a document'};
+        throw {message: 'Please updateUserInStore field is required, which contains properties to updateUserInStore a document'};
     }
     if (!data.hasOwnProperty('id') && !data.hasOwnProperty('filter')) {
-        throw {message: 'Bad data format in update rule, no filter nor id'};
+        throw {message: 'Bad data format in updateUserInStore rule, no filter nor id'};
     }
     if (data?.id) {
         const filter: any = {};
@@ -26,7 +26,7 @@ function sanitizeUpdateModel(data: UpdateModel): UpdateModel {
         data.filter = filter;
     }
     if (data?.filter && Object.keys(data?.filter).length === 0) {
-        throw {message: 'Empty map is not supported in update rule'};
+        throw {message: 'Empty map is not supported in updateUserInStore rule'};
     }
     return data;
 }

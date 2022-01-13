@@ -13,23 +13,23 @@ export abstract class AuthAdapter {
         options: BFastOptions
     ): Promise<T>;
 
-    abstract resetPassword(email: string, context: RuleContext): Promise<any>;
+    // abstract resetPassword(email: string, context: RuleContext): Promise<any>;
 
-    abstract updatePassword(
-        password: string,
-        context: RuleContext,
-        options: BFastOptions
-    ): Promise<any>;
+    // abstract updatePassword(
+    //     password: string,
+    //     context: RuleContext,
+    //     options: BFastOptions
+    // ): Promise<any>;
 
-    abstract update<T extends BasicUser>(
-        userModel: T,
-        context: RuleContext,
-        options: BFastOptions
-    ): Promise<{message: string, modified: number}>;
+    // abstract updateUserInStore<T extends BasicUser>(
+    //     userModel: T,
+    //     context: RuleContext,
+    //     options: BFastOptions
+    // ): Promise<{message: string, modified: number}>;
 
-    abstract sendVerificationEmail(
-        email: string,
-        context: RuleContext,
-        options: BFastOptions
-    ): Promise<any>;
+    // abstract sendVerificationEmail(
+    //     email: string,
+    //     context: RuleContext,
+    //     options: BFastOptions
+    // ): Promise<any>;
 }

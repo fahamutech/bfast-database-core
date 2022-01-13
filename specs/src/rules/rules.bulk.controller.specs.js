@@ -94,7 +94,7 @@ describe('Bulk', function () {
             // expect(results.transaction.commit.createProduct).length(2);
             // expect(results.transaction.commit.queryProduct).length(5);
         });
-        it('should perform bulk when update block is array', async function () {
+        it('should perform bulk when updateUserInStore block is array', async function () {
             const results = await handleBulkRule({
                     transaction: {
                         commit: {

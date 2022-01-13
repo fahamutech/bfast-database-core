@@ -75,7 +75,7 @@ describe('PolicyController', function () {
                 ruleBody: "return false;"
             });
         });
-        it('should update if already exist', async function () {
+        it('should updateUserInStore if already exist', async function () {
             const policy: any = await addPolicyRule("create.test", "return true;", ruleContext, loadEnv());
             expect(policy).eql({
                 id: "create.test",
@@ -120,7 +120,7 @@ describe('PolicyController', function () {
             expect(a).eql(false)
         });
         it('should return false for global rule', async function () {
-            const a = await ruleHasPermission('update.eth', ruleContext, options)
+            const a = await ruleHasPermission('updateUserInStore.eth', ruleContext, options)
             expect(a).eql(false)
         });
     });

@@ -125,7 +125,7 @@ export async function updateDataInStore(
     // const returnFields = getReturnFields(updateModel);
     updateModel = await sanitizeUpdateModel(updateModel);
     const a = await _updateDataInStore(domain, updateModel, options);
-    return {message: 'done update', modified: a.modified};
+    return {message: 'done updateUserInStore', modified: a.modified};
     // if (updateModel.hasOwnProperty('id')) {
     //     const cleanDoc = await findById(
     //         domain, {id: updateModel.id, return: returnFields}, updateOptions, options
@@ -133,7 +133,7 @@ export async function updateDataInStore(
     //     publishChanges(domain, {
     //         _id: cleanDoc.id,
     //         fullDocument: cleanDoc,
-    //         operationType: "update"
+    //         operationType: "updateUserInStore"
     //     }, options);
     //     return cleanDoc;
     // } else {
@@ -144,7 +144,7 @@ export async function updateDataInStore(
     //         publishChanges(domain, {
     //             _id: z.id,
     //             fullDocument: z,
-    //             operationType: "update"
+    //             operationType: "updateUserInStore"
     //         }, options);
     //         return z;
     //     });
@@ -161,11 +161,11 @@ export async function updateManyData(
 ): Promise<{ message: string, modified: number }> {
     await checkPolicyInDomain(domain, updateOptions);
     if (updateModels.length === 0) {
-        return {message: 'done update', modified: 0};
+        return {message: 'done updateUserInStore', modified: 0};
     }
     updateModels = await Promise.all(updateModels.map(x => sanitizeUpdateModel(x)));
     const a = await _updateManyDataInStore(domain, updateModels, options);
-    return {message: 'done update', modified: a.modified};
+    return {message: 'done updateUserInStore', modified: a.modified};
 }
 
 function altUpdateModel(updateModel: UpdateModel): UpdateModel {
