@@ -3,7 +3,7 @@ import {pipeline} from 'stream';
 import {BFastOptions} from '../bfast-option';
 import {Buffer} from "buffer";
 import {IpfsFactory} from "./ipfs.factory";
-import {findByFilter, findById, remove, writeOne} from "../controllers/database.controller";
+import {findByFilter, findById, removeDataInStore, writeOneDataInStore} from "../controllers/database.controller";
 import {generateUUID} from "../controllers/security.controller";
 import * as mime from "mime";
 import {Storage} from "../models/storage";
@@ -34,7 +34,7 @@ export class IpfsStorageFactory implements FilesAdapter {
     }
 
     async deleteFile(id: string, options: BFastOptions): Promise<any> {
-        return await remove(
+        return await removeDataInStore(
             this.domain, {id: id}, {}, {bypassDomainVerification: true}, options
         );
     }
@@ -136,7 +136,7 @@ export class IpfsStorageFactory implements FilesAdapter {
 
     validateFilename(name: string): string {
         const regx = /[^a-zA-Z0-9]/;
-        return name.replace(new RegExp(regx),'');
+        return name.replace(new RegExp(regx), '');
     }
 
     async signedUrl(id: string, options: BFastOptions): Promise<string> {
@@ -148,7 +148,7 @@ export class IpfsStorageFactory implements FilesAdapter {
     ): Promise<Storage<any>> {
         const _obj: Storage<any> = {
             id: pN ? removeDot(name) : generateUUID(),
-            name: pN ? removeDot(name + generateUUID()): removeDot(name),
+            name: pN ? removeDot(name + generateUUID()) : removeDot(name),
             // @ts-ignore
             extension: mime.getExtension(contentType),
             type: contentType,
@@ -162,8 +162,9 @@ export class IpfsStorageFactory implements FilesAdapter {
         _obj.size = size;
         // @ts-ignore
         _obj.return = [];
-        return await writeOne(
-            this.domain, _obj, false, {}, {bypassDomainVerification: true}, options
+        const wOptions = {bypassDomainVerification: true}
+        return await writeOneDataInStore(
+            this.domain, _obj, {}, wOptions, options
         );
     }
 
@@ -186,9 +187,6 @@ export class IpfsStorageFactory implements FilesAdapter {
     }
 
     async getFileStream(file: Storage<any>, options: BFastOptions): Promise<ReadableStream> {
-        // let file: Storage<ReadableStream> = await findById(
-        //     this.domain, {id: id, return: []}, {bypassDomainVerification: true}, options
-        // );
         if (file && file.cid) {
             const ipfs = await IpfsFactory.getInstance(options);
             return await ipfs.generateDataFromCid<ReadableStream>(

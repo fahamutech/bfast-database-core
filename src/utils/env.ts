@@ -1,4 +1,3 @@
-// @ts-ignore
 import {readFileSync, statSync} from 'fs';
 import {BFastOptions} from "../bfast-option";
 
@@ -106,7 +105,6 @@ export function loadEnv(): BFastOptions {
     }
     return options;
 }
-
 
 function tryStringToObject(value: string): any {
     value = value.trim();

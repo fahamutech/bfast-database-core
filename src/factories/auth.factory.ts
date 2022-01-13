@@ -1,7 +1,7 @@
 import {AuthAdapter} from '../adapters/auth.adapter';
 import {BasicUser} from '../models/basic-user';
 import {BFastOptions} from "../bfast-option";
-import {findByFilter, updateData, writeOne} from "../controllers/database.controller";
+import {findByFilter, updateDataInStore, writeOneDataInStore} from "../controllers/database.controller";
 
 import {comparePassword, getToken, hashPlainText} from "../controllers/security.controller";
 import {RuleContext} from "../models/rule-context";
@@ -55,14 +55,10 @@ export class AuthFactory implements AuthAdapter {
     async signUp<T extends BasicUser>(
         userModel: T, context: RuleContext, options: BFastOptions
     ): Promise<T> {
+        const wOptions = {bypassDomainVerification: true}
         userModel.password = await hashPlainText(userModel?.password);
-        const user = await writeOne(
-            this.domainName,
-            userModel,
-            false,
-            context,
-            {bypassDomainVerification: true},
-            options
+        const user = await writeOneDataInStore(
+            this.domainName, userModel, context, wOptions, options
         );
         delete user.password;
         user.token = await getToken({uid: user.id}, options);
@@ -77,8 +73,8 @@ export class AuthFactory implements AuthAdapter {
         userModel: T,
         context: RuleContext,
         options: BFastOptions
-    ): Promise<{message: string, modified: number}> {
-        return updateData(
+    ): Promise<{ message: string, modified: number }> {
+        return updateDataInStore(
             this.domainName,
             {
                 id: context.uid,
@@ -99,7 +95,7 @@ export class AuthFactory implements AuthAdapter {
         options: BFastOptions
     ): Promise<any> {
         const hashedPassword = await hashPlainText(password);
-        return updateData(
+        return updateDataInStore(
             this.domainName,
             {
                 id: context.uid,

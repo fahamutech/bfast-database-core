@@ -1,7 +1,7 @@
 import {RuleResponse} from "../models/rule-response";
 import {AuthAdapter} from "../adapters/auth.adapter";
 import {BFastOptions} from "../bfast-option";
-import {signIn, signUp} from "./auth.controller";
+import {signIn, signUp} from "./auth";
 import {RuleContext} from "../models/rule-context";
 
 function sanitizeRuleResponse(ruleResponse: RuleResponse) {

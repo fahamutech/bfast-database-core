@@ -37,7 +37,7 @@ describe('RulesController::Utilities Unit Test', function () {
         assert(domain === 'Test');
     });
 
-    it('should return null from rule when remove is unknown', function () {
+    it('should return null from rule when removeDataInStore is unknown', function () {
         const domain = extractDomain('CreateTest', "john");
         assert(domain === null);
     });
@@ -47,7 +47,7 @@ describe('RulesController::Utilities Unit Test', function () {
         assert(domain === null);
     });
 
-    it('should return null from rule when rule and remove is unknown', function () {
+    it('should return null from rule when rule and removeDataInStore is unknown', function () {
         const domain = extractDomain('johnTest', "john");
         assert(domain === null);
     });

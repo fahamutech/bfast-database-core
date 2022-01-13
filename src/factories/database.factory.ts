@@ -79,7 +79,6 @@ export const getDataInStore: GetDataFn = (table, id: any, options) => {
 }
 
 export const getManyDataInStore: FindDataFn = (table, query, options) => {
-    // console.log(query.filter);
     return withMongoClient(async conn => {
         const cursor = conn.db(options.projectId).collection(table).find(query.filter);
         if (query && !isNaN(query.size)) {

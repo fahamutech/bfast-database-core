@@ -1,5 +1,7 @@
+import {StringSchema} from "./string";
+
 export type RuleContext = {
-    return?: string[]; // field to return to user
+    return?: string[];
     uid?: string;
     auth?: boolean;
     applicationId?: string;
@@ -9,3 +11,25 @@ export type RuleContext = {
         preserveName?: boolean
     }
 };
+
+export const RuleContextSchema = {
+    type: 'object',
+    properties: {
+        return: {
+            type: 'array',
+            items: StringSchema
+        },
+        uid: StringSchema,
+        auth: {type: 'boolean'},
+        applicationId: StringSchema,
+        masterKey: StringSchema,
+        useMasterKey: {type: 'boolean'},
+        storage: {
+            type: 'object',
+            properties: {
+                preserveName: {type: 'boolean'}
+            }
+        },
+    },
+    required: ['applicationId']
+}

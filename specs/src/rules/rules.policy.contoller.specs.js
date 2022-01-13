@@ -139,7 +139,7 @@ describe('policy', function () {
                 config
             );
         });
-        it('should remove a policy when masterKey is valid', async function () {
+        it('should removeDataInStore a policy when masterKey is valid', async function () {
             const results = await handlePolicyRule({
                     context: {
                         useMasterKey: true
@@ -156,7 +156,7 @@ describe('policy', function () {
             should().exist(results.policy.remove);
             expect(results.policy.remove[0].id).equal('read.category');
         });
-        it('should return empty map when remove non exist rule', async function () {
+        it('should return empty map when removeDataInStore non exist rule', async function () {
             const results = await handlePolicyRule({
                     context: {
                         useMasterKey: true

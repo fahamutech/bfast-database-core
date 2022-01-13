@@ -1,12 +1,12 @@
-import {hasPermission} from "./auth.controller";
 import {RuleContext} from "../models/rule-context";
 import {RuleResponse} from "../models/rule-response";
 import {BFastOptions} from "../bfast-option";
 import {UpdateModel} from "../models/update-model";
-import {updateData, updateManyData} from "./database.controller";
+import {updateDataInStore, updateManyData} from "./database.controller";
+import {ruleHasPermission} from "./policy";
 
 async function checkUpdatePermission(domain: string, context: RuleContext, options: BFastOptions) {
-    const allowed = await hasPermission(`update.${domain}`, context, options);
+    const allowed = await ruleHasPermission(`update.${domain}`, context, options);
     if (allowed !== true) {
         throw {message: 'You have insufficient permission to this resource'};
     }
@@ -37,7 +37,7 @@ async function updateSingleDoc(
 ): Promise<any> {
     data = sanitizeUpdateModel(data);
     const uO = {bypassDomainVerification: context?.useMasterKey === true, transaction: null}
-    return updateData(domain, data, context, uO, options);
+    return updateDataInStore(domain, data, context, uO, options);
 }
 
 async function updateManyDoc(context: RuleContext, domain: string, ruleData: UpdateModel[], options: BFastOptions) {

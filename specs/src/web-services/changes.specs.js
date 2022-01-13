@@ -359,7 +359,7 @@ describe('Changes', function () {
                 done();
             }, 500);
         });
-        it('should remove specific listener only', function (done) {
+        it('should removeDataInStore specific listener only', function (done) {
             c1.close();
             bfast.database().table('test2').save({name: 'xps', id: 'josh', createdAt: 'leo', updatedAt: 'leo'});
             setTimeout(args => {

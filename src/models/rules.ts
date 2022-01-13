@@ -12,5 +12,6 @@ export interface Rules {
   transaction?: Bulk;
   auth?: AuthRule;
   policy?: Policy;
-  errors?: Errors
+  errors?: Errors;
+  [rule: string]: any
 }

@@ -451,7 +451,7 @@ describe('RulesController', function () {
         });
     });
     describe('$unset', function () {
-        it('should remove field in a document', async function () {
+        it('should removeDataInStore field in a document', async function () {
             const results = await handleUpdateRules({
                     updateProduct: {
                         id: 'xyz',
@@ -470,7 +470,7 @@ describe('RulesController', function () {
             should().exist(results.updateProduct);
             expect(results.updateProduct.modified).equal(1);
         });
-        it('should remove embedded field in a document', async function () {
+        it('should removeDataInStore embedded field in a document', async function () {
             const results = await handleUpdateRules({
                     updateProduct: {
                         id: 'ethan',

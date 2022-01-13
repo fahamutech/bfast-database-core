@@ -8,57 +8,22 @@ import {NextFunction, Request, Response} from 'express'
 import {AuthAdapter} from "../adapters/auth.adapter";
 import {FilesAdapter} from "../adapters/files.adapter";
 import {verifyToken} from './security.controller';
-import {hasPermission} from "./auth.controller";
 import {
     handleAggregationRules,
     handleAuthenticationRule,
-    handlePolicyRule,
     handleBulkRule,
     handleCreateRules,
     handleDeleteRules,
+    handlePolicyRule,
     handleQueryRules,
     handleStorageRule,
     handleUpdateRules
 } from "./rules.controller";
-import {
-    handleGetFileBySignedUrl,
-    handleGetFileRequest,
-    isS3,
-    listFiles,
-    saveFromBuffer
-} from "./storage";
+import {listFiles, saveFromBuffer} from "./storage";
 import {devLog} from "../utils/debug";
 import {Buffer} from "buffer";
-import {ReadableStream} from "stream/web";
-import {Storage} from "../models/storage";
-import {findById} from "./database.controller";
 import {RuleResponse} from "../models/rule-response";
-
-// export async function getFile(
-//     name: string, filesAdapter: FilesAdapter, options: BFastOptions
-// ): Promise<Buffer | ReadableStream | string> {
-//     if (isS3(filesAdapter) === true) {
-//         return handleGetFileBySignedUrl<any>(name, null, null, false, filesAdapter, options);
-//     } else {
-//         const f = await getStorage(name, options);
-//         return handleGetFileRequest(f, null, null, false, filesAdapter, options);
-//     }
-// }
-
-// export async function getThumbnail(
-//     name: string,
-//     width: number,
-//     height: number,
-//     filesAdapter: FilesAdapter,
-//     options: BFastOptions
-// ): Promise<Buffer | ReadableStream | string> {
-//     if (isS3(filesAdapter) === true) {
-//         return handleGetFileBySignedUrl(name, width, height, true, filesAdapter, options);
-//     } else {
-//         const f = await getStorage(name, options);
-//         return handleGetFileRequest(f, width, height, true, filesAdapter, options);
-//     }
-// }
+import {ruleHasPermission} from "./policy";
 
 export function getAllFiles(
     request: any, response: any, _: NextFunction, filesAdapter: FilesAdapter, options: BFastOptions
@@ -168,7 +133,7 @@ export function verifyApplicationId(
 export function filePolicy(
     request: Request, response: Response, next: NextFunction, options: BFastOptions
 ): void {
-    hasPermission(request.body.ruleId, request.body.context, options).then(value => {
+    ruleHasPermission(request.body.ruleId, request.body.context, options).then(value => {
         if (value === true) {
             next();
         } else {

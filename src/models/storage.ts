@@ -1,5 +1,3 @@
-import {Buffer} from "buffer";
-
 export type Storage<T> = {
     id: string,
     name: string,

@@ -57,7 +57,7 @@ describe('Policy', function () {
     });
 
     describe('remove', function () {
-        it('should remove saved policy', async function () {
+        it('should removeDataInStore saved policy', async function () {
             const authorization = {
                 applicationId: config.applicationId,
                 masterKey: config.masterKey,

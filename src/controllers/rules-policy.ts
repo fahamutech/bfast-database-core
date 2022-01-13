@@ -1,7 +1,7 @@
-import {addPolicyRule, listPolicyRule, removePolicyRule} from "./auth.controller";
 import {RuleResponse} from "../models/rule-response";
 import {BFastOptions} from "../bfast-option";
 import {RuleContext} from "../models/rule-context";
+import {addPolicyRule, listPolicyRule, removePolicyRule} from "./policy";
 
 function sanitizeRuleResponse(ruleResponse: RuleResponse) {
     if (!ruleResponse.policy) {

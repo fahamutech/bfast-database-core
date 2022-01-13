@@ -43,10 +43,9 @@ export async function checkPolicyInDomain(domain: string, options: DatabaseWrite
     }
 }
 
-export async function writeOne<T extends Basic>(
+export async function writeOneDataInStore<T extends Basic>(
     domain: string,
     data: T,
-    cids: boolean,
     context: RuleContext,
     writeOptions: DatabaseWriteOptions = {bypassDomainVerification: false},
     options: BFastOptions
@@ -115,7 +114,7 @@ async function sanitizeUpdateModel(uModel: UpdateModel): Promise<UpdateModel> {
     return updateModel;
 }
 
-export async function updateData(
+export async function updateDataInStore(
     domain: string,
     updateModel: UpdateModel,
     context: RuleContext,
@@ -176,7 +175,7 @@ function altUpdateModel(updateModel: UpdateModel): UpdateModel {
     return updateModel;
 }
 
-export async function remove(
+export async function removeDataInStore(
     domain: string, deleteModel: DeleteModel<any>, context: RuleContext,
     basicOptions: DatabaseBasicOptions = {bypassDomainVerification: false}, options: BFastOptions
 ): Promise<any> {

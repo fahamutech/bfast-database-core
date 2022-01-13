@@ -3,8 +3,7 @@ import {BFastOptions} from '../bfast-option';
 import {devLog} from "../utils/debug";
 import {AuthAdapter} from "../adapters/auth.adapter";
 import {FilesAdapter} from "../adapters/files.adapter";
-import {aggregate, bulk, findByFilter, findById, remove} from "./database.controller";
-import {hasPermission} from "./auth.controller";
+import {aggregate, bulk, findByFilter, findById, removeDataInStore} from "./database.controller";
 import {deleteFile, listFiles, saveFile} from "./storage";
 import {Rules} from "../models/rules";
 import {RuleResponse} from "../models/rule-response";
@@ -13,6 +12,7 @@ import {authRule} from "./rules-auth";
 import {policyRule} from "./rules-policy";
 import {createRule} from "./rules-create";
 import {updateRule} from "./rules-update";
+import {ruleHasPermission} from "./policy";
 
 export function getRulesKey(rules: Rules): string[] {
     if (rules) {
@@ -80,7 +80,7 @@ export async function handleDeleteRules(
         for (const deleteRule of deleteRules) {
             const domain = extractDomain(deleteRule, 'delete');
             const rulesBlockModelElement: DeleteModel<any> = rulesBlockModel[deleteRule];
-            const allowed = await hasPermission(
+            const allowed = await ruleHasPermission(
                 `delete.${domain}`,
                 rulesBlockModel?.context,
                 options
@@ -99,7 +99,7 @@ export async function handleDeleteRules(
                     delete rulesBlockModelElement.filter;
                     filter._id = rulesBlockModelElement.id;
                     rulesBlockModelElement.filter = filter;
-                    ruleResultModel[deleteRule] = await remove(
+                    ruleResultModel[deleteRule] = await removeDataInStore(
                         domain,
                         rulesBlockModelElement,
                         rulesBlockModel?.context,
@@ -119,7 +119,7 @@ export async function handleDeleteRules(
                     if (rulesBlockModelElement?.filter && Object.keys(rulesBlockModelElement?.filter).length === 0) {
                         throw new Error('Empty filter map is not supported in delete rule');
                     }
-                    ruleResultModel[deleteRule] = await remove(
+                    ruleResultModel[deleteRule] = await removeDataInStore(
                         domain,
                         rulesBlockModelElement,
                         rulesBlockModel?.context,
@@ -171,7 +171,7 @@ export async function handleQueryRules(
         for (const queryRule of queryRules) {
             const domain = extractDomain(queryRule, 'query');
             const rulesBlockModelElement = rulesBlockModel[queryRule];
-            const allowed = await hasPermission(
+            const allowed = await ruleHasPermission(
                 `query.${domain}`,
                 rulesBlockModel?.context,
                 options
@@ -363,7 +363,7 @@ export async function handleStorageRule(
             const data = file[action];
             try {
                 if (action === 'save') {
-                    const allowed = await hasPermission(
+                    const allowed = await ruleHasPermission(
                         `files.save`,
                         rulesBlockModel.context,
                         options
@@ -384,7 +384,7 @@ export async function handleStorageRule(
                         );
                     }
                 } else if (action === 'delete') {
-                    const allowed = await hasPermission(
+                    const allowed = await ruleHasPermission(
                         `files.delete`,
                         rulesBlockModel.context,
                         options
@@ -405,7 +405,7 @@ export async function handleStorageRule(
                         );
                     }
                 } else if (action === 'list') {
-                    const allowed = await hasPermission(
+                    const allowed = await ruleHasPermission(
                         `files.list`,
                         rulesBlockModel.context,
                         options
@@ -460,7 +460,7 @@ export async function handleAggregationRules(
         }
         for (const aggregateRule of aggregateRules) {
             const domain = extractDomain(aggregateRule, 'aggregate');
-            const allowed = await hasPermission(`aggregate.${domain}`, rulesBlockModel?.context, options);
+            const allowed = await ruleHasPermission(`aggregate.${domain}`, rulesBlockModel?.context, options);
             if (allowed !== true) {
                 ruleResultModel.errors[`aggregate.${domain}`] = {
                     message: 'You have insufficient permission to this resource',
