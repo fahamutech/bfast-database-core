@@ -13,6 +13,7 @@ import {policyRule} from "./rules-policy";
 import {createRule} from "./rules-create";
 import {updateRule} from "./rules-update";
 import {ruleHasPermission} from "./policy";
+import {handleDeleteRule} from "./rules-delete";
 
 export function getRulesKey(rules: Rules): string[] {
     if (rules) {
@@ -21,14 +22,17 @@ export function getRulesKey(rules: Rules): string[] {
     return Object.keys({});
 }
 
-async function withRuleResponse(path: string, ruleResponse: RuleResponse, fun: () => any): Promise<any> {
+async function withRuleResponse(
+    errorPath: string, ruleResponse: RuleResponse, fun: () => Promise<RuleResponse>
+): Promise<RuleResponse> {
     try {
-        return await fun();
+        return fun()
     } catch (e) {
         devLog(e);
-        ruleResponse.errors[path] = {
+        ruleResponse.errors[errorPath] = {
             message: e.message ? e.message : e.toString(),
         };
+        return ruleResponse
     }
 }
 
@@ -36,14 +40,12 @@ export async function handleAuthenticationRule(
     rules: Rules, ruleResponse: RuleResponse, authAdapter: AuthAdapter, options: BFastOptions,
 ): Promise<RuleResponse> {
     const authRulesNames: string[] = getRulesKey(rules).filter(rule => rule.startsWith('auth'));
-    if (authRulesNames.length === 0) {
-        return ruleResponse;
-    }
+    if (authRulesNames.length === 0) return ruleResponse
     const rule: AuthRule = rules[authRulesNames[0]];
     for (const action of Object.keys(rule)) {
         const data = rule[action];
-        await withRuleResponse(`auth.${action}`, ruleResponse, async () => {
-            await authRule(action, data, ruleResponse, authAdapter, rules.context, options);
+        ruleResponse = await withRuleResponse(`auth.${action}`, ruleResponse, () => {
+            return authRule(action, data, ruleResponse, authAdapter, rules.context, options);
         });
     }
     return ruleResponse;
@@ -53,108 +55,31 @@ export async function handlePolicyRule(
     rules: Rules, ruleResponse: RuleResponse, options: BFastOptions,
 ): Promise<RuleResponse> {
     const policyRules = getRulesKey(rules).filter(rule => rule.startsWith('policy'));
-    if (policyRules.length === 0) {
-        return ruleResponse;
-    }
+    if (policyRules.length === 0) return ruleResponse
     const policy = rules[policyRules[0]];
     for (const action of Object.keys(policy)) {
         const data = policy[action];
-        await withRuleResponse('policy', ruleResponse, async () => {
-            await policyRule(action, data, ruleResponse, rules.context, options);
+        ruleResponse = await withRuleResponse('policy', ruleResponse, () => {
+            return policyRule(action, data, ruleResponse, rules.context, options);
         });
     }
     return ruleResponse;
 }
 
 export async function handleDeleteRules(
-    rulesBlockModel: Rules,
-    ruleResultModel: RuleResponse,
-    options: BFastOptions,
-    transactionSession: any
+    rules: Rules, ruleResponse: RuleResponse, options: BFastOptions, transaction: any
 ): Promise<RuleResponse> {
-    try {
-        const deleteRules = getRulesKey(rulesBlockModel).filter(rule => rule.startsWith('delete'));
-        if (deleteRules.length === 0) {
-            return ruleResultModel;
-        }
-        for (const deleteRule of deleteRules) {
-            const domain = extractDomain(deleteRule, 'delete');
-            const rulesBlockModelElement: DeleteModel<any> = rulesBlockModel[deleteRule];
-            const allowed = await ruleHasPermission(
-                `delete.${domain}`,
-                rulesBlockModel?.context,
-                options
-            );
-            if (allowed !== true) {
-                ruleResultModel.errors[`${transactionSession ? 'transaction.' : ''}delete.${domain}`] = {
-                    message: 'You have insufficient permission to this resource',
-                    // path: `${transactionSession ? 'transaction.' : ''}delete.${domain}`,
-                    // data: rulesBlockModelElement
-                };
-                return ruleResultModel;
-            }
-            try {
-                if (rulesBlockModelElement?.id) {
-                    const filter: any = {};
-                    delete rulesBlockModelElement.filter;
-                    filter._id = rulesBlockModelElement.id;
-                    rulesBlockModelElement.filter = filter;
-                    ruleResultModel[deleteRule] = await removeDataInStore(
-                        domain,
-                        rulesBlockModelElement,
-                        rulesBlockModel?.context,
-                        {
-                            bypassDomainVerification: rulesBlockModel?.context?.useMasterKey === true,
-                            transaction: transactionSession
-                        },
-                        options
-                    );
-                } else {
-                    if (!rulesBlockModelElement?.filter) {
-                        throw new Error('filter field is required if you dont supply id field');
-                    }
-                    if (rulesBlockModelElement?.filter && Array.isArray(rulesBlockModelElement?.filter) && rulesBlockModelElement.filter.length === 0) {
-                        throw new Error('Empty filter array is not supported in delete rule');
-                    }
-                    if (rulesBlockModelElement?.filter && Object.keys(rulesBlockModelElement?.filter).length === 0) {
-                        throw new Error('Empty filter map is not supported in delete rule');
-                    }
-                    ruleResultModel[deleteRule] = await removeDataInStore(
-                        domain,
-                        rulesBlockModelElement,
-                        rulesBlockModel?.context,
-                        {
-                            bypassDomainVerification: rulesBlockModel?.context?.useMasterKey === true,
-                            transaction: transactionSession
-                        },
-                        options
-                    );
-                }
-            } catch (e) {
-                devLog(e);
-                ruleResultModel.errors[`${transactionSession ? 'transaction.' : ''}delete.${domain}`] = {
-                    message: e.message ? e.message : e.toString(),
-                    // path: `${transactionSession ? 'transaction.' : ''}delete.${domain}`,
-                    // data: rulesBlockModelElement
-                };
-                if (transactionSession) {
-                    throw e;
-                }
-            }
-        }
-        return ruleResultModel;
-    } catch (e) {
-        devLog(e);
-        ruleResultModel.errors[`${transactionSession ? 'transaction.' : ''}delete`] = {
-            message: e.message ? e.message : e.toString(),
-            // path: `${transactionSession ? 'transaction.' : ''}delete`,
-            // data: null
-        };
-        if (transactionSession) {
-            throw e;
-        }
-        return ruleResultModel;
+    const deleteRules = getRulesKey(rules).filter(rule => rule.startsWith('delete'));
+    if (deleteRules.length === 0) return ruleResponse
+    for (const rule of deleteRules) {
+        const domain = extractDomain(rule, 'delete');
+        const ePath = `${transaction ? 'transaction.' : ''}delete.${domain}`;
+        ruleResponse = await withRuleResponse(ePath, ruleResponse, () => {
+            const ruleData = rules[rule]
+            return handleDeleteRule(domain, ruleData, ruleResponse, rules.context, options)
+        })
     }
+    return ruleResponse;
 }
 
 export async function handleQueryRules(
@@ -179,8 +104,6 @@ export async function handleQueryRules(
             if (allowed !== true) {
                 ruleResultModel.errors[`${transactionSession ? 'transactionSession.' : ''}query.${domain}`] = {
                     message: 'You have insufficient permission to this resource',
-                    // path: `${transactionSession ? 'transactionSession.' : ''}query.${domain}`,
-                    // data: rulesBlockModelElement
                 };
                 return ruleResultModel;
             }
@@ -231,8 +154,6 @@ export async function handleQueryRules(
                 devLog(e);
                 ruleResultModel.errors[`${transactionSession ? 'transactionSession.' : ''}query.${domain}`] = {
                     message: e.message ? e.message : e.toString(),
-                    // path: `${transactionSession ? 'transactionSession.' : ''}query.${domain}`,
-                    // data: rulesBlockModelElement
                 };
                 if (transactionSession) {
                     throw e;
@@ -244,8 +165,6 @@ export async function handleQueryRules(
         devLog(e);
         ruleResultModel.errors[`${transactionSession ? 'transactionSession.' : ''}query`] = {
             message: e.message ? e.message : e.toString(),
-            // path: `${transactionSession ? 'transactionSession.' : ''}query`,
-            // data: null
         };
         if (transactionSession) {
             throw e;
@@ -302,8 +221,6 @@ export async function handleBulkRule(
         devLog(e);
         ruleResultModel.errors.transaction = {
             message: e.message ? e.message : e.toString(),
-            // path: 'transaction',
-            // data: null
         };
         return ruleResultModel;
     }
@@ -319,9 +236,9 @@ export async function handleCreateRules(
     for (const rule of createRules) {
         const domain = extractDomain(rule, 'create');
         const ePath = `${transactionSession ? 'transaction.' : ''}create.${domain}`;
-        await withRuleResponse(ePath, ruleResponse, async () => {
+        ruleResponse = await withRuleResponse(ePath, ruleResponse, () => {
             const ruleData = rules[rule];
-            await createRule(domain, ruleData, ruleResponse, rules.context, options);
+            return createRule(domain, ruleData, ruleResponse, rules.context, options);
         });
     }
     return ruleResponse;
@@ -340,9 +257,9 @@ export async function handleUpdateRules(
     for (const rule of updateRules) {
         const domain = extractDomain(rule, 'update');
         const ePath = `${transactionSession ? 'transaction.' : ''}update.${domain}`;
-        await withRuleResponse(ePath, ruleResponse, async () => {
+        ruleResponse = await withRuleResponse(ePath, ruleResponse, () => {
             const ruleData = rules[rule];
-            await updateRule(domain, ruleData, ruleResponse, rules.context, options);
+            return updateRule(domain, ruleData, ruleResponse, rules.context, options);
         })
     }
     return ruleResponse;
@@ -370,9 +287,7 @@ export async function handleStorageRule(
                     );
                     if (allowed !== true) {
                         ruleResultModel.errors[`files.save`] = {
-                            message: 'You have insufficient permission to save file',
-                            // path: `files.save`,
-                            // data
+                            message: 'You have insufficient permission to save file'
                         };
                     } else {
                         ruleResultModel.files = {};
@@ -391,9 +306,7 @@ export async function handleStorageRule(
                     );
                     if (allowed !== true) {
                         ruleResultModel.errors[`files.delete`] = {
-                            message: 'You have insufficient permission delete file',
-                            // path: `files.delete`,
-                            // data
+                            message: 'You have insufficient permission delete file'
                         };
                     } else {
                         ruleResultModel.files = {};
@@ -412,9 +325,7 @@ export async function handleStorageRule(
                     );
                     if (allowed !== true) {
                         ruleResultModel.errors[`files.list`] = {
-                            message: 'You have insufficient permission list files',
-                            // path: `files.delete`,
-                            // data
+                            message: 'You have insufficient permission list files'
                         };
                     } else {
                         ruleResultModel.files = {};
@@ -433,8 +344,6 @@ export async function handleStorageRule(
                 devLog(e);
                 ruleResultModel.errors[`files.${action}`] = {
                     message: e.message ? e.message : e.toString(),
-                    // path: `files.${action}`,
-                    // data: JSON.stringify(data, null, 2)
                 };
             }
         }
@@ -443,8 +352,6 @@ export async function handleStorageRule(
         devLog(e);
         ruleResultModel.errors.files = {
             message: e.message ? e.message : e.toString(),
-            // path: 'files',
-            // data: null
         };
         return ruleResultModel;
     }
@@ -464,8 +371,6 @@ export async function handleAggregationRules(
             if (allowed !== true) {
                 ruleResultModel.errors[`aggregate.${domain}`] = {
                     message: 'You have insufficient permission to this resource',
-                    // path: `aggregate.${domain}`,
-                    // data: rulesBlockModel[aggregateRule]
                 };
                 return ruleResultModel;
             }
@@ -497,8 +402,6 @@ export async function handleAggregationRules(
                 devLog(e);
                 ruleResultModel.errors[`aggregate.${domain}`] = {
                     message: e.message ? e.message : e.toString(),
-                    // path: `aggregate.${domain}`,
-                    // data
                 };
             }
         }
@@ -507,8 +410,6 @@ export async function handleAggregationRules(
         devLog(e);
         ruleResultModel.errors[`aggregate`] = {
             message: e.message ? e.message : e.toString(),
-            // path: `aggregate`,
-            // data: null
         };
         return ruleResultModel;
     }

@@ -1,4 +1,4 @@
-import {handleDeleteRules} from "./rules.controller";
+import {handleDeleteRules} from "./rules";
 import {loadEnv} from "../utils/env";
 import {extractResultFromServer} from "bfast";
 import {signIn, signUp} from "./auth";

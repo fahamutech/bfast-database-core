@@ -7,7 +7,7 @@ import {BFastOptions} from "../bfast-option";
 import {NextFunction, Request, Response} from 'express'
 import {AuthAdapter} from "../adapters/auth.adapter";
 import {FilesAdapter} from "../adapters/files.adapter";
-import {verifyToken} from './security.controller';
+import {verifyToken} from './security';
 import {
     handleAggregationRules,
     handleAuthenticationRule,
@@ -18,7 +18,7 @@ import {
     handleQueryRules,
     handleStorageRule,
     handleUpdateRules
-} from "./rules.controller";
+} from "./rules";
 import {listFiles, saveFromBuffer} from "./storage";
 import {devLog} from "../utils/debug";
 import {Buffer} from "buffer";

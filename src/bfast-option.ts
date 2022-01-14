@@ -1,5 +1,4 @@
 import {AuthAdapter} from './adapters/auth.adapter';
-import {EmailAdapter} from './adapters/email.adapter';
 import {validate} from "jsonschema";
 
 export type BFastOptions = {
@@ -16,7 +15,7 @@ export type BFastOptions = {
     web3Token?: string;
     adapters?: {
         auth?: (config: BFastOptions) => AuthAdapter;
-        email?: (config: BFastOptions) => EmailAdapter;
+        // email?: (config: BFastOptions) => EmailAdapter;
         s3Storage?: {
             accessKey: string;
             bucket: string;
@@ -31,10 +30,10 @@ export type BFastOptions = {
     };
 }
 
-export function isBFastOptions(options: BFastOptions, onReason?: (reason: string)=>void): options is BFastOptions {
+export function isBFastOptions(options: BFastOptions, onReason?: (reason: string) => void): options is BFastOptions {
     // @ts-ignore
-    const v = validate(options,BFastOptionsSchema,{required: true});
-    if (onReason)onReason(v.errors.map(x => x.property + ' ' + x.message).join(','));
+    const v = validate(options, BFastOptionsSchema, {required: true});
+    if (onReason) onReason(v.errors.map(x => x.property + ' ' + x.message).join(','));
     return v.valid;
 }
 
@@ -67,10 +66,10 @@ export const BFastOptionsSchema = {
                         useSSL: {type: "boolean"},
                         secretKey: {type: "string", minLength: 1},
                     },
-                    required: ['accessKey','bucket','endPoint','secretKey']
+                    required: ['accessKey', 'bucket', 'endPoint', 'secretKey']
                 }
             }
         }
     },
-    required: ['port','masterKey','applicationId','projectId','databaseURI']
+    required: ['port', 'masterKey', 'applicationId', 'projectId', 'databaseURI']
 }

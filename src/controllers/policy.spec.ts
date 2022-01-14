@@ -2,7 +2,7 @@ import {addPolicyRule, listPolicyRule, removePolicyRule, ruleHasPermission} from
 import {expect} from "chai";
 import {RuleContext} from "../models/rule-context";
 import {loadEnv} from "../utils/env";
-import {handleDeleteRules} from "./rules.controller";
+import {handleDeleteRules} from "./rules";
 import {extractResultFromServer} from "bfast";
 
 const ruleContext: RuleContext = {

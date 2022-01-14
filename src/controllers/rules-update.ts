@@ -48,7 +48,7 @@ async function updateManyDoc(context: RuleContext, domain: string, ruleData: Upd
 
 export async function updateRule(
     domain: string, ruleData, ruleResponse: RuleResponse, context: RuleContext, options: BFastOptions
-) {
+): Promise<RuleResponse> {
     await checkUpdatePermission(domain, context, options);
     if (ruleData && Array.isArray(ruleData)) {
         ruleResponse[`update${domain}`]
@@ -57,4 +57,5 @@ export async function updateRule(
         ruleResponse[`update${domain}`]
             = await updateSingleDoc(context, domain, ruleData, options);
     }
+    return ruleResponse
 }

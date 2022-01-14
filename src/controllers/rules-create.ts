@@ -6,9 +6,7 @@ import {ruleHasPermission} from "./policy";
 
 async function hasCreatePermission(domain: string, context: RuleContext, options: BFastOptions) {
     const allowed = await ruleHasPermission(`create.${domain}`, context, options);
-    if (allowed !== true) {
-        throw {message: 'You have insufficient permission to this resource'}
-    }
+    if (allowed !== true) throw {message: 'You have insufficient permission to this resource'}
 }
 
 async function createMany(domain: string, ruleData, context: RuleContext, options: BFastOptions) {
@@ -28,7 +26,7 @@ async function createOne(domain, ruleData, context: RuleContext, options: BFastO
 
 export async function createRule(
     domain: string, ruleData, ruleResponse: RuleResponse, context: RuleContext, options: BFastOptions
-) {
+): Promise<RuleResponse> {
     await hasCreatePermission(domain, context, options);
     let result;
     if (ruleData && Array.isArray(ruleData)) {
@@ -37,4 +35,5 @@ export async function createRule(
         result = await createOne(domain, ruleData, context, options);
     }
     ruleResponse[`create${domain}`] = result;
+    return ruleResponse
 }

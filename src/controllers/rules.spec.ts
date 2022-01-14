@@ -1,0 +1,3 @@
+describe('RulesController', function () {
+
+});

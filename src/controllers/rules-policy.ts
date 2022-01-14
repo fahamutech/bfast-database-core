@@ -10,38 +10,47 @@ function sanitizeRuleResponse(ruleResponse: RuleResponse) {
     return ruleResponse;
 }
 
-async function policyAdd(data, ruleResponse: RuleResponse, context: RuleContext, options: BFastOptions) {
+async function policyAdd(
+    data, ruleResponse: RuleResponse, context: RuleContext, options: BFastOptions
+): Promise<RuleResponse> {
     const authorizationResults = {};
     for (const rule of Object.keys(data)) {
         authorizationResults[rule] = await addPolicyRule(rule, data[rule], context, options);
     }
     ruleResponse = sanitizeRuleResponse(ruleResponse);
     ruleResponse.policy.add = authorizationResults;
+    return ruleResponse
 }
 
-async function policyList(ruleResponse: RuleResponse, context: RuleContext, options: BFastOptions) {
+async function policyList(
+    ruleResponse: RuleResponse, context: RuleContext, options: BFastOptions
+): Promise<RuleResponse> {
     const listResponse = await listPolicyRule(context, options);
     ruleResponse = sanitizeRuleResponse(ruleResponse);
     ruleResponse.policy.list = listResponse
+    return ruleResponse
 }
 
-async function policyRemove(data, ruleResponse: RuleResponse, context: RuleContext, options: BFastOptions) {
+async function policyRemove(
+    data, ruleResponse: RuleResponse, context: RuleContext, options: BFastOptions
+): Promise<RuleResponse> {
     const removeResponse = await removePolicyRule(data.ruleId, context, options);
     ruleResponse = sanitizeRuleResponse(ruleResponse);
     ruleResponse.policy.remove = removeResponse;
+    return ruleResponse
 }
 
 export async function policyRule(
     action: string, data: any, ruleResponse: RuleResponse, context: RuleContext, options: BFastOptions
-) {
+): Promise<RuleResponse> {
     if (!(context && context.useMasterKey === true)) {
         throw {message: 'policy rule require masterKey'}
     }
     if (action === 'add' && typeof data === 'object') {
-        await policyAdd(data, ruleResponse, context, options)
+        return await policyAdd(data, ruleResponse, context, options)
     } else if (action === 'list' && typeof data === 'object') {
-        await policyList(ruleResponse, context, options);
+        return await policyList(ruleResponse, context, options);
     } else if (action === 'remove' && typeof data === 'object') {
-        await policyRemove(data, ruleResponse, context, options);
-    }
+        return await policyRemove(data, ruleResponse, context, options);
+    } else return ruleResponse
 }

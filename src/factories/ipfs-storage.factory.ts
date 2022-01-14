@@ -4,7 +4,7 @@ import {BFastOptions} from '../bfast-option';
 import {Buffer} from "buffer";
 import {IpfsFactory} from "./ipfs.factory";
 import {findByFilter, findById, removeDataInStore, writeOneDataInStore} from "../controllers/database.controller";
-import {generateUUID} from "../controllers/security.controller";
+import {generateUUID} from "../controllers/security";
 import * as mime from "mime";
 import {Storage} from "../models/storage";
 import {Request, Response} from "express";

@@ -93,7 +93,6 @@ export function checkStreamCapability(req: Request, filesController: FilesAdapte
     );
 }
 
-
 async function compressImage(
     file: Storage<any>, width: number, height: number, filesAdapter: FilesAdapter, options
 ): Promise<Buffer> {

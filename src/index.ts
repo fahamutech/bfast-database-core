@@ -5,12 +5,12 @@ export * from './webservices/rest.webservice';
 export * from './utils/env';
 
 export {AuthAdapter} from './adapters/auth.adapter';
-export {EmailAdapter} from './adapters/email.adapter';
+
 export {FilesAdapter} from './adapters/files.adapter';
 export * from './controllers/auth';
-export * from './controllers/rules.controller';
-export * from './controllers/security.controller';
-export * from './controllers/email.controller';
+export * from './controllers/rules';
+export * from './controllers/security';
+
 export * from './controllers/rest.controller';
 export * from './controllers/storage';
 export {AuthFactory} from './factories/auth.factory';

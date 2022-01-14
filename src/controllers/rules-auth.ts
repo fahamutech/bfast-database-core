@@ -13,28 +13,30 @@ function sanitizeRuleResponse(ruleResponse: RuleResponse) {
 
 async function authSignUp(
     data, ruleResponse: RuleResponse, authAdapter: AuthAdapter, context: RuleContext, options: BFastOptions
-) {
+): Promise<RuleResponse> {
     const signUpResponse = await signUp(data, authAdapter, context, options);
     ruleResponse = sanitizeRuleResponse(ruleResponse);
     ruleResponse.auth.signUp = signUpResponse;
+    return ruleResponse
 }
 
 async function authSignIn(
     data, ruleResponse: RuleResponse, authAdapter: AuthAdapter, context: RuleContext, options: BFastOptions
-) {
+): Promise<RuleResponse> {
     const signInResponse = await signIn(data, authAdapter, context, options);
     ruleResponse = sanitizeRuleResponse(ruleResponse);
     ruleResponse.auth.signIn = signInResponse;
+    return ruleResponse
 }
 
 export async function authRule(
     action: string, data: any, ruleResponse: RuleResponse, authAdapter: AuthAdapter,
     context: RuleContext, options: BFastOptions
-) {
+): Promise<RuleResponse> {
     if (action === 'signUp') {
-        await authSignUp(data, ruleResponse, authAdapter, context, options);
+        return await authSignUp(data, ruleResponse, authAdapter, context, options);
     } else if (action === 'signIn') {
-        await authSignIn(data, ruleResponse, authAdapter, context, options);
+        return await authSignIn(data, ruleResponse, authAdapter, context, options);
     } else if (action === 'reset') {
         throw {message: 'Reset not supported yet'};
     }
