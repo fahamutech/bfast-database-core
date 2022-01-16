@@ -68,7 +68,7 @@ export const updateManyDataInStore: UpdateManyDataFn
         if (a.isOk() === true) {
             return {modified: a.modifiedCount + a.upsertedCount};
         }
-        throw {message: 'bulk write not executed', reason: a.toString()}
+        throw {message: 'crossStoreDataOperation write not executed', reason: a.toString()}
     }, options);
 }
 

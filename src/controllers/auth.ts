@@ -1,7 +1,7 @@
 import {BasicUser, BasicUserSchema} from '../models/basic-user';
 import {BFastOptions} from "../bfast-option";
 import {AuthAdapter} from "../adapters/auth.adapter";
-import {findByFilter} from "./database.controller";
+import {findDataByFilterInStore} from "./database.controller";
 import {RuleContext} from "../models/rule-context";
 import {validateInput} from "../utils";
 
@@ -30,15 +30,18 @@ import {validateInput} from "../utils";
 export async function signIn<T extends BasicUser>(
     userModel: T, authAdapter: AuthAdapter, context: RuleContext, options: BFastOptions
 ): Promise<any> {
-    await validateInput(userModel, BasicUserSchema, 'invalid user data')
+    if (!userModel || !userModel.username) throw {message: 'Username required'}
+    if (!userModel || !userModel.password) throw {message: 'Password required'}
+    // await validateInput(userModel, BasicUserSchema, 'invalid user data')
     return authAdapter.signIn(userModel, context, options);
 }
 
 export async function signUp<T extends BasicUser>(
     userModel: T, authAdapter: AuthAdapter, context: RuleContext, options: BFastOptions
 ): Promise<any> {
-    await validateInput(userModel, BasicUserSchema, 'invalid user data')
-    if (!userModel.email) throw {message: 'Email required'}
+    if (!userModel || !userModel.email) throw {message: 'Email required'}
+    if (!userModel || !userModel.username) throw {message: 'Username required'}
+    if (!userModel || !userModel.password) throw {message: 'Password required'}
     userModel.return = []
     userModel.emailVerified = false
     const queryModel = {
@@ -46,7 +49,7 @@ export async function signUp<T extends BasicUser>(
         return: []
     }
     const wOptions = {bypassDomainVerification: true}
-    const oldUser = await findByFilter('_User', queryModel, context, wOptions, options)
+    const oldUser = await findDataByFilterInStore('_User', queryModel, context, wOptions, options)
     if (Array.isArray(oldUser) && oldUser.length > 0) {
         console.log('INFO: TRY RE SIGNUP');
         throw {message: 'User already exist'};
@@ -54,7 +57,7 @@ export async function signUp<T extends BasicUser>(
     return await authAdapter.signUp(userModel, context, options);
 }
 
-// export async function updateUserInStore<T extends BasicUser>(
+// export async function update<T extends BasicUser>(
 //     userModel: T, authAdapter: AuthAdapter, context: RuleContext, options: BFastOptions
 // ): Promise<any> {
 //     if (context.auth === true && context.uid && typeof context.uid === 'string') {
@@ -62,7 +65,7 @@ export async function signUp<T extends BasicUser>(
 //         delete userModel.password;
 //         delete userModel._hashed_password;
 //         delete userModel.emailVerified;
-//         return authAdapter.updateUserInStore(userModel, context, options);
+//         return authAdapter.update(userModel, context, options);
 //     } else {
 //         return Promise.reject({message: 'please authenticate yourself'});
 //     }

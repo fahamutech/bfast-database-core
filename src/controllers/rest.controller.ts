@@ -11,7 +11,7 @@ import {verifyToken} from './security';
 import {
     handleAggregationRules,
     handleAuthenticationRule,
-    handleBulkRule,
+    handleBulkRules,
     handleCreateRules,
     handleDeleteRules,
     handlePolicyRule,
@@ -19,7 +19,7 @@ import {
     handleStorageRule,
     handleUpdateRules
 } from "./rules";
-import {listFiles, saveFromBuffer} from "./storage";
+import {listFilesFromStore, saveFromBuffer} from "./storage";
 import {devLog} from "../utils/debug";
 import {Buffer} from "buffer";
 import {RuleResponse} from "../models/rule-response";
@@ -28,7 +28,7 @@ import {ruleHasPermission} from "./policy";
 export function getAllFiles(
     request: any, response: any, _: NextFunction, filesAdapter: FilesAdapter, options: BFastOptions
 ): void {
-    listFiles({
+    listFilesFromStore({
             skip: isNaN(Number(request.query.skip)) ? 0 : parseInt(request.query.skip),
             after: request.query.after ? request.query.after.toString() : '',
             size: isNaN(Number(request.query.size)) ? 20 : parseInt(request.query.size),
@@ -224,7 +224,7 @@ export function handleRuleBlocks(
     }).then(_5 => {
         return handleQueryRules(body, results, options, null);
     }).then(_6 => {
-        return handleBulkRule(body, results, options);
+        return handleBulkRules(body, results, options);
     }).then(_8 => {
         return handleStorageRule(body, results, authAdapter, filesAdapter, options);
     }).then(_9 => {

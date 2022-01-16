@@ -1,8 +1,6 @@
 import {expect} from "chai";
-import {PolicyAddSchema, PolicyDataSchema} from "./policy";
+import {PolicyDataSchema} from "./policy";
 import {StringSchema} from "./string";
-import {RuleContext, RuleContextSchema} from "./rule-context";
-import {BFastOptions, BFastOptionsSchema} from "../bfast-option";
 
 describe('PolicyModel', function () {
     describe('PolicySchema', function () {

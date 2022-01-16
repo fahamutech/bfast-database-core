@@ -1,5 +1,5 @@
-const {getTypeFromUrl} = require("../../../dist/controllers/storage");
-const {expect} = require("chai");
+import {expect} from "chai";
+import {getTypeFromUrl} from "./storage";
 
 describe('StorageController', function () {
     describe('getTypeFromUrl', function () {

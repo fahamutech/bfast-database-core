@@ -3,7 +3,7 @@ import {pipeline} from 'stream';
 import {BFastOptions} from '../bfast-option';
 import {Buffer} from "buffer";
 import {IpfsFactory} from "./ipfs.factory";
-import {findByFilter, findById, removeDataInStore, writeOneDataInStore} from "../controllers/database.controller";
+import {findDataByFilterInStore, findDataByIdInStore, removeDataInStore, writeOneDataInStore} from "../controllers/database.controller";
 import {generateUUID} from "../controllers/security";
 import * as mime from "mime";
 import {Storage} from "../models/storage";
@@ -40,7 +40,7 @@ export class IpfsStorageFactory implements FilesAdapter {
     }
 
     async fileInfo(id: string, options: BFastOptions): Promise<Storage<any>> {
-        const file: Storage<any> = await findById(
+        const file: Storage<any> = await findDataByIdInStore(
             this.domain,
             {
                 id: id,
@@ -63,7 +63,7 @@ export class IpfsStorageFactory implements FilesAdapter {
     async handleFileStream(
         id: string, req: Request, res: Response, contentType: string, options: BFastOptions
     ): Promise<any> {
-        const file: Storage<ReadableStream> = await findById(
+        const file: Storage<ReadableStream> = await findDataByIdInStore(
             this.domain, {id: id, return: []}, {bypassDomainVerification: true}, options
         );
         if (file && file.cid && file.type && file.size) {
@@ -115,7 +115,7 @@ export class IpfsStorageFactory implements FilesAdapter {
     async listFiles(
         query: { prefix: string, size: number, skip: number } = {prefix: '', size: 20, skip: 0}, options: BFastOptions
     ): Promise<any[]> {
-        let r = await findByFilter(
+        let r = await findDataByFilterInStore(
             this.domain,
             {
                 filter: {},
@@ -173,7 +173,7 @@ export class IpfsStorageFactory implements FilesAdapter {
     }
 
     async getFileBuffer(file: Storage<any>, options: BFastOptions): Promise<Buffer> {
-        // let file: Storage<Buffer> = await findById(
+        // let file: Storage<Buffer> = await findDataByIdInStore(
         //     this.domain, {id: id, return: []}, {bypassDomainVerification: true}, options
         // );
         if (file && file.cid) {

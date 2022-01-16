@@ -21,7 +21,7 @@ export abstract class AuthAdapter {
     //     options: BFastOptions
     // ): Promise<any>;
 
-    // abstract updateUserInStore<T extends BasicUser>(
+    // abstract update<T extends BasicUser>(
     //     userModel: T,
     //     context: RuleContext,
     //     options: BFastOptions

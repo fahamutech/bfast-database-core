@@ -1,6 +1,6 @@
 import {RuleContext} from "../models/rule-context";
 import {BFastOptions} from "../bfast-option";
-import {findByFilter, removeDataInStore, updateDataInStore} from "./database.controller";
+import {findDataByFilterInStore, removeDataInStore, updateDataInStore} from "./database.controller";
 import {PolicyData} from "../models/policy";
 import {validateInput} from "../utils";
 import {StringSchema} from "../models/string";
@@ -57,7 +57,7 @@ export async function addPolicyRule(
 }
 
 export async function listPolicyRule(context: RuleContext, options: BFastOptions) {
-    const _j1 = await findByFilter(
+    const _j1 = await findDataByFilterInStore(
         '_Policy',
         {
             filter: {},
@@ -105,7 +105,7 @@ export async function ruleHasPermission(ruleId: string, context: RuleContext, op
     filter.push(originalRule)
     const queryModel = {return: [], filter: {$or: filter}}
     const wOptions = {bypassDomainVerification: true}
-    let policies: any[] = await findByFilter(policyDomainName, queryModel, context, wOptions, options)
+    let policies: any[] = await findDataByFilterInStore(policyDomainName, queryModel, context, wOptions, options)
     policies = policies.map(x => sanitizePolicy4User(x))
     if (policies.length === 0) return true
     const originalRuleResult = policies.filter(value => value.ruleId === decodeDot(originalRule.ruleId));

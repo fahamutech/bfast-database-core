@@ -39,7 +39,7 @@ export function getSource(base64: string, type: string): any {
     return source;
 }
 
-export async function saveFile(
+export async function saveFileInStore(
     fileModel: FileModel, _: RuleContext, filesAdapter: FilesAdapter, options: BFastOptions
 ): Promise<string> {
     const {name, base64} = fileModel;
@@ -147,7 +147,7 @@ export async function handleGetFileRequest(
     }
 }
 
-export async function listFiles(
+export async function listFilesFromStore(
     data: { prefix: string, size: number, skip: number, after: string },
     filesAdapter: FilesAdapter,
     options: BFastOptions
@@ -181,7 +181,7 @@ export async function saveFromBuffer(
     return filesAdapter.getFileLocation(file.id, options);
 }
 
-export async function deleteFile(
+export async function deleteFileInStore(
     data: { name: string }, _: RuleContext, filesAdapter: FilesAdapter, options: BFastOptions
 ): Promise<{ id: string }> {
     const {name} = data;
@@ -207,7 +207,7 @@ export async function handleGetFileBySignedUrl<T>(
     filesAdapter: FilesAdapter,
     options: BFastOptions
 ): Promise<Buffer | string> {
-    // const f: Storage<any> = await findById(
+    // const f: Storage<any> = await findDataByIdInStore(
     //     '_Storage', {id: name, return: []}, {bypassDomainVerification: true}, options
     // );
     // if (!f) {

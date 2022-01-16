@@ -5,9 +5,7 @@ import {signIn, signUp} from "./auth";
 import {RuleContext} from "../models/rule-context";
 
 function sanitizeRuleResponse(ruleResponse: RuleResponse) {
-    if (!ruleResponse.auth) {
-        ruleResponse.auth = {};
-    }
+    if (!ruleResponse.auth) ruleResponse.auth = {};
     return ruleResponse;
 }
 
@@ -33,11 +31,10 @@ export async function authRule(
     action: string, data: any, ruleResponse: RuleResponse, authAdapter: AuthAdapter,
     context: RuleContext, options: BFastOptions
 ): Promise<RuleResponse> {
-    if (action === 'signUp') {
-        return await authSignUp(data, ruleResponse, authAdapter, context, options);
-    } else if (action === 'signIn') {
-        return await authSignIn(data, ruleResponse, authAdapter, context, options);
-    } else if (action === 'reset') {
-        throw {message: 'Reset not supported yet'};
-    }
+    if (action === 'signUp') return authSignUp(data, ruleResponse, authAdapter, context, options);
+    if (action === 'signIn') return authSignIn(data, ruleResponse, authAdapter, context, options);
+    if (action === 'reset') throw {message: 'Reset not supported yet'};
 }
+
+
+

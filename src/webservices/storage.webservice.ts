@@ -14,10 +14,10 @@ import {ReadableStream} from "stream/web";
 import {pipeline, Readable} from "stream";
 import {Buffer} from "buffer";
 import {Storage} from "../models/storage";
-import {findById} from "../controllers/database.controller";
+import {findDataByIdInStore} from "../controllers/database.controller";
 
 async function getStorage(id: string, options: BFastOptions) {
-    const f: Storage<any> = await findById(
+    const f: Storage<any> = await findDataByIdInStore(
         '_Storage', {id: id, return: []}, {bypassDomainVerification: true},
         options
     );

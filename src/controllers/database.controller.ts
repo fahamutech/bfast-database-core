@@ -125,26 +125,26 @@ export async function updateDataInStore(
     // const returnFields = getReturnFields(updateModel);
     updateModel = await sanitizeUpdateModel(updateModel);
     const a = await _updateDataInStore(domain, updateModel, options);
-    return {message: 'done updateUserInStore', modified: a.modified};
+    return {message: 'done update', modified: a.modified};
     // if (updateModel.hasOwnProperty('id')) {
-    //     const cleanDoc = await findById(
+    //     const cleanDoc = await findDataByIdInStore(
     //         domain, {id: updateModel.id, return: returnFields}, updateOptions, options
     //     );
     //     publishChanges(domain, {
     //         _id: cleanDoc.id,
     //         fullDocument: cleanDoc,
-    //         operationType: "updateUserInStore"
+    //         operationType: "update"
     //     }, options);
     //     return cleanDoc;
     // } else {
-    //     const cleanDocs = await findByFilter(
+    //     const cleanDocs = await findDataByFilterInStore(
     //         domain, {return: returnFields, filter: updateModel.filter}, context, updateOptions, options
     //     );
     //     return cleanDocs.map(z => {
     //         publishChanges(domain, {
     //             _id: z.id,
     //             fullDocument: z,
-    //             operationType: "updateUserInStore"
+    //             operationType: "update"
     //         }, options);
     //         return z;
     //     });
@@ -161,11 +161,11 @@ export async function updateManyData(
 ): Promise<{ message: string, modified: number }> {
     await checkPolicyInDomain(domain, updateOptions);
     if (updateModels.length === 0) {
-        return {message: 'done updateUserInStore', modified: 0};
+        return {message: 'done update', modified: 0};
     }
     updateModels = await Promise.all(updateModels.map(x => sanitizeUpdateModel(x)));
     const a = await _updateManyDataInStore(domain, updateModels, options);
-    return {message: 'done updateUserInStore', modified: a.modified};
+    return {message: 'done update', modified: a.modified};
 }
 
 function altUpdateModel(updateModel: UpdateModel): UpdateModel {
@@ -176,7 +176,7 @@ function altUpdateModel(updateModel: UpdateModel): UpdateModel {
 }
 
 export async function removeDataInStore(
-    domain: string, deleteModel: DeleteModel<any>, context: RuleContext,
+    domain: string, deleteModel: DeleteModel, context: RuleContext,
     basicOptions: DatabaseBasicOptions = {bypassDomainVerification: false}, options: BFastOptions
 ): Promise<any> {
     await checkPolicyInDomain(domain, basicOptions);
@@ -187,7 +187,7 @@ export async function removeDataInStore(
         result.push({id: deleteModel.id});
     }
     if (deleteModel && deleteModel.filter) {
-        let all = await findByFilter(domain, deleteModel, context, basicOptions, options);
+        let all = await findDataByFilterInStore(domain, deleteModel, context, basicOptions, options);
         const _p = all.map(async a => {
             await _purgeData(domain, a.id, options);
             return {id: a.id};
@@ -207,7 +207,7 @@ export async function removeDataInStore(
     });
 }
 
-export async function bulk<S>(
+export async function crossStoreDataOperation<S>(
     operations: (session: S) => Promise<any>
 ): Promise<any> {
     return await operations(null);
@@ -254,7 +254,7 @@ export async function changes(
     }
 }
 
-export async function findById(
+export async function findDataByIdInStore(
     domain: string, queryModel: QueryModel<any>,
     writeOptions: DatabaseWriteOptions = {bypassDomainVerification: false}, options: BFastOptions
 ): Promise<any> {
@@ -267,7 +267,7 @@ export async function findById(
     return sanitize4User(data, returnFields);
 }
 
-export async function findByFilter(
+export async function findDataByFilterInStore(
     domain: string, queryModel: QueryModel<any>, context: RuleContext,
     writeOptions: DatabaseWriteOptions = {bypassDomainVerification: false}, options: BFastOptions
 ): Promise<any> {
@@ -495,7 +495,7 @@ export function publishChanges(domain: string, change: ChangesModel, options: BF
     aI.pub(aI.eventName(options.projectId, domain), change);
 }
 
-export async function aggregate(
+export async function aggregateDataInStore(
     table: string, pipelines: any[],
     writeOptions: DatabaseWriteOptions = {bypassDomainVerification: false},
     options: BFastOptions

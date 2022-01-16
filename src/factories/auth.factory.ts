@@ -1,7 +1,7 @@
 import {AuthAdapter} from '../adapters/auth.adapter';
 import {BasicUser} from '../models/basic-user';
 import {BFastOptions} from "../bfast-option";
-import {findByFilter, writeOneDataInStore} from "../controllers/database.controller";
+import {findDataByFilterInStore, writeOneDataInStore} from "../controllers/database.controller";
 
 import {comparePlainTextWithSaltedHash, generateToken, saltHashPlainText} from "../controllers/security";
 import {RuleContext} from "../models/rule-context";
@@ -18,7 +18,7 @@ export class AuthFactory implements AuthAdapter {
     ): Promise<T> {
         const queryModel = {filter: {username: userModel.username}, return: []}
         const wOptions = {bypassDomainVerification: true}
-        const users = await findByFilter(this.domainName, queryModel, context, wOptions, options);
+        const users = await findDataByFilterInStore(this.domainName, queryModel, context, wOptions, options);
         if (users && Array.isArray(users) && users.length === 1) {
             const user = users[0];
             if (await comparePlainTextWithSaltedHash(userModel.password, user.password ? user.password : user._hashed_password)) {
@@ -55,7 +55,7 @@ export class AuthFactory implements AuthAdapter {
     //     return undefined;
     // }
     //
-    // async updateUserInStore<T extends BasicUser>(
+    // async update<T extends BasicUser>(
     //     userModel: T,
     //     context: RuleContext,
     //     options: BFastOptions

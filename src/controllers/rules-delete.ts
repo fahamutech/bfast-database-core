@@ -17,7 +17,7 @@ async function handleDeleteOneRule(
     delete ruleData.filter;
     filter._id = ruleData.id;
     ruleData.filter = filter;
-    const wOptions = {bypassDomainVerification: context.useMasterKey === true, transaction: null}
+    const wOptions = {bypassDomainVerification: context && context.useMasterKey === true, transaction: null}
     ruleResponse[`delete${domain}`] = await removeDataInStore(domain, ruleData, context, wOptions, options)
     return ruleResponse
 }
@@ -30,7 +30,7 @@ async function handleDeleteManyRule(
         throw new Error('Empty filter array is not supported in delete rule')
     if (ruleData?.filter && Object.keys(ruleData?.filter).length === 0)
         throw new Error('Empty filter map is not supported in delete rule')
-    const wOptions = {bypassDomainVerification: context.useMasterKey === true, transaction: null}
+    const wOptions = {bypassDomainVerification: context && context.useMasterKey === true, transaction: null}
     ruleResponse[`delete${domain}`] = await removeDataInStore(domain, ruleData, context, wOptions, options)
     return ruleResponse
 }
