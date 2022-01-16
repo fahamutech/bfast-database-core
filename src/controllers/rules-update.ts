@@ -2,7 +2,7 @@ import {RuleContext} from "../models/rule-context";
 import {RuleResponse} from "../models/rule-response";
 import {BFastOptions} from "../bfast-option";
 import {UpdateModel} from "../models/update-model";
-import {updateDataInStore, updateManyData} from "./database.controller";
+import {updateDataInStore, updateManyData} from "./database";
 import {ruleHasPermission} from "./policy";
 
 async function checkUpdatePermission(domain: string, context: RuleContext, options: BFastOptions) {

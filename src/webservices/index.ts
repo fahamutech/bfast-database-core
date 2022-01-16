@@ -1,5 +1,4 @@
 import {FunctionsModel} from '../models/functions.model';
-import {StorageApiModel} from '../models/storage-api.model';
 import {FilesAdapter} from "../adapters/files.adapter";
 import {BFastOptions} from "../bfast-option";
 import {AuthAdapter} from "../adapters/auth.adapter";
@@ -9,9 +8,10 @@ import {
     geThumbnailFromStorage, geThumbnailV2FromStorage,
     getUploadFileV2,
     uploadMultiPartFile
-} from "./storage.webservice";
-import {changesRestAPI} from "./changes.webservice";
-import {authJwk, rulesRestAPI} from "./rest.webservice";
+} from "./storage";
+import {changesRestAPI} from "./changes";
+import {authJwk, rulesRestAPI} from "./rules";
+import {StorageApiModel} from "../models/storage";
 
 export class WebServices {
     constructor(private readonly authAdapter: AuthAdapter,

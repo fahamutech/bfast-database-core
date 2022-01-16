@@ -1,5 +1,5 @@
 import {ChangesDocModel} from "../models/changes-doc.model";
-import {changes} from '../controllers/database.controller';
+import {changes} from '../controllers/database';
 
 export function changesRestAPI(
     config: { applicationId: string, projectId: string, masterKey: string },

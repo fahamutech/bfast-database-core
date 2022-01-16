@@ -1,5 +1,5 @@
 import {BFastOptions} from "../bfast-option";
-import {writeMany, writeOneDataInStore} from "./database.controller";
+import {writeMany, writeOneDataInStore} from "./database";
 import {RuleContext} from "../models/rule-context";
 import {RuleResponse} from "../models/rule-response";
 import {ruleHasPermission} from "./policy";

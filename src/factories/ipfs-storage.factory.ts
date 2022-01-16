@@ -3,7 +3,7 @@ import {pipeline} from 'stream';
 import {BFastOptions} from '../bfast-option';
 import {Buffer} from "buffer";
 import {IpfsFactory} from "./ipfs.factory";
-import {findDataByFilterInStore, findDataByIdInStore, removeDataInStore, writeOneDataInStore} from "../controllers/database.controller";
+import {findDataByFilterInStore, findDataByIdInStore, removeDataInStore, writeOneDataInStore} from "../controllers/database";
 import {generateUUID} from "../controllers/security";
 import * as mime from "mime";
 import {Storage} from "../models/storage";

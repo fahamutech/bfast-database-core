@@ -1,6 +1,6 @@
 import {DeleteModel} from "../models/delete-model";
 import {ruleHasPermission} from "./policy";
-import {removeDataInStore} from "./database.controller";
+import {removeDataInStore} from "./database";
 import {RuleResponse} from "../models/rule-response";
 import {RuleContext} from "../models/rule-context";
 import {BFastOptions} from "../bfast-option";

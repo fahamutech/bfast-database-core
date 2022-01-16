@@ -1,7 +1,7 @@
 import {BasicUser, BasicUserSchema} from '../models/basic-user';
 import {BFastOptions} from "../bfast-option";
 import {AuthAdapter} from "../adapters/auth.adapter";
-import {findDataByFilterInStore} from "./database.controller";
+import {findDataByFilterInStore} from "./database";
 import {RuleContext} from "../models/rule-context";
 import {validateInput} from "../utils";
 

@@ -5,10 +5,11 @@ import {StatusCodes} from 'http-status-codes';
 import {BFastOptions} from '../bfast-option';
 import {Buffer} from "buffer";
 import {Request, Response} from 'express'
-import {Storage} from "../models/storage";
+import {ListFileQuery, Storage} from "../models/storage";
 import {ReadableStream} from "stream/web";
 import sharp from 'sharp'
 import {RuleContext} from "../models/rule-context";
+import {validateInput} from "../utils";
 
 export function getSource(base64: string, type: string): any {
     let data: string;
@@ -148,10 +149,9 @@ export async function handleGetFileRequest(
 }
 
 export async function listFilesFromStore(
-    data: { prefix: string, size: number, skip: number, after: string },
-    filesAdapter: FilesAdapter,
-    options: BFastOptions
+    data: ListFileQuery, filesAdapter: FilesAdapter, options: BFastOptions
 ): Promise<any[]> {
+    await validateInput(data,{type: 'object'},'invalid file query data')
     return filesAdapter.listFiles(data, options);
 }
 

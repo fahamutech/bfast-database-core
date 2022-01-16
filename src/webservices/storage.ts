@@ -2,19 +2,113 @@ import {FunctionsModel} from '../models/functions.model';
 import {BFastOptions} from "../bfast-option";
 import {FilesAdapter} from "../adapters/files.adapter";
 import {
-    filePolicy,
-    getAllFiles,
-    multipartForm,
     verifyApplicationId,
     verifyRequestToken
-} from "../controllers/rest.controller";
-import {fileInfo, handleGetFileBySignedUrl, handleGetFileRequest, isS3} from "../controllers/storage";
-import httpStatus from "http-status-codes";
+} from "../controllers/rest";
+import {
+    fileInfo,
+    handleGetFileBySignedUrl,
+    handleGetFileRequest,
+    isS3,
+    listFilesFromStore, saveFromBuffer
+} from "../controllers/storage";
+import httpStatus, {StatusCodes} from "http-status-codes";
 import {ReadableStream} from "stream/web";
 import {pipeline, Readable} from "stream";
 import {Buffer} from "buffer";
-import {Storage} from "../models/storage";
-import {findDataByIdInStore} from "../controllers/database.controller";
+import {ListFileQuery, Storage} from "../models/storage";
+import {findDataByIdInStore} from "../controllers/database";
+import {ruleHasPermission} from "../controllers/policy";
+import {promisify} from "util";
+import {readFile} from "fs";
+import formidable from 'formidable';
+
+function filePolicy(
+    request: any, response: any, next: any, options: BFastOptions
+): void {
+    ruleHasPermission(request.body.ruleId, request.body.context, options).then(value => {
+        if (value === true) {
+            next();
+        } else {
+            throw {message: 'You can\'t access this file'};
+        }
+    }).catch(reason => {
+        response.status(StatusCodes.UNAUTHORIZED).send(reason);
+    });
+}
+
+function multipartForm(
+    request: any, response: any, _: any, filesAdapter: FilesAdapter, options: BFastOptions
+): void {
+    const contentType = request.get('content-type').split(';')[0].toString().trim();
+    if (contentType !== 'multipart/form-data'.trim()) {
+        response.status(StatusCodes.BAD_REQUEST).json({message: 'Accept only multipart request'});
+        return;
+    }
+    const form = formidable({
+        multiples: true,
+        maxFileSize: 10 * 1024 * 1024 * 1024,
+        keepExtensions: true
+    });
+    form.parse(request, async (err, fields, files) => {
+        try {
+            if (err) {
+                response.status(StatusCodes.BAD_REQUEST).send(err.toString());
+                return;
+            }
+            const urls = [];
+            if (
+                request && request.query && request.query.pn && request.query.pn.toString().trim().toLowerCase() === 'true'
+            ) {
+                request.body.context.storage = {preserveName: true};
+            } else {
+                request.body.context.storage = {preserveName: false};
+            }
+            for (const file of Object.values<any>(files)) {
+                // console.log(JSON.stringify(file, null, 4),'FILE')
+                const fileMeta: { name: string, type: string } = {name: undefined, type: undefined};
+                const regx = /[^0-9a-z.]/gi;
+                fileMeta.name = file.originalFilename ? file.originalFilename : file.newFilename.toString().replace(regx, '');
+                fileMeta.type = file.type;
+                const result = await saveFromBuffer({
+                        data: await promisify(readFile)(file.filepath),
+                        type: fileMeta.type,
+                        size: file.size,
+                        name: fileMeta.name
+                    },
+                    request.body.context,
+                    filesAdapter,
+                    options);
+                urls.push(result);
+            }
+            for (const f_key of Object.keys(fields)) {
+                // console.log(JSON.stringify(f_key, null, 4),'FKEY')
+                const fileMeta: { name: string, type: string } = {name: undefined, type: undefined};
+                const regx = /[^0-9a-z.]/gi;
+                fileMeta.name = f_key
+                    .toString()
+                    .replace(regx, '');
+                // @ts-ignore
+                fileMeta.type = mime.getType(f_key);
+                const result = await saveFromBuffer({
+                        data: Buffer.from(fields[f_key]),
+                        type: fileMeta.type,
+                        size: fields[f_key]?.length,
+                        name: fileMeta.name
+                    },
+                    request.body.context,
+                    filesAdapter,
+                    options
+                );
+                urls.push(result);
+            }
+            response.status(StatusCodes.OK).json({urls});
+        } catch (e) {
+            console.log(e);
+            response.status(StatusCodes.BAD_REQUEST).end(e.toString());
+        }
+    });
+}
 
 async function getStorage(id: string, options: BFastOptions) {
     const f: Storage<any> = await findDataByIdInStore(
@@ -144,7 +238,7 @@ export function handleGetThumbnail(filesAdapter: FilesAdapter, options: BFastOpt
     ];
 }
 
-export function handleListFiles(filesAdapter: FilesAdapter, options: BFastOptions): any[] {
+export function handleListFilesREST(filesAdapter: FilesAdapter, options: BFastOptions): any[] {
     return [
         (request, _, next) => {
             request.body.applicationId = request.params.appId;
@@ -154,7 +248,19 @@ export function handleListFiles(filesAdapter: FilesAdapter, options: BFastOption
         (rq, rs, n) => verifyApplicationId(rq, rs, n, options),
         (rq, rs, n) => verifyRequestToken(rq, rs, n, options),
         (rq, rs, n) => filePolicy(rq, rs, n, options),
-        (rq, rs, n) => getAllFiles(rq, rs, n, filesAdapter, options)
+        (request, response) => {
+            const query: ListFileQuery = {
+                skip: isNaN(Number(request.query.skip)) ? 0 : parseInt(request.query.skip),
+                after: request.query.after ? request.query.after.toString() : '',
+                size: isNaN(Number(request.query.size)) ? 20 : parseInt(request.query.size),
+                prefix: request.query.prefix ? request.query.prefix.toString() : '',
+            }
+            listFilesFromStore(query, filesAdapter, options).then(value => {
+                response.json(value);
+            }).catch(reason => {
+                response.status(StatusCodes.EXPECTATION_FAILED).send({message: reason.toString()});
+            });
+        }
     ];
 }
 
@@ -233,6 +339,6 @@ export function getFilesFromStorage(
     return {
         path: `${prefix}storage/:appId/list`,
         method: 'GET',
-        onRequest: handleListFiles(filesAdapter, options)
+        onRequest: handleListFilesREST(filesAdapter, options)
     };
 }

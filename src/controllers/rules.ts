@@ -2,7 +2,7 @@ import {BFastOptions} from '../bfast-option';
 import {devLog} from "../utils/debug";
 import {AuthAdapter} from "../adapters/auth.adapter";
 import {FilesAdapter} from "../adapters/files.adapter";
-import {crossStoreDataOperation} from "./database.controller";
+import {crossStoreDataOperation} from "./database";
 import {Rules} from "../models/rules";
 import {RuleResponse} from "../models/rule-response";
 import {AuthRule} from "../models/auth-rule";

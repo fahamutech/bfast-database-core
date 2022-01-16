@@ -1,7 +1,7 @@
 import {RuleResponse} from "../models/rule-response";
 import {BFastOptions} from "../bfast-option";
 import {ruleHasPermission} from "./policy";
-import {findDataByFilterInStore, findDataByIdInStore} from "./database.controller";
+import {findDataByFilterInStore, findDataByIdInStore} from "./database";
 import {RuleContext} from "../models/rule-context";
 
 async function checkQueryPermission(domain: string, context: RuleContext, options: BFastOptions) {

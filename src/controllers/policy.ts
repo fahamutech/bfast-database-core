@@ -1,6 +1,6 @@
 import {RuleContext} from "../models/rule-context";
 import {BFastOptions} from "../bfast-option";
-import {findDataByFilterInStore, removeDataInStore, updateDataInStore} from "./database.controller";
+import {findDataByFilterInStore, removeDataInStore, updateDataInStore} from "./database";
 import {PolicyData} from "../models/policy";
 import {validateInput} from "../utils";
 import {StringSchema} from "../models/string";

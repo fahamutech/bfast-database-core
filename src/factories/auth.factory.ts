@@ -1,7 +1,7 @@
 import {AuthAdapter} from '../adapters/auth.adapter';
 import {BasicUser} from '../models/basic-user';
 import {BFastOptions} from "../bfast-option";
-import {findDataByFilterInStore, writeOneDataInStore} from "../controllers/database.controller";
+import {findDataByFilterInStore, writeOneDataInStore} from "../controllers/database";
 
 import {comparePlainTextWithSaltedHash, generateToken, saltHashPlainText} from "../controllers/security";
 import {RuleContext} from "../models/rule-context";

@@ -1,7 +1,7 @@
 import {RuleResponse} from "../models/rule-response";
 import {BFastOptions} from "../bfast-option";
 import {ruleHasPermission} from "./policy";
-import {aggregateDataInStore} from "./database.controller";
+import {aggregateDataInStore} from "./database";
 import {RuleContext} from "../models/rule-context";
 
 async function hasAggregatePermission(domain: string, context: RuleContext, options: BFastOptions) {
