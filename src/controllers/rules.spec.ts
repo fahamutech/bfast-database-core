@@ -3,6 +3,7 @@ import {assert, expect, should} from "chai";
 import {after, before} from "mocha";
 import {loadEnv} from "../utils/env";
 import {extractResultFromServer} from "bfast";
+import {databaseFactory} from "../test";
 
 let options;
 const date = new Date()
@@ -10,7 +11,7 @@ const date = new Date()
 async function clearData() {
     const a = await handleDeleteRules({
         deleteProduct: {filter: {updatedAt: {$exists: true}}}
-    }, {errors: {}}, loadEnv(), null)
+    }, {errors: {}},databaseFactory(), loadEnv(), null)
     extractResultFromServer(a, 'delete', 'Product')
 }
 
@@ -90,9 +91,9 @@ describe('RulesController', function () {
                             {name: 'uuu', price: 50, status: 'new', id: 'uuu-id', createdAt: date, updatedAt: date},
                         ]
                     },
-                    {errors: {}}, options, null);
+                    {errors: {}},databaseFactory(), options, null);
             });
-            it('should perform crossStoreDataOperation', async function () {
+            it('should perform transaction', async function () {
                 const results = await handleBulkRules({
                         transaction: {
                             commit: {
@@ -120,10 +121,9 @@ describe('RulesController', function () {
                                 }
                             }
                         }
-                    }, {errors: {}},
-                    options
+                    }, {errors: {}}, databaseFactory(),options
                 );
-                // console.log(results.crossStoreDataOperation.commit)
+                // console.log(results.transaction.commit)
                 should().exist(results.transaction);
                 should().exist(results.transaction.commit);
                 const _r = {...results.transaction.commit}
@@ -148,20 +148,8 @@ describe('RulesController', function () {
                     // ],
                 });
                 should().exist(results.transaction.commit);
-                // should().exist(results.transaction.commit.queryProduct);
-                // should().exist(results.transaction.commit.updateProduct);
-                // expect(results.transaction.commit.updateProduct.name).equal('apple');
-                // expect(results.transaction.commit.updateProduct.price).equal(1000);
-                // expect(results.transaction.commit.updateProduct.id).equal('xyz-id');
-                // should().exist(results.transaction.commit.queryProduct);
-                // should().exist(results.transaction.commit.deleteProduct);
-                // expect(typeof results.transaction.commit.deleteProduct[0].id).equal('string');
-                // expect(Array.isArray(results.transaction.commit.createProduct)).equal(true);
-                // expect(Array.isArray(results.transaction.commit.queryProduct)).equal(true);
-                // expect(results.transaction.commit.createProduct).length(2);
-                // expect(results.transaction.commit.queryProduct).length(5);
             });
-            it('should perform crossStoreDataOperation when update block is array', async function () {
+            it('should perform transaction when update block is array', async function () {
                 const results = await handleBulkRules({
                         transaction: {
                             commit: {
@@ -201,13 +189,12 @@ describe('RulesController', function () {
                             }
                         }
                     },
-                    {errors: {}},
-                    options
+                    {errors: {}}, databaseFactory(),options
                 );
                 should().exist(results.transaction);
                 should().exist(results.transaction.commit);
             });
-            it('should perform crossStoreDataOperation if save to already exist documents', async function () {
+            it('should perform transaction if save to already exist documents', async function () {
                 const results = await handleBulkRules({
                         transaction: {
                             commit: {
@@ -232,21 +219,10 @@ describe('RulesController', function () {
                                 }
                             }
                         },
-                    }, {errors: {}},
-                    options
+                    }, {errors: {}}, databaseFactory(),options
                 );
                 should().exist(results.transaction);
                 should().not.exist(results.errors.transaction);
-                // const _r = {...results.transaction.commit}
-                // delete _r.queryProduct;
-                // expect(_r).eql({
-                //     errors: {},
-                //     createProduct: [
-                //         {id: 'doe'},
-                //         {id: 'doe2'},
-                //     ],
-                //     updateProduct: null
-                // });
             });
         });
         describe('delete', function () {
@@ -274,9 +250,7 @@ describe('RulesController', function () {
                                 updatedAt: date
                             }
                         ]
-                    }, {errors: {}},
-                    options,
-                    null
+                    }, {errors: {}}, databaseFactory(),options, null
                 );
             });
             it('should delete only matches', async function () {
@@ -293,18 +267,10 @@ describe('RulesController', function () {
                                 }
                             }
                         }
-                    }, {errors: {}},
-                    options
+                    }, {errors: {}}, databaseFactory(),options
                 );
                 should().exist(results.transaction);
                 should().exist(results.transaction.commit);
-                // const _r = {...results.transaction.commit}
-                // expect(_r).eql({
-                //     errors: {},
-                //     deleteProduct: [
-                //         {id: 'xpsid'}
-                //     ],
-                // });
             });
         });
         describe('update', async function () {
@@ -384,9 +350,7 @@ describe('RulesController', function () {
                             }
                         ]
                     },
-                    {errors: {}},
-                    options,
-                    null);
+                    {errors: {}}, databaseFactory(),options, null);
             });
             it('should execute big doc', async function () {
                 const rule = {
@@ -539,20 +503,10 @@ describe('RulesController', function () {
                     "context": {"applicationId": "usP3UIsAh364", "useMasterKey": false, "auth": false, "uid": null}
                 };
                 const results = await handleBulkRules(
-                    rule,
-                    {errors: {}},
-                    options
+                    rule, {errors: {}}, databaseFactory(),options
                 );
-                // console.log(results);
-                // should().exist(results.transaction);
-                // should().exist(results.transaction.commit);
-                // const _r = {...results.transaction.commit}
-                // expect(_r).eql({
-                //     errors: {},
-                //     deleteProduct: [
-                //         {id: 'xpsid'}
-                //     ],
-                // });
+                should().exist(results.transaction);
+                should().exist(results.transaction.commit);
             });
         });
     });

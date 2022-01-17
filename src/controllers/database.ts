@@ -4,26 +4,19 @@ import {QueryModel} from '../models/query-model';
 import {generateUUID} from './security';
 import {ChangesModel} from '../models/changes.model';
 import {ChangesDocModel} from "../models/changes-doc.model";
-import {AppEventsFactory} from "../factories/app-events.factory";
+import {AppEventsFactory} from "../factories/app-events";
 import {BFastOptions, BFastOptionsSchema} from "../bfast-option";
 import {DatabaseWriteOptions} from "../models/database-write-options";
 import {DatabaseUpdateOptions} from "../models/database-update-options";
 import {DatabaseBasicOptions} from "../models/database-basic-options";
 import {DatabaseChangesOptions} from "../models/database-changes-options";
-import {
-    _aggregate,
-    _createData, _createManyData,
-    _getData,
-    _getManyData,
-    _init,
-    _purgeData,
-    _updateDataInStore, _updateManyDataInStore
-} from "../factories/database-factory-resolver";
 import {UpdateModel} from "../models/update-model";
 import moment from 'moment';
 import {RuleContext} from "../models/rule-context";
 import {TreeController} from "bfast-database-tree";
 import {validateInput} from "../utils";
+import {DatabaseAdapter} from "../adapters/database";
+import {StringSchema} from "../models/string";
 
 async function handleDomainValidation(domain: string): Promise<any> {
     function validDomain(d: string): boolean {
@@ -36,25 +29,19 @@ async function handleDomainValidation(domain: string): Promise<any> {
 
 async function sanitizeUpdateModel(uModel: UpdateModel): Promise<UpdateModel> {
     let updateModel = JSON.parse(JSON.stringify(uModel));
-    if (updateModel.upsert === true) {
-        if (!updateModel.update.hasOwnProperty('$set')) {
-            updateModel.update.$set = {_id: updateModel.id ? updateModel.id : generateUUID()}
-        }
-    }
+    if (updateModel.upsert === true)
+        if (!updateModel.update.hasOwnProperty('$set'))
+            updateModel.update.$set = {_id: updateModel.id ? updateModel.id : generateUUID()};
     updateModel = altUpdateModel(updateModel);
     updateModel.update.$set = sanitizeDate(updateModel.update.$set);
     let filter: any = {};
-    if (updateModel && typeof updateModel.filter === "object") {
-        filter = updateModel.filter;
-    }
-    if (updateModel && updateModel.id) {
-        filter._id = updateModel.id;
-    }
+    if (updateModel && typeof updateModel.filter === "object" && updateModel.filter) filter = updateModel.filter;
+    if (updateModel && updateModel.id) filter._id = updateModel.id;
     updateModel.filter = filter;
     if (typeof updateModel?.update?.$inc === "object") {
         let iQ = await new TreeController().query('', updateModel.update.$inc);
         Object.keys(iQ).forEach(x => {
-            iQ[x.substr(1, x.length).replace('/', '.')] = iQ[x];
+            iQ[x.substring(1, x.length).replace('/', '.')] = iQ[x];
             delete iQ[x];
         });
         updateModel.update.$inc = iQ;
@@ -63,9 +50,7 @@ async function sanitizeUpdateModel(uModel: UpdateModel): Promise<UpdateModel> {
 }
 
 async function checkPolicyInDomain(domain: string, options: DatabaseWriteOptions) {
-    if (options && options.bypassDomainVerification === false) {
-        await handleDomainValidation(domain);
-    }
+    if (options && options.bypassDomainVerification === false) await handleDomainValidation(domain);
 }
 
 function altUpdateModel(updateModel: UpdateModel): UpdateModel {
@@ -272,6 +257,7 @@ function sanitize4User(data: any, returnFields: string[]) {
         returnedData.id = data.id;
         returnedData.createdAt = data.createdAt;
         returnedData.updatedAt = data.updatedAt;
+        delete returnedData._id
         return returnedData;
     }
     return data;
@@ -282,23 +268,24 @@ function publishChanges(domain: string, change: ChangesModel, options: BFastOpti
     aI.pub(aI.eventName(options.projectId, domain), change);
 }
 
-export async function initDataStore(options: BFastOptions): Promise<any> {
+export async function initDataStore(
+    databaseAdapter: DatabaseAdapter, options: BFastOptions
+): Promise<any> {
     await validateInput(options, BFastOptionsSchema, 'invalid bfast options')
-    return _init(options);
+    return databaseAdapter.init(options);
 }
 
 export async function writeOneDataInStore<T extends Basic>(
-    domain: string,
-    data: T,
-    context: RuleContext,
-    writeOptions: DatabaseWriteOptions = {bypassDomainVerification: false},
-    options: BFastOptions
+    domain: string, data: T, context: RuleContext, databaseAdapter: DatabaseAdapter,
+    writeOptions: DatabaseWriteOptions = {bypassDomainVerification: false}, options: BFastOptions
 ): Promise<T> {
+    await validateInput(domain, StringSchema, 'invalid domain');
+    await validateInput(data, {type: 'object'}, 'invalid data')
     await checkPolicyInDomain(domain, writeOptions);
     const returnFields = getReturnFields(data);
     const sanitizedDataWithCreateMetadata = addCreateMetadata(data, context);
     const sanitizedData: any = sanitize4Db(sanitizedDataWithCreateMetadata);
-    const savedData: any = await _createData(domain, sanitizeDate(sanitizedData), options);
+    const savedData: any = await databaseAdapter.createOneData(domain, sanitizeDate(sanitizedData), options);
     const cleanDoc: any = sanitize4User(savedData, returnFields);
     publishChanges(domain, {
         _id: cleanDoc?.id, fullDocument: cleanDoc, documentKey: cleanDoc?.id, operationType: "create"
@@ -306,11 +293,12 @@ export async function writeOneDataInStore<T extends Basic>(
     return cleanDoc;
 }
 
-export async function writeMany<T extends Basic>(
-    domain: string, data: T[], cids: boolean, context: RuleContext,
-    writeOptions: DatabaseWriteOptions = {bypassDomainVerification: false},
-    options: BFastOptions
+export async function writeManyDataInStore<T extends Basic>(
+    domain: string, data: T[], context: RuleContext, databaseAdapter: DatabaseAdapter,
+    writeOptions: DatabaseWriteOptions = {bypassDomainVerification: false}, options: BFastOptions
 ): Promise<any[]> {
+    await validateInput(domain, StringSchema, 'invalid domain')
+    await validateInput(data, {type: 'array', items: {type: 'object'}}, 'invalid data')
     if (data.length === 0) return [];
     await checkPolicyInDomain(domain, writeOptions);
     const returnFields = getReturnFields(data[0]);
@@ -319,80 +307,91 @@ export async function writeMany<T extends Basic>(
         x = sanitize4Db(x)
         return sanitizeDate(x);
     });
-    const savedData = await _createManyData(domain, sanitizedData, options)
+    const savedData = await databaseAdapter.createManyData(domain, sanitizedData, options)
     return savedData.map(d => {
         publishChanges(domain, {
-            _id: d._id, fullDocument: d, documentKey: {_id: d._id}, operationType: "create"
+            _id: d._id, fullDocument: d, documentKey: d._id, operationType: "create"
         }, options);
         return sanitize4User(d, returnFields)
     });
 }
 
+async function publishUpdateChange(
+    domain: string, updateModel: UpdateModel, databaseAdapter: DatabaseAdapter, context: RuleContext, options: BFastOptions
+) {
+    const updateOptions = {bypassDomainVerification: false}
+    if (updateModel && updateModel.filter._id) {
+        const rule = {id: updateModel.filter._id, return: []}
+        const cleanDoc = await findDataByIdInStore(domain, rule, databaseAdapter, updateOptions, options);
+        const change: ChangesModel = {
+            _id: cleanDoc.id, fullDocument: cleanDoc, operationType: "update", documentKey: cleanDoc.id
+        }
+        publishChanges(domain, change, options);
+    } else {
+        const rule = {return: [], filter: updateModel.filter}
+        const cleanDocs = await findDataByFilterInStore(
+            domain, rule, context, databaseAdapter, updateOptions, options
+        );
+        cleanDocs.forEach(z => {
+            const change: ChangesModel = {_id: z.id, fullDocument: z, operationType: "update", documentKey: z.id}
+            publishChanges(domain, change, options);
+        });
+    }
+}
+
+async function publishUpdatesChange(
+    domain: string, updateModels: UpdateModel[], databaseAdapter: DatabaseAdapter, context: RuleContext, options: BFastOptions
+) {
+    for (const updateModel of updateModels) {
+        publishUpdateChange(domain, updateModel, databaseAdapter, context, options).catch(console.log)
+    }
+}
+
 export async function updateDataInStore(
-    domain: string,
-    updateModel: UpdateModel,
-    context: RuleContext,
-    updateOptions: DatabaseUpdateOptions = {bypassDomainVerification: false},
-    options: BFastOptions
+    domain: string, updateModel: UpdateModel, context: RuleContext, databaseAdapter: DatabaseAdapter,
+    updateOptions: DatabaseUpdateOptions = {bypassDomainVerification: false}, options: BFastOptions
 ): Promise<{ message: string, modified: number }> {
+    await validateInput(domain, StringSchema, 'invalid domain');
+    await validateInput(updateModel, {type: 'object'}, 'invalid data');
     await checkPolicyInDomain(domain, updateOptions);
     updateModel = await sanitizeUpdateModel(updateModel);
-    const a = await _updateDataInStore(domain, updateModel, options);
+    const a = await databaseAdapter.updateOneData(domain, updateModel, options);
+    if (a && a.modified > 0)
+        publishUpdateChange(domain, updateModel, databaseAdapter, context, options).catch(console.log)
     return {message: 'done update', modified: a.modified};
-    // if (updateModel.hasOwnProperty('id')) {
-    //     const cleanDoc = await findDataByIdInStore(
-    //         domain, {id: updateModel.id, return: returnFields}, updateOptions, options
-    //     );
-    //     publishChanges(domain, {
-    //         _id: cleanDoc.id,
-    //         fullDocument: cleanDoc,
-    //         operationType: "update"
-    //     }, options);
-    //     return cleanDoc;
-    // } else {
-    //     const cleanDocs = await findDataByFilterInStore(
-    //         domain, {return: returnFields, filter: updateModel.filter}, context, updateOptions, options
-    //     );
-    //     return cleanDocs.map(z => {
-    //         publishChanges(domain, {
-    //             _id: z.id,
-    //             fullDocument: z,
-    //             operationType: "update"
-    //         }, options);
-    //         return z;
-    //     });
-    // }
 }
 
 export async function updateManyData(
-    domain: string,
-    updateModels: UpdateModel[],
-    context: RuleContext,
-    updateOptions: DatabaseUpdateOptions = {bypassDomainVerification: false},
-    options: BFastOptions
+    domain: string, updateModels: UpdateModel[], context: RuleContext, databaseAdapter: DatabaseAdapter,
+    updateOptions: DatabaseUpdateOptions = {bypassDomainVerification: false}, options: BFastOptions
 ): Promise<{ message: string, modified: number }> {
+    await validateInput(domain, StringSchema, 'invalid domain');
+    await validateInput(updateModels, {type: 'array', items: {type: 'object'}}, 'invalid data');
     await checkPolicyInDomain(domain, updateOptions);
     if (updateModels.length === 0) return {message: 'done update', modified: 0};
     updateModels = await Promise.all(updateModels.map(x => sanitizeUpdateModel(x)));
-    const a = await _updateManyDataInStore(domain, updateModels, options);
+    const a = await databaseAdapter.updateManyData(domain, updateModels, options);
+    if (a && a.modified > 0)
+        publishUpdatesChange(domain, updateModels, databaseAdapter, context, options).catch(console.log)
     return {message: 'done update', modified: a.modified};
 }
 
 export async function removeDataInStore(
-    domain: string, deleteModel: DeleteModel, context: RuleContext,
+    domain: string, deleteModel: DeleteModel, context: RuleContext, databaseAdapter: DatabaseAdapter,
     basicOptions: DatabaseBasicOptions = {bypassDomainVerification: false}, options: BFastOptions
 ): Promise<any> {
     await checkPolicyInDomain(domain, basicOptions);
     deleteModel.filter = sanitizeWithOperator4Db(deleteModel?.filter as any);
     let result = [];
     if (deleteModel && deleteModel.id) {
-        await _purgeData(domain, deleteModel.id, options);
+        await databaseAdapter.removeOneData(domain, deleteModel.id, options);
         result.push({id: deleteModel.id});
     }
     if (deleteModel && deleteModel.filter) {
-        let all = await findDataByFilterInStore(domain, deleteModel, context, basicOptions, options);
+        deleteModel.return = ['id']
+        let all = await findDataByFilterInStore(domain, deleteModel, context, databaseAdapter, basicOptions, options);
         const _p = all.map(async a => {
-            await _purgeData(domain, a.id, options);
+            await databaseAdapter.removeOneData(domain, a.id, options);
             return {id: a.id};
         });
         const _pa = await Promise.all(_p);
@@ -400,26 +399,21 @@ export async function removeDataInStore(
     }
     return result.map(t => {
         const cleanDoc = sanitize4User(t, deleteModel.return);
-        publishChanges(domain, {
-            _id: t?._id,
-            fullDocument: t,
-            documentKey: t?._id,
-            operationType: "delete"
-        }, options);
+        const change: ChangesModel = {_id: t?.id, fullDocument: t, documentKey: t?.id, operationType: "delete"}
+        publishChanges(domain, change, options);
         return cleanDoc;
     });
 }
 
-export async function crossStoreDataOperation<S>(
-    operations: (session: S) => Promise<any>
+export async function transaction<S>(
+    databaseAdapter: DatabaseAdapter, operations: (session: S) => Promise<any>
 ): Promise<any> {
-    return await operations(null);
+    const session = await databaseAdapter.session<S>()
+    return await operations(session);
 }
 
 export async function changes(
-    domain: string,
-    projectId: string,
-    pipeline: any[], listener: (doc: ChangesDocModel) => void,
+    domain: string, projectId: string, pipeline: any[], listener: (doc: ChangesDocModel) => void,
     options: DatabaseChangesOptions = {bypassDomainVerification: false, resumeToken: undefined}
 ): Promise<{ close: () => void }> {
     if (options && options.bypassDomainVerification === false) await handleDomainValidation(domain);
@@ -454,7 +448,7 @@ export async function changes(
 }
 
 export async function findDataByIdInStore(
-    domain: string, queryModel: QueryModel<any>,
+    domain: string, queryModel: QueryModel<any>, databaseAdapter: DatabaseAdapter,
     writeOptions: DatabaseWriteOptions = {bypassDomainVerification: false}, options: BFastOptions
 ): Promise<any> {
     const returnFields = getReturnFields(queryModel as any);
@@ -462,12 +456,12 @@ export async function findDataByIdInStore(
     await checkPolicyInDomain(domain, writeOptions);
     const id = queryModel.id;
     queryModel.return = returnFields4Db;
-    const data = await _getData(domain, id, options);
+    const data = await databaseAdapter.getOneData(domain, id, options);
     return sanitize4User(data, returnFields);
 }
 
 export async function findDataByFilterInStore(
-    domain: string, queryModel: QueryModel<any>, context: RuleContext,
+    domain: string, queryModel: QueryModel<any>, context: RuleContext, databaseAdapter: DatabaseAdapter,
     writeOptions: DatabaseWriteOptions = {bypassDomainVerification: false}, options: BFastOptions
 ): Promise<any> {
     const returnFields = getReturnFields(queryModel as any);
@@ -476,19 +470,18 @@ export async function findDataByFilterInStore(
     queryModel = sanitizeWithOperator4Db(queryModel as any);
     queryModel.filter = sanitizeWithOperator4Db(queryModel?.filter ? queryModel.filter : {});
     queryModel.return = returnFields4Db;
-    let result = await _getManyData(domain, queryModel, options);
-    if (result && Array.isArray(result)) {
-        return result.map(v => sanitize4User(v, returnFields));
-    }
+    let result = await databaseAdapter.getManyData(domain, queryModel, options);
+    if (result && Array.isArray(result)) return result.map(v => sanitize4User(v, returnFields));
     return result;
 }
 
 export async function aggregateDataInStore(
-    table: string, pipelines: any[],
-    writeOptions: DatabaseWriteOptions = {bypassDomainVerification: false},
-    options: BFastOptions
+    table: string, pipelines: any[], databaseAdapter: DatabaseAdapter,
+    writeOptions: DatabaseWriteOptions = {bypassDomainVerification: false}, options: BFastOptions
 ): Promise<any> {
     await checkPolicyInDomain(table, writeOptions);
-    const results = await _aggregate(table, pipelines, options);
+    const results = await databaseAdapter.aggregateData(table, pipelines, options);
     return results.map(result => sanitize4User(result, []));
 }
+
+

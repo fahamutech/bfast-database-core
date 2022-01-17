@@ -1,8 +1,8 @@
 import {BFastOptions} from '../bfast-option';
 import {devLog} from "../utils/debug";
-import {AuthAdapter} from "../adapters/auth.adapter";
-import {FilesAdapter} from "../adapters/files.adapter";
-import {crossStoreDataOperation} from "./database";
+import {AuthAdapter} from "../adapters/auth";
+import {FilesAdapter} from "../adapters/files";
+import {transaction} from "./database";
 import {Rules} from "../models/rules";
 import {RuleResponse} from "../models/rule-response";
 import {AuthRule} from "../models/auth-rule";
@@ -14,6 +14,7 @@ import {handleDeleteRule} from "./rules-delete";
 import {handleQueryRule} from "./rules-query";
 import {handleStorageRule} from "./rules-storage";
 import {handleAggregateRule} from "./rules-aggregate";
+import {DatabaseAdapter} from "../adapters/database";
 
 export function getRulesKey(rules: Rules): string[] {
     const defaultKeys = []
@@ -28,9 +29,7 @@ export function getRulesKey(rules: Rules): string[] {
 async function withRuleResponse(
     errorPath: string, ruleResponse: RuleResponse, fun: () => Promise<RuleResponse>
 ): Promise<RuleResponse> {
-    try {
-        return await fun()
-    } catch (e) {
+    try {return await fun()} catch (e) {
         devLog(e);
         ruleResponse.errors[errorPath] = {
             message: e.message ? e.message : e.toString(),
@@ -40,7 +39,8 @@ async function withRuleResponse(
 }
 
 export async function handleAuthenticationRule(
-    rules: Rules, ruleResponse: RuleResponse, authAdapter: AuthAdapter, options: BFastOptions,
+    rules: Rules, ruleResponse: RuleResponse, authAdapter: AuthAdapter,
+    databaseAdapter: DatabaseAdapter, options: BFastOptions,
 ): Promise<RuleResponse> {
     const authRulesNames: string[] = getRulesKey(rules).filter(rule => rule.startsWith('auth'));
     if (authRulesNames.length === 0) return ruleResponse
@@ -48,13 +48,13 @@ export async function handleAuthenticationRule(
     for (const action of Object.keys(rule)) {
         const data = rule[action];
         ruleResponse = await withRuleResponse(`auth.${action}`, ruleResponse,
-            () => authRule(action, data, ruleResponse, authAdapter, rules.context, options));
+            () => authRule(action, data, ruleResponse, authAdapter, databaseAdapter, rules.context, options));
     }
     return ruleResponse;
 }
 
 export async function handlePolicyRule(
-    rules: Rules, ruleResponse: RuleResponse, options: BFastOptions,
+    rules: Rules, ruleResponse: RuleResponse, databaseAdapter: DatabaseAdapter, options: BFastOptions,
 ): Promise<RuleResponse> {
     const policyRules = getRulesKey(rules).filter(rule => rule.startsWith('policy'));
     if (policyRules.length === 0) return ruleResponse
@@ -62,13 +62,14 @@ export async function handlePolicyRule(
     for (const action of Object.keys(policy)) {
         const data = policy[action];
         ruleResponse = await withRuleResponse('policy', ruleResponse,
-            () => policyRule(action, data, ruleResponse, rules.context, options));
+            () => policyRule(action, data, ruleResponse, databaseAdapter, rules.context, options));
     }
     return ruleResponse;
 }
 
 export async function handleDeleteRules(
-    rules: Rules, ruleResponse: RuleResponse, options: BFastOptions, transaction: any
+    rules: Rules, ruleResponse: RuleResponse,
+    databaseAdapter: DatabaseAdapter, options: BFastOptions, transaction: any
 ): Promise<RuleResponse> {
     const deleteRules = getRulesKey(rules).filter(rule => rule.startsWith('delete'));
     if (deleteRules.length === 0) return ruleResponse
@@ -77,13 +78,13 @@ export async function handleDeleteRules(
         const ePath = `${transaction ? 'transaction.' : ''}delete.${domain}`;
         const ruleData = rules[rule]
         ruleResponse = await withRuleResponse(ePath, ruleResponse,
-            () => handleDeleteRule(domain, ruleData, ruleResponse, rules.context, options))
+            () => handleDeleteRule(domain, ruleData, ruleResponse, databaseAdapter, rules.context, options))
     }
     return ruleResponse;
 }
 
 export async function handleQueryRules(
-    rules: Rules, ruleResponse: RuleResponse, options: BFastOptions, transaction: any
+    rules: Rules, ruleResponse: RuleResponse, databaseAdapter: DatabaseAdapter, options: BFastOptions, transaction: any
 ): Promise<RuleResponse> {
     const queryRules = getRulesKey(rules).filter(rule => rule.startsWith('query'));
     if (queryRules.length === 0) return ruleResponse
@@ -92,13 +93,13 @@ export async function handleQueryRules(
         const ePath = `${transaction ? 'transaction.' : ''}query.${domain}`;
         const ruleData = rules[queryRule]
         ruleResponse = await withRuleResponse(ePath, ruleResponse,
-            () => handleQueryRule(domain, ruleData, ruleResponse, rules.context, options))
+            () => handleQueryRule(domain, ruleData, ruleResponse, databaseAdapter, rules.context, options))
     }
     return ruleResponse;
 }
 
 export async function handleBulkRules(
-    rules: Rules, ruleResponse: RuleResponse, options: BFastOptions,
+    rules: Rules, ruleResponse: RuleResponse,databaseAdapter: DatabaseAdapter, options: BFastOptions,
 ): Promise<RuleResponse> {
     const transactionRules = getRulesKey(rules).filter(rule => rule === 'transaction');
     if (transactionRules.length === 0) return ruleResponse
@@ -106,18 +107,19 @@ export async function handleBulkRules(
     const transactionData = rules[transactionRule];
     const transactionOperationRules = transactionData.commit;
     const resultObject: RuleResponse = {errors: {}};
-    await crossStoreDataOperation(async session => {
-        await handleCreateRules(transactionOperationRules, resultObject, options, session);
-        await handleUpdateRules(transactionOperationRules, resultObject, options, session);
-        await handleQueryRules(transactionOperationRules, resultObject, options, session);
-        await handleDeleteRules(transactionOperationRules, resultObject, options, session);
+    await transaction(databaseAdapter, async session => {
+        await handleCreateRules(transactionOperationRules, resultObject, databaseAdapter, options, session);
+        await handleUpdateRules(transactionOperationRules, resultObject, databaseAdapter, options, session);
+        await handleQueryRules(transactionOperationRules, resultObject, databaseAdapter, options, session);
+        await handleDeleteRules(transactionOperationRules, resultObject, databaseAdapter, options, session);
     });
     ruleResponse.transaction = {commit: {errors: resultObject.errors}};
     return ruleResponse;
 }
 
 export async function handleCreateRules(
-    rules: Rules, ruleResponse: RuleResponse, options: BFastOptions, transactionSession: any
+    rules: Rules, ruleResponse: RuleResponse, databaseAdapter: DatabaseAdapter,
+    options: BFastOptions, transactionSession: any
 ): Promise<RuleResponse> {
     const createRules = getRulesKey(rules).filter(rule => rule.startsWith('create'));
     if (createRules.length === 0) return ruleResponse
@@ -126,14 +128,15 @@ export async function handleCreateRules(
         const ePath = `${transactionSession ? 'transaction.' : ''}create.${domain}`;
         const ruleData = rules[rule];
         ruleResponse = await withRuleResponse(ePath, ruleResponse,
-            () => createRule(domain, ruleData, ruleResponse, rules.context, options)
+            () => createRule(domain, ruleData, ruleResponse, databaseAdapter, rules.context, options)
         );
     }
     return ruleResponse;
 }
 
 export async function handleUpdateRules(
-    rules: Rules, ruleResponse: RuleResponse, options: BFastOptions, transaction: any
+    rules: Rules, ruleResponse: RuleResponse, databaseAdapter: DatabaseAdapter,
+    options: BFastOptions, transaction: any
 ): Promise<RuleResponse> {
     const updateRules = getRulesKey(rules).filter(rule => rule.startsWith('update'));
     if (updateRules.length === 0) return ruleResponse
@@ -142,13 +145,13 @@ export async function handleUpdateRules(
         const ePath = `${transaction ? 'transaction.' : ''}update.${domain}`;
         const ruleData = rules[rule];
         ruleResponse = await withRuleResponse(ePath, ruleResponse,
-            () => updateRule(domain, ruleData, ruleResponse, rules.context, options))
+            () => updateRule(domain, ruleData, ruleResponse, databaseAdapter, rules.context, options))
     }
     return ruleResponse;
 }
 
 export async function handleStorageRules(
-    rules: Rules, ruleResponse: RuleResponse,
+    rules: Rules, ruleResponse: RuleResponse, databaseAdapter: DatabaseAdapter,
     authAdapter: AuthAdapter, filesAdapter: FilesAdapter, options: BFastOptions,
 ): Promise<RuleResponse> {
     const fileRules = getRulesKey(rules).filter(rule => rule === 'files');
@@ -157,12 +160,12 @@ export async function handleStorageRules(
     const ePath = 'files';
     const ruleData = rules[fileRule]
     return withRuleResponse(ePath, ruleResponse,
-        () => handleStorageRule(ruleData, ruleResponse, filesAdapter, rules.context, options)
+        () => handleStorageRule(ruleData, ruleResponse, filesAdapter, databaseAdapter, rules.context, options)
     )
 }
 
 export async function handleAggregationRules(
-    rules: Rules, ruleResponse: RuleResponse, options: BFastOptions
+    rules: Rules, ruleResponse: RuleResponse, databaseAdapter: DatabaseAdapter, options: BFastOptions
 ): Promise<RuleResponse> {
     const aggregateRules = getRulesKey(rules).filter(rule => rule.startsWith('aggregate'));
     if (aggregateRules.length === 0) return ruleResponse
@@ -171,7 +174,7 @@ export async function handleAggregationRules(
         const ePath = `aggregate.${domain}`;
         const ruleData = rules[aggregateRule]
         ruleResponse = await withRuleResponse(ePath, ruleResponse,
-            () => handleAggregateRule(domain, ruleData, ruleResponse, rules.context, options)
+            () => handleAggregateRule(domain, ruleData, ruleResponse, databaseAdapter, rules.context, options)
         )
     }
     return ruleResponse;

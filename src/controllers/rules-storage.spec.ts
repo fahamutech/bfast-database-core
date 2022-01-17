@@ -2,10 +2,10 @@ import {after, before} from "mocha";
 import {expect, should} from "chai";
 import {loadEnv} from "../utils/env";
 import {handleDeleteRules, handleStorageRules} from "./rules";
-import {AuthFactory} from "../factories/auth.factory";
-import {IpfsStorageFactory} from "../factories/ipfs-storage.factory";
+import {AuthFactory} from "../factories/auth";
+import {IpfsStorageFactory} from "../factories/ipfs-storage";
 import {extractResultFromServer} from "bfast";
-
+import {databaseFactory} from "../test";
 
 let options;
 const authFactory = new AuthFactory()
@@ -17,7 +17,7 @@ async function clearData() {
         delete_Storage: {
             filter: {updatedAt: {$exists: true}}
         }
-    }, {errors: {}}, loadEnv(), null)
+    }, {errors: {}},databaseFactory(), loadEnv(), null)
     extractResultFromServer(a, 'delete', '_Storage')
 }
 
@@ -35,8 +35,7 @@ describe('RulesStorageController', function () {
                             base64: 'Hello, World',
                         }
                     }
-                }, {errors: {}}, authFactory, ipfsFactory,
-                options
+                }, {errors: {}}, databaseFactory(), authFactory, ipfsFactory, options
             );
             should().exist(results.files);
             should().exist(results.files.save);
@@ -55,7 +54,7 @@ describe('RulesStorageController', function () {
                             base64: 'Hello, Doe',
                         }
                     }
-                }, results, authFactory, ipfsFactory, options
+                }, results, databaseFactory(), authFactory, ipfsFactory, options
             );
             await handleStorageRules({
                     applicationId: 'daas',
@@ -65,7 +64,7 @@ describe('RulesStorageController', function () {
                             base64: 'Hello, Jobe',
                         }
                     }
-                }, results, authFactory, ipfsFactory, options
+                }, results, databaseFactory(), authFactory, ipfsFactory, options
             );
         });
         it('should list files', async function () {
@@ -74,7 +73,7 @@ describe('RulesStorageController', function () {
                     files: {
                         list: {}
                     }
-                }, {errors: {}}, authFactory, ipfsFactory, options
+                }, {errors: {}}, databaseFactory(), authFactory, ipfsFactory, options
             );
             should().exist(results.files);
             should().exist(results.files.list);
@@ -90,7 +89,7 @@ describe('RulesStorageController', function () {
                             size: 2
                         }
                     }
-                }, {errors: {}}, authFactory, ipfsFactory, options
+                }, {errors: {}}, databaseFactory(), authFactory, ipfsFactory, options
             );
             should().exist(results.files);
             should().exist(results.files.list);
@@ -106,7 +105,7 @@ describe('RulesStorageController', function () {
                             prefix: 'doe',
                         }
                     }
-                }, {errors: {}}, authFactory, ipfsFactory, options
+                }, {errors: {}}, databaseFactory(), authFactory, ipfsFactory, options
             );
             should().exist(results.files);
             should().exist(results.files.list);
@@ -127,7 +126,7 @@ describe('RulesStorageController', function () {
                             base64: 'Hello, Doe1',
                         }
                     }
-                }, results, authFactory, ipfsFactory, options
+                }, results, databaseFactory(), authFactory, ipfsFactory, options
             );
             name = v.files.save.toString().replace('/storage/bfast/file/', '');
         });
@@ -139,7 +138,7 @@ describe('RulesStorageController', function () {
                             name: name
                         }
                     }
-                }, {errors: {}}, authFactory, ipfsFactory, options
+                }, {errors: {}}, databaseFactory(), authFactory, ipfsFactory, options
             );
             should().exist(results.files);
             should().exist(results.files.delete);

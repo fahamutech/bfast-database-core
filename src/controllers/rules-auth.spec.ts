@@ -2,9 +2,10 @@ import {handleAuthenticationRule, handleDeleteRules} from "./rules";
 import {assert, expect, should} from "chai";
 import {RuleResponse} from "../models/rule-response";
 import {Rules} from "../models/rules";
-import {AuthFactory} from "../factories/auth.factory";
+import {AuthFactory} from "../factories/auth";
 import {loadEnv} from "../utils/env";
 import {extractResultFromServer} from "bfast";
+import {databaseFactory} from "../test";
 
 let options;
 
@@ -14,7 +15,7 @@ async function clearUsers() {
         delete_User: {
             filter: {updatedAt: {$exists: true}}
         }
-    }, {errors: {}}, loadEnv(), null)
+    }, {errors: {}}, databaseFactory(), loadEnv(), null)
     extractResultFromServer(a, 'delete', '_User')
 }
 
@@ -35,7 +36,8 @@ describe('RulesAuthController', function () {
                     }
                 }
             }
-            const results = await handleAuthenticationRule(rules, ruleResponse, authFactory, options)
+            const results =
+                await handleAuthenticationRule(rules, ruleResponse, authFactory, databaseFactory(), options)
             assert(results.auth['signUp'] !== undefined);
             assert(results.auth['signUp'] !== null);
             assert(results.auth['signUp'].username === 'test');
@@ -55,7 +57,7 @@ describe('RulesAuthController', function () {
                         }
                     }
                 },
-                {errors: {}}, authFactory, options
+                {errors: {}}, authFactory, databaseFactory(), options
             );
             should().not.exist(results.auth);
             should().exist(results.errors['auth.signUp']);
@@ -79,14 +81,16 @@ describe('RulesAuthController', function () {
         });
         it('should return error message when signUp is null', async function () {
             const rule = {auth: {signUp: null}}
-            const results = await handleAuthenticationRule(rule, {errors: {}}, authFactory, options);
+            const results =
+                await handleAuthenticationRule(rule, {errors: {}}, authFactory, databaseFactory(), options);
             should().not.exist(results.auth);
             should().exist(results.errors['auth.signUp']);
             expect(results.errors['auth.signUp'].message).equal('Email required');
         });
         it('should return error message when signUp is undefined', async function () {
             const rule = {auth: {signUp: undefined}}
-            const results = await handleAuthenticationRule(rule, {errors: {}}, authFactory, options);
+            const results =
+                await handleAuthenticationRule(rule, {errors: {}}, authFactory, databaseFactory(), options);
             should().not.exist(results.auth);
             should().exist(results.errors['auth.signUp']);
             expect(results.errors['auth.signUp'].message).equal('Email required');
@@ -95,7 +99,8 @@ describe('RulesAuthController', function () {
     describe('SignIn', function () {
         it('should return signed user data', async function () {
             const rule = {auth: {signIn: {username: 'test', password: 'test'}}}
-            const results = await handleAuthenticationRule(rule, {errors: {}}, authFactory, options);
+            const results =
+                await handleAuthenticationRule(rule, {errors: {}}, authFactory, databaseFactory(), options);
             should().exist(results.auth.signIn);
             expect(results.auth.signIn).be.a('object');
             expect(results.auth.signIn.username).equal('test');

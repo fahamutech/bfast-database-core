@@ -3,6 +3,7 @@ import {expect, should} from "chai";
 import {handleAggregationRules, handleCreateRules, handleDeleteRules} from "./rules";
 import {loadEnv} from "../utils/env";
 import {extractResultFromServer} from "bfast";
+import {databaseFactory} from "../test";
 
 let options;
 const date = new Date()
@@ -17,14 +18,14 @@ async function createData() {
             updatedAt: date
         }
     }
-    const r = await handleCreateRules(rule, {errors: {}}, loadEnv(), null);
+    const r = await handleCreateRules(rule, {errors: {}}, databaseFactory(), loadEnv(), null);
     extractResultFromServer(r, 'create', 'Product')
 }
 
 async function clearData() {
     const a = await handleDeleteRules({
         deleteProduct: {filter: {updatedAt: {$exists: true}}}
-    }, {errors: {}}, loadEnv(), null)
+    }, {errors: {}}, databaseFactory(), loadEnv(), null)
     extractResultFromServer(a, 'delete', 'Product')
 }
 
@@ -49,8 +50,7 @@ describe('RulesController::Aggregation Unit Test', function () {
                     }
                 ]
             },
-            {errors: {}},
-            options
+            {errors: {}}, databaseFactory(),options
         );
         should().exist(results.aggregateProduct);
         expect(results.aggregateProduct).be.a('array');
@@ -80,7 +80,7 @@ describe('RulesController::Aggregation Unit Test', function () {
                     }
                 }
             ]
-        }, {errors: {}}, options);
+        }, {errors: {}},databaseFactory(), options);
         should().exist(results.aggregateProduct);
         expect(results.aggregateProduct).be.a('array');
         expect(results.aggregateProduct).length(1);

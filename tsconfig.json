@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "outDir": "./dist",
+    "outDir": "./dist/",
     "removeComments": true,
     "moduleResolution": "Node",
     "target": "ES2020",
@@ -8,11 +8,11 @@
     "strict": false,
     "esModuleInterop": true,
   },
-  "include": [
-    "./src/*"
+  "includes": [
+    "src/"
   ],
   "exclude": [
     "**/*.spec.ts",
-    "test.ts"
+    "src/test.ts"
   ]
 }

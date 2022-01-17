@@ -1,4 +1,4 @@
-import {FilesAdapter} from '../adapters/files.adapter';
+import {FilesAdapter} from '../adapters/files';
 import {BFastOptions} from '../bfast-option';
 import * as Minio from 'minio';
 import {Client} from 'minio';
@@ -22,7 +22,7 @@ export class S3StorageFactory implements FilesAdapter {
     ): Promise<Storage<any>> {
         const bucket = options?.adapters?.s3Storage?.bucket;
         await this.createBucket(bucket, options);
-        await this.validateFilename(name);
+        this.validateFilename(name);
         return this.saveFile(name, data, bucket, options);
     }
 

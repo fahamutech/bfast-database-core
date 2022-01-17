@@ -1,9 +1,23 @@
 import {start} from "bfast-function";
-import mock from './mock.config.js';
-import { dirname } from 'path';
-import { fileURLToPath } from 'url';
 
-const {config} = mock;
+import {dirname} from 'path';
+import {fileURLToPath} from 'url';
+
+const config = {
+    applicationId: 'bfast',
+    useLocalIpfs: true,
+    projectId: 'bfast',
+    port: '3111',
+    logs: false,
+    web3Token: process.env['WEB_3_TOKEN'],
+    adapters: {s3Storage: undefined},
+    masterKey: 'bfast',
+    taarifaToken: undefined,
+    databaseURI: 'mongodb://localhost/bfast',
+    rsaKeyPairInJson: {},
+    rsaPublicKeyInJson: {}
+}
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export const mochaHooks = {
@@ -21,8 +35,8 @@ export const mochaHooks = {
         await start({
             port: config.port,
             functionsConfig: {
-                functionsDirPath: __dirname + '/functions',
-                bfastJsonPath: __dirname + '/bfast.json'
+                functionsDirPath: __dirname + '/specs/functions',
+                bfastJsonPath: __dirname + '/specs/bfast.json'
             }
         }).catch(console.log);
     },
@@ -30,3 +44,4 @@ export const mochaHooks = {
         console.log('________END__________');
     }
 };
+

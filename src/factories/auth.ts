@@ -1,24 +1,23 @@
-import {AuthAdapter} from '../adapters/auth.adapter';
+import {AuthAdapter} from '../adapters/auth';
 import {BasicUser} from '../models/basic-user';
 import {BFastOptions} from "../bfast-option";
 import {findDataByFilterInStore, writeOneDataInStore} from "../controllers/database";
 
 import {comparePlainTextWithSaltedHash, generateToken, saltHashPlainText} from "../controllers/security";
 import {RuleContext} from "../models/rule-context";
+import {databaseFactory} from "../test";
 
 export class AuthFactory implements AuthAdapter {
     private domainName = '_User';
-
-    // async resetPassword(email: string, context?: RuleContext): Promise<any> {
-    //     return undefined;
-    // }
 
     async signIn<T extends BasicUser>(
         userModel: T, context: RuleContext, options: BFastOptions
     ): Promise<T> {
         const queryModel = {filter: {username: userModel.username}, return: []}
         const wOptions = {bypassDomainVerification: true}
-        const users = await findDataByFilterInStore(this.domainName, queryModel, context, wOptions, options);
+        const users = await findDataByFilterInStore(
+            this.domainName, queryModel, context, databaseFactory(), wOptions, options
+        );
         if (users && Array.isArray(users) && users.length === 1) {
             const user = users[0];
             if (await comparePlainTextWithSaltedHash(userModel.password, user.password ? user.password : user._hashed_password)) {
@@ -44,7 +43,7 @@ export class AuthFactory implements AuthAdapter {
         const wOptions = {bypassDomainVerification: true}
         userModel.password = await saltHashPlainText(userModel?.password);
         const user = await writeOneDataInStore(
-            this.domainName, userModel, context, wOptions, options
+            this.domainName, userModel, context, databaseFactory(), wOptions, options
         );
         delete user.password;
         user.token = await generateToken({uid: user.id}, options);

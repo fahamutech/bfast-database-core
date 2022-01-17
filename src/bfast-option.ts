@@ -1,5 +1,6 @@
-import {AuthAdapter} from './adapters/auth.adapter';
+import {AuthAdapter} from './adapters/auth';
 import {validate} from "jsonschema";
+import {DatabaseAdapter} from "./adapters/database";
 
 export type BFastOptions = {
     useLocalIpfs?: boolean;
@@ -15,6 +16,7 @@ export type BFastOptions = {
     web3Token?: string;
     adapters?: {
         auth?: (config: BFastOptions) => AuthAdapter;
+        database?: (config: BFastOptions) => DatabaseAdapter;
         // email?: (config: BFastOptions) => EmailAdapter;
         s3Storage?: {
             accessKey: string;

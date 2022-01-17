@@ -1,9 +1,10 @@
 import {after, before} from "mocha";
-import {assert, expect, should} from "chai";
+import {expect, should} from "chai";
 import {handleDeleteRules, handlePolicyRule} from "./rules";
 import {loadEnv} from "../utils/env";
 import {extractResultFromServer} from "bfast";
 import {RuleContext} from "../models/rule-context";
+import {databaseFactory} from "../test";
 
 const ruleContext: RuleContext = {
     applicationId: 'bfast',
@@ -20,7 +21,7 @@ async function clearPolicy() {
                 ruleId: {$exists: true}
             }
         }
-    }, {errors: {}}, loadEnv(), null)
+    }, {errors: {}}, databaseFactory(), loadEnv(), null)
     extractResultFromServer(a, 'delete', '_Policy')
 }
 
@@ -35,7 +36,7 @@ describe('RulesPolicyController', function () {
                 context: {useMasterKey: true},
                 policy: {add: {'query.*': 'return false;'}}
             }
-            const results = await handlePolicyRule(rule, {errors: {}}, options);
+            const results = await handlePolicyRule(rule, {errors: {}}, databaseFactory(), options);
             should().exist(results.policy);
             expect(results.policy).eql({
                 add: {
@@ -65,21 +66,21 @@ describe('RulesPolicyController', function () {
                 context: {useMasterKey: true},
                 policy: {add: {'query.*': 'return false;'}}
             }
-            await handlePolicyRule(rule, {errors: {}}, options);
+            await handlePolicyRule(rule, {errors: {}}, databaseFactory(), options);
         });
         after(async function () {
             const rule = {
                 context: {useMasterKey: true},
                 delete_Policy: {filter: {ruleId: 'query.*'}}
             }
-            await handlePolicyRule(rule, {errors: {}}, options);
+            await handlePolicyRule(rule, {errors: {}}, databaseFactory(), options);
         });
         it('should return list of policy when masterKey is valid', async function () {
             const rule = {
                 context: {useMasterKey: true},
                 policy: {list: {}}
             }
-            const results = await handlePolicyRule(rule, {errors: {}}, options);
+            const results = await handlePolicyRule(rule, {errors: {}}, databaseFactory(), options);
             should().exist(results.policy);
             should().exist(results.policy.list);
             expect(results.policy['list']).be.a('array');
@@ -93,21 +94,20 @@ describe('RulesPolicyController', function () {
                 context: {useMasterKey: true},
                 policy: {add: {'read.category': 'return false;'}}
             }
-            await handlePolicyRule(rule, {errors: {}}, options);
+            await handlePolicyRule(rule, {errors: {}}, databaseFactory(), options);
         });
         after(async function () {
             const rule = {
                 context: {useMasterKey: true},
                 delete_Policy: {filter: {ruleId: 'read.category'}}
             }
-            await handlePolicyRule(rule, {errors: {}}, options);
+            await handlePolicyRule(rule, {errors: {}}, databaseFactory(), options);
         });
         it('should removeDataInStore a policy when masterKey is valid', async function () {
             const results = await handlePolicyRule({
                     context: {useMasterKey: true},
                     policy: {remove: {ruleId: 'read.category'}}
-                }, {errors: {}},
-                options
+                }, {errors: {}}, databaseFactory(), options
             );
             should().exist(results.policy);
             should().exist(results.policy.remove);
@@ -118,7 +118,7 @@ describe('RulesPolicyController', function () {
                 context: {useMasterKey: true},
                 policy: {remove: {ruleId: 'create.category'}}
             }
-            const results = await handlePolicyRule(rule, {errors: {}}, options);
+            const results = await handlePolicyRule(rule, {errors: {}}, databaseFactory(), options);
             should().exist(results.policy);
             expect(results.policy.remove).eql([]);
         });

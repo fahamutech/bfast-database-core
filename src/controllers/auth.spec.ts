@@ -2,8 +2,9 @@ import {handleDeleteRules} from "./rules";
 import {loadEnv} from "../utils/env";
 import {extractResultFromServer} from "bfast";
 import {signIn, signUp} from "./auth";
-import {AuthFactory} from "../factories/auth.factory";
+import {AuthFactory} from "../factories/auth";
 import {expect} from "chai";
+import {databaseFactory} from "../test";
 
 let options
 const ruleContext = {}
@@ -19,7 +20,7 @@ async function clearUsers() {
                 updatedAt: {$exists: true}
             }
         }
-    }, {errors: {}}, options, null)
+    }, {errors: {}}, databaseFactory(), options, null)
     extractResultFromServer(a, 'delete', '_User')
 }
 
@@ -49,7 +50,7 @@ describe('AuthController', function () {
                 username: 'test', email: 'test@test.com', password: 'test', name: 'test test',
                 updatedAt: date, createdAt: date
             }
-            const a = await signUp(user, authAdaptor, ruleContext, options)
+            const a = await signUp(user, authAdaptor, databaseFactory(), ruleContext, options)
             validaUserData(a)
         });
         it('should fail if user with same email and username exist', function (done) {
@@ -57,7 +58,7 @@ describe('AuthController', function () {
                 username: 'test', email: 'test@test.com', password: 'test', name: 'test test',
                 updatedAt: date, createdAt: date
             }
-            signUp(user, authAdaptor, ruleContext, options).catch(reason => {
+            signUp(user, authAdaptor, databaseFactory(), ruleContext, options).catch(reason => {
                 expect(reason).eql({
                     message: 'User already exist'
                 })
@@ -69,7 +70,7 @@ describe('AuthController', function () {
                 username: 'test2', email: 'test@test.com', password: 'test', name: 'test test',
                 updatedAt: date, createdAt: date
             }
-            signUp(user, authAdaptor, ruleContext, options).catch(reason => {
+            signUp(user, authAdaptor, databaseFactory(), ruleContext, options).catch(reason => {
                 expect(reason).eql({
                     message: 'User already exist'
                 })
@@ -81,7 +82,7 @@ describe('AuthController', function () {
                 username: 'test', email: 'test2@test.com', password: 'test', name: 'test test',
                 updatedAt: date, createdAt: date
             }
-            signUp(user, authAdaptor, ruleContext, options).catch(reason => {
+            signUp(user, authAdaptor, databaseFactory(), ruleContext, options).catch(reason => {
                 expect(reason).eql({
                     message: 'User already exist'
                 })
@@ -92,7 +93,7 @@ describe('AuthController', function () {
             const user = {
                 username: 'test', password: 'test', name: 'test test', updatedAt: date, createdAt: date
             }
-            signUp(user, authAdaptor, ruleContext, options).catch(reason => {
+            signUp(user, authAdaptor, databaseFactory(), ruleContext, options).catch(reason => {
                 expect(reason).eql({
                     message: 'Email required'
                 })

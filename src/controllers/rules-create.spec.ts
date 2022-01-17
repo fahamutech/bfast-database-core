@@ -1,13 +1,26 @@
 import {expect, should} from "chai";
-import {handleCreateRules} from "./rules";
+import {handleCreateRules, handleDeleteRules} from "./rules";
 import {loadEnv} from "../utils/env";
+import {databaseFactory} from "../test";
+import {extractResultFromServer} from "bfast";
 
 let options;
 
+async function clearData() {
+    const a = await handleDeleteRules({
+        deleteTest: {
+            filter: {
+                updatedAt: {$exists: true}
+            }
+        }
+    }, {errors: {}}, databaseFactory(), loadEnv(), null)
+    extractResultFromServer(a, 'delete', 'Test')
+}
+
 describe('RulesController', function () {
-    beforeEach(async ()=>options=loadEnv())
-    before(async ()=> {});
-    after(async ()=>{});
+    beforeEach(async () => options = loadEnv())
+    before(async () => await clearData());
+    after(async () => await clearData());
     describe('RulesCreateController', function () {
         it('should save single document', async function () {
             const date = new Date().toISOString();
@@ -20,7 +33,8 @@ describe('RulesController', function () {
                     return: []
                 }
             }
-            const results = await handleCreateRules(rule, {errors: {}}, options, null);
+            const results =
+                await handleCreateRules(rule, {errors: {}}, databaseFactory(), options, null);
             should().exist(results.createTest);
             expect(typeof results.createTest).equal('object');
             expect(typeof results.createTest['id']).equal('string');
@@ -38,7 +52,8 @@ describe('RulesController', function () {
                     return: []
                 }
             }
-            const results = await handleCreateRules(rule, {errors: {}}, options, null);
+            const results =
+                await handleCreateRules(rule, {errors: {}}, databaseFactory(), options, null);
             should().exist(results.createTest);
             expect(typeof results.createTest).equal('object');
             expect(typeof results.createTest['id']).equal('string');
@@ -60,7 +75,8 @@ describe('RulesController', function () {
                     },
                 ]
             }
-            const results = await handleCreateRules(rule, {errors: {}}, options,null);
+            const results =
+                await handleCreateRules(rule, {errors: {}}, databaseFactory(), options, null);
             should().exist(results.createTest);
             expect(Array.isArray(results.createTest)).equal(true);
             expect(results.createTest.length).equal(2);
@@ -79,7 +95,8 @@ describe('RulesController', function () {
                     return: ['name', 'home']
                 }
             }
-            const results = await handleCreateRules(rule, {errors: {}}, options,null);
+            const results =
+                await handleCreateRules(rule, {errors: {}}, databaseFactory(), options, null);
             should().exist(results.createTest);
             expect(typeof results.createTest['id']).equal('string');
             expect(results.createTest['name']).equal('john');
@@ -127,85 +144,4 @@ describe('RulesController', function () {
         //     expect(_results.queryTest).equal(1);
         // });
     });
-    // describe('Create::Secured', function () {
-    //     before(async function () {
-    //         const r = await handlePolicyRule(
-    //             {
-    //                 context: {
-    //                     useMasterKey: true
-    //                 },
-    //                 policy: {
-    //                     add: {
-    //                         "create.*": "return false;",
-    //                         "create.Name": "return context.auth===true;",
-    //                     }
-    //                 }
-    //             },
-    //             {errors: {}},
-    //             config
-    //         );
-    //         should().not.exist(r.errors['policy.add']);
-    //     });
-    //     after(async function () {
-    //         await handlePolicyRule({
-    //                 context: {
-    //                     useMasterKey: true
-    //                 },
-    //                 policy: {
-    //                     remove: {
-    //                         ruleId: "create.*",
-    //                     }
-    //                 }
-    //             }, {errors: {}},
-    //         );
-    //         await handlePolicyRule({
-    //                 context: {
-    //                     useMasterKey: true
-    //                 },
-    //                 policy: {
-    //                     remove: {
-    //                         ruleId: "create.names",
-    //                     }
-    //                 }
-    //             }, {errors: {}},
-    //         );
-    //     });
-    //
-    //     it('should return error message when write to protect domain', async function () {
-    //         const results = await handleCreateRules({
-    //                 createProduct: {
-    //                     name: 'xyz',
-    //                     price: 40,
-    //                     return: []
-    //                 }
-    //             }, {errors: {}},
-    //             config,
-    //             null
-    //         );
-    //         should().exist(results.errors);
-    //         should().exist(results.errors['create.Product']);
-    //         expect(results.errors['create.Product']['message'])
-    //             .equal('You have insufficient permission to this resource');
-    //     });
-    //     it('should return saved data when have access to domain domain', async function () {
-    //         const results = await handleCreateRules({
-    //                 context: {
-    //                     auth: true
-    //                 },
-    //                 createName: {
-    //                     name: 'xyz',
-    //                     age: 40,
-    //                     return: []
-    //                 }
-    //             }, {errors: {}},
-    //             config,
-    //             null
-    //         );
-    //         should().exist(results.createName);
-    //         expect(typeof results.createName).equal('object');
-    //         expect(typeof results.createName['id']).equal('string');
-    //         expect(results.createName['name']).equal('xyz');
-    //         expect(results.createName['age']).equal(40);
-    //     });
-    // });
 });

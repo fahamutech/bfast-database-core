@@ -4,6 +4,7 @@ import {handleCreateRules, handleDeleteRules, handleQueryRules, handleUpdateRule
 import {loadEnv} from "../utils/env";
 import {extractResultFromServer} from "bfast";
 import {after, before} from "mocha";
+import {databaseFactory} from "../test";
 
 const date = new Date()
 const datas = [
@@ -34,14 +35,14 @@ let options;
 
 async function createData() {
     const rule = {createProduct: datas}
-    const a = await handleCreateRules(rule, {errors: {}}, loadEnv(), null);
+    const a = await handleCreateRules(rule, {errors: {}}, databaseFactory(), loadEnv(), null);
     extractResultFromServer(a, 'create', 'Product')
 }
 
 async function clearData() {
     const a = await handleDeleteRules({
         deleteProduct: {filter: {updatedAt: {$exists: true}}}
-    }, {errors: {}}, loadEnv(), null)
+    }, {errors: {}}, databaseFactory(), loadEnv(), null)
     extractResultFromServer(a, 'delete', 'Product')
 }
 
@@ -62,9 +63,7 @@ describe('RulesQueryController', function () {
                     },
                     return: []
                 }
-            }, {errors: {}},
-            options,
-            null
+            }, {errors: {}}, databaseFactory(), options, null
         );
         should().exist(results);
         should().exist(results.queryProduct);
@@ -87,9 +86,7 @@ describe('RulesQueryController', function () {
                     },
                     return: []
                 }
-            }, {errors: {}},
-            options,
-            null
+            }, {errors: {}}, databaseFactory(), options, null
         );
         should().exist(results);
         should().exist(results.queryProduct);
@@ -102,9 +99,7 @@ describe('RulesQueryController', function () {
                     id: 'xyzid',
                     return: []
                 }
-            }, {errors: {}},
-            options,
-            null
+            }, {errors: {}}, databaseFactory(), options, null
         );
         should().exist(results.queryProduct);
         expect(results.queryProduct.name).eql('xyz');
@@ -118,9 +113,7 @@ describe('RulesQueryController', function () {
                     id: 'xyz1234hint',
                     return: []
                 }
-            }, {errors: {}},
-            options,
-            null
+            }, {errors: {}}, databaseFactory(), options, null
         );
         assert(results.queryProduct === null);
     });
@@ -132,9 +125,7 @@ describe('RulesQueryController', function () {
                     },
                     return: []
                 }
-            }, {errors: {}},
-            options,
-            null
+            }, {errors: {}}, databaseFactory(), options, null
         );
         should().exist(results.queryProduct);
         expect(Array.isArray(results.queryProduct)).eql(true);
@@ -152,11 +143,8 @@ describe('RulesQueryController', function () {
                     },
                     return: []
                 }
-            }, {errors: {}},
-            options,
-            null
+            }, {errors: {}}, databaseFactory(), options, null
         );
-        // console.log(results);
         should().exist(results.queryProduct);
         expect(Array.isArray(results.queryProduct)).eql(true);
         expect(results.queryProduct.length).eql(0);
@@ -173,9 +161,7 @@ describe('RulesQueryController', function () {
                     skip: 0,
                     return: []
                 }
-            }, {errors: {}},
-            options,
-            null
+            }, {errors: {}}, databaseFactory(), options, null
         );
         should().exist(results.queryProduct);
         expect(Array.isArray(results.queryProduct)).eql(true);
@@ -193,9 +179,7 @@ describe('RulesQueryController', function () {
                     skip: 0,
                     return: []
                 }
-            }, {errors: {}},
-            options,
-            null
+            }, {errors: {}}, databaseFactory(), options, null
         );
         should().exist(results.queryProduct);
         expect(Array.isArray(results.queryProduct)).eql(true);
@@ -207,9 +191,7 @@ describe('RulesQueryController', function () {
                     filter: {},
                     return: ['name', 'price']
                 }
-            }, {errors: {}},
-            options,
-            null
+            }, {errors: {}}, databaseFactory(), options, null
         );
         should().exist(results.queryProduct);
         expect(Array.isArray(results.queryProduct)).eql(true);
@@ -222,9 +204,7 @@ describe('RulesQueryController', function () {
                     orderBy: [{'name': 1}],
                     return: ["name"]
                 }
-            }, {errors: {}},
-            options,
-            null
+            }, {errors: {}}, databaseFactory(), options, null
         );
         should().exist(results.queryProduct);
         expect(Array.isArray(results.queryProduct)).eql(true);
@@ -240,9 +220,7 @@ describe('RulesQueryController', function () {
                     count: true,
                 }
             },
-            {errors: {}},
-            options,
-            null
+            {errors: {}}, databaseFactory(), options, null
         );
         should().exist(results.queryProduct);
         expect(typeof results.queryProduct).eql("number");
@@ -254,9 +232,7 @@ describe('RulesQueryController', function () {
                     filter: {},
                     count: true,
                 }
-            }, {errors: {}},
-            options,
-            null
+            }, {errors: {}}, databaseFactory(), options, null
         );
         should().exist(results.queryProduct);
         expect(typeof results.queryProduct).eql("number");
@@ -287,9 +263,7 @@ describe('RulesQueryController', function () {
                     hashes: Object.keys(localData),
                     return: ['name', 'price']
                 }
-            }, {errors: {}},
-            options,
-            null
+            }, {errors: {}}, databaseFactory(), options, null
         );
         should().exist(results.queryProduct);
         expect(Array.isArray(results.queryProduct)).eql(true);
@@ -317,9 +291,7 @@ describe('RulesQueryController', function () {
                     hashes: Object.keys(localData),
                     return: ['name', 'price']
                 }
-            }, {errors: {}},
-            options,
-            null
+            }, {errors: {}}, databaseFactory(), options, null
         );
         should().exist(results.queryProduct);
         // expect(typeof results.queryProduct).eql('string');
@@ -336,9 +308,7 @@ describe('RulesQueryController', function () {
                     },
                     return: []
                 }
-            }, {errors: {}},
-            options,
-            null
+            }, {errors: {}}, databaseFactory(), options, null
         );
         should().exist(results.queryProduct);
         expect(Array.isArray(results.queryProduct)).eql(true);
@@ -372,9 +342,7 @@ describe('RulesQueryController', function () {
                     },
                     return: []
                 }
-            }, {errors: {}},
-            options,
-            null
+            }, {errors: {}}, databaseFactory(), options, null
         );
         should().exist(results.queryProduct);
         expect(Array.isArray(results.queryProduct)).eql(true);
@@ -404,9 +372,7 @@ describe('RulesQueryController', function () {
                     count: true,
                     return: []
                 }
-            }, {errors: {}},
-            options,
-            null
+            }, {errors: {}}, databaseFactory(), options, null
         );
         should().exist(results.queryProduct);
         expect(results.queryProduct).eql(2);
@@ -417,9 +383,7 @@ describe('RulesQueryController', function () {
                     filter: {name: 'xyz', tag: 'joshua'},
                     return: []
                 }
-            }, {errors: {}},
-            options,
-            null
+            }, {errors: {}}, databaseFactory(), options, null
         );
         should().exist(results.queryProduct);
         expect(Array.isArray(results.queryProduct)).eql(true);
@@ -439,9 +403,7 @@ describe('RulesQueryController', function () {
                     },
                     return: []
                 }
-            }, {errors: {}},
-            options,
-            null
+            }, {errors: {}}, databaseFactory(), options, null
         );
         should().exist(results.queryProduct);
         expect(Array.isArray(results.queryProduct)).eql(true);
@@ -470,9 +432,7 @@ describe('RulesQueryController', function () {
                     },
                     return: []
                 }
-            }, {errors: {}},
-            options,
-            null
+            }, {errors: {}}, databaseFactory(), options, null
         );
         should().exist(results.queryProduct);
         expect(Array.isArray(results.queryProduct)).eql(true);
@@ -489,9 +449,7 @@ describe('RulesQueryController', function () {
                     orderBy: [{price: 1}],
                     return: []
                 }
-            }, {errors: {}},
-            options,
-            null
+            }, {errors: {}}, databaseFactory(), options, null
         );
         should().exist(results.queryProduct);
         expect(Array.isArray(results.queryProduct)).eql(true);
@@ -539,9 +497,7 @@ describe('RulesQueryController', function () {
                     orderBy: [{price: 1}],
                     return: []
                 }
-            }, {errors: {}},
-            options,
-            null
+            }, {errors: {}}, databaseFactory(), options, null
         );
         should().exist(results.queryProduct);
         expect(Array.isArray(results.queryProduct)).eql(true);
@@ -580,9 +536,7 @@ describe('RulesQueryController', function () {
                     orderBy: [{price: 1}],
                     return: []
                 }
-            }, {errors: {}},
-            options,
-            null
+            }, {errors: {}}, databaseFactory(), options, null
         );
         should().exist(results.queryProduct);
         expect(Array.isArray(results.queryProduct)).eql(true);
@@ -610,9 +564,7 @@ describe('RulesQueryController', function () {
                     orderBy: [{price: -1}],
                     return: []
                 }
-            }, {errors: {}},
-            options,
-            null
+            }, {errors: {}}, databaseFactory(), options, null
         );
         should().exist(results.queryProduct);
         expect(Array.isArray(results.queryProduct)).eql(true);
@@ -656,9 +608,7 @@ describe('RulesQueryController', function () {
                     },
                     return: []
                 }
-            }, {errors: {}},
-            options,
-            null
+            }, {errors: {}}, databaseFactory(), options, null
         );
         should().exist(results.queryProduct);
         expect(Array.isArray(results.queryProduct)).eql(true);
@@ -689,14 +639,10 @@ describe('RulesQueryController', function () {
                     updatedAt: date,
                     bei: 5000
                 },
-            }, {errors: {}},
-            options,
-            null
+            }, {errors: {}}, databaseFactory(), options, null
         );
         await handleUpdateRules({updateProduct: {id: 'oldnode', update: {$set: {bei: 4000}}}},
-            {errors: {}},
-            options,
-            null,
+            {errors: {}}, databaseFactory(), options, null,
         );
         const results = await handleQueryRules({
                 queryProduct: {
@@ -705,9 +651,7 @@ describe('RulesQueryController', function () {
                     },
                     return: []
                 }
-            }, {errors: {}},
-            options,
-            null
+            }, {errors: {}}, databaseFactory(), options, null
         );
         should().exist(results);
         should().exist(results.queryProduct);
@@ -720,9 +664,7 @@ describe('RulesQueryController', function () {
                     },
                     return: []
                 }
-            }, {errors: {}},
-            options,
-            null
+            }, {errors: {}}, databaseFactory(), options, null
         );
         should().exist(results1);
         should().exist(results1.queryProduct);

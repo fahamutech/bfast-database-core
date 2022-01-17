@@ -1,20 +1,18 @@
 import {FunctionsModel} from '../models/functions.model';
 import {BFastOptions} from "../bfast-option";
-import {FilesAdapter} from "../adapters/files.adapter";
-import {
-    verifyApplicationId,
-    verifyRequestToken
-} from "../controllers/rest";
+import {FilesAdapter} from "../adapters/files";
+import {verifyApplicationId, verifyRequestToken} from "../controllers/rest";
 import {
     fileInfo,
     handleGetFileBySignedUrl,
     handleGetFileRequest,
     isS3,
-    listFilesFromStore, saveFromBuffer
+    listFilesFromStore,
+    saveFromBuffer
 } from "../controllers/storage";
 import httpStatus, {StatusCodes} from "http-status-codes";
 import {ReadableStream} from "stream/web";
-import {pipeline, Readable} from "stream";
+import {Readable} from "stream";
 import {Buffer} from "buffer";
 import {ListFileQuery, Storage} from "../models/storage";
 import {findDataByIdInStore} from "../controllers/database";
@@ -22,11 +20,12 @@ import {ruleHasPermission} from "../controllers/policy";
 import {promisify} from "util";
 import {readFile} from "fs";
 import formidable from 'formidable';
+import {DatabaseAdapter} from "../adapters/database";
 
 function filePolicy(
-    request: any, response: any, next: any, options: BFastOptions
+    request: any, response: any, next: any, databaseAdapter: DatabaseAdapter, options: BFastOptions
 ): void {
-    ruleHasPermission(request.body.ruleId, request.body.context, options).then(value => {
+    ruleHasPermission(request.body.ruleId, request.body.context, databaseAdapter, options).then(value => {
         if (value === true) {
             next();
         } else {
@@ -110,18 +109,17 @@ function multipartForm(
     });
 }
 
-async function getStorage(id: string, options: BFastOptions) {
-    const f: Storage<any> = await findDataByIdInStore(
-        '_Storage', {id: id, return: []}, {bypassDomainVerification: true},
-        options
-    );
-    if (!f) {
-        throw {message: "File not found"};
-    }
+async function getStorage(id: string, databaseAdapter: DatabaseAdapter, options: BFastOptions) {
+    const wOptions = {bypassDomainVerification: true}
+    const rule = {id: id, return: []}
+    const f: Storage<any> = await findDataByIdInStore('_Storage', rule, databaseAdapter, wOptions, options);
+    if (!f) throw {message: "File not found"};
     return f;
 }
 
-export function handleGetFile(filesAdapter: FilesAdapter, options: BFastOptions): any[] {
+export function handleGetFile(
+    filesAdapter: FilesAdapter, databaseAdapter: DatabaseAdapter, options: BFastOptions
+): any[] {
     return [
         (request, _, next) => {
             request.body.applicationId = request.params.appId;
@@ -130,7 +128,7 @@ export function handleGetFile(filesAdapter: FilesAdapter, options: BFastOptions)
         },
         (rq, rs, n) => verifyApplicationId(rq, rs, n, options),
         (rq, rs, n) => verifyRequestToken(rq, rs, n, options),
-        (rq, rs, n) => filePolicy(rq, rs, n, options),
+        (rq, rs, n) => filePolicy(rq, rs, n, databaseAdapter, options),
         (request, response) => {
             if (request.method.toLowerCase() === 'head') {
                 fileInfo(request, response, filesAdapter, options);
@@ -141,7 +139,7 @@ export function handleGetFile(filesAdapter: FilesAdapter, options: BFastOptions)
                         filename, null, null, false, filesAdapter, options
                     );
                 } else {
-                    getStorage(filename, options).then(f => {
+                    getStorage(filename, databaseAdapter, options).then(f => {
                         response.set({
                             'Content-Type': f.type,
                             'Content-Length': f.size,
@@ -183,7 +181,9 @@ function returnFile(value: Buffer | ReadableStream | string, response) {
     }
 }
 
-export function handleUploadFile(filesAdapter: FilesAdapter, options: BFastOptions): any[] {
+export function handleUploadFile(
+    filesAdapter: FilesAdapter, databaseAdapter: DatabaseAdapter, options: BFastOptions
+): any[] {
     return [
         (request, response, next) => {
             request.body.applicationId = request.params.appId;
@@ -192,12 +192,14 @@ export function handleUploadFile(filesAdapter: FilesAdapter, options: BFastOptio
         },
         (rq, rs, n) => verifyApplicationId(rq, rs, n, options),
         (rq, rs, n) => verifyRequestToken(rq, rs, n, options),
-        (rq, rs, n) => filePolicy(rq, rs, n, options),
+        (rq, rs, n) => filePolicy(rq, rs, n, databaseAdapter, options),
         (rq, rs, n) => multipartForm(rq, rs, n, filesAdapter, options)
     ];
 }
 
-export function handleGetThumbnail(filesAdapter: FilesAdapter, options: BFastOptions): any[] {
+export function handleGetThumbnail(
+    filesAdapter: FilesAdapter, databaseAdapter: DatabaseAdapter, options: BFastOptions
+): any[] {
     return [
         (request, _, next) => {
             request.body.applicationId = request.params.appId;
@@ -206,7 +208,7 @@ export function handleGetThumbnail(filesAdapter: FilesAdapter, options: BFastOpt
         },
         (rq, rs, n) => verifyApplicationId(rq, rs, n, options),
         (rq, rs, n) => verifyRequestToken(rq, rs, n, options),
-        (rq, rs, n) => filePolicy(rq, rs, n, options),
+        (rq, rs, n) => filePolicy(rq, rs, n, databaseAdapter, options),
         (request, response) => {
             if (request.method.toLowerCase() === 'head') {
                 fileInfo(request, response, filesAdapter, options);
@@ -222,7 +224,7 @@ export function handleGetThumbnail(filesAdapter: FilesAdapter, options: BFastOpt
                         filename, null, null, true, filesAdapter, options
                     );
                 } else {
-                    getStorage(filename, options).then(f => {
+                    getStorage(filename, databaseAdapter, options).then(f => {
                         response.set({
                             'Content-Disposition': `attachment; filename="${f.name}.${f.extension}"`,
                         });
@@ -238,7 +240,9 @@ export function handleGetThumbnail(filesAdapter: FilesAdapter, options: BFastOpt
     ];
 }
 
-export function handleListFilesREST(filesAdapter: FilesAdapter, options: BFastOptions): any[] {
+export function handleListFilesREST(
+    filesAdapter: FilesAdapter, databaseAdapter: DatabaseAdapter, options: BFastOptions
+): any[] {
     return [
         (request, _, next) => {
             request.body.applicationId = request.params.appId;
@@ -247,7 +251,7 @@ export function handleListFilesREST(filesAdapter: FilesAdapter, options: BFastOp
         },
         (rq, rs, n) => verifyApplicationId(rq, rs, n, options),
         (rq, rs, n) => verifyRequestToken(rq, rs, n, options),
-        (rq, rs, n) => filePolicy(rq, rs, n, options),
+        (rq, rs, n) => filePolicy(rq, rs, n, databaseAdapter, options),
         (request, response) => {
             const query: ListFileQuery = {
                 skip: isNaN(Number(request.query.skip)) ? 0 : parseInt(request.query.skip),
@@ -284,61 +288,61 @@ export function getUploadFileV2(prefix = '/'): FunctionsModel {
 }
 
 export function getFileFromStorage(
-    prefix = '/', filesAdapter: FilesAdapter, options: BFastOptions
+    prefix = '/', filesAdapter: FilesAdapter, databaseAdapter: DatabaseAdapter, options: BFastOptions
 ): FunctionsModel {
     return {
         path: `${prefix}storage/:appId/file/:filename`,
         method: 'GET',
-        onRequest: handleGetFile(filesAdapter, options)
+        onRequest: handleGetFile(filesAdapter, databaseAdapter, options)
     }
 }
 
 export function getFileV2FromStorage(
-    prefix = '/', filesAdapter: FilesAdapter, options: BFastOptions
+    prefix = '/', filesAdapter: FilesAdapter, databaseAdapter: DatabaseAdapter, options: BFastOptions
 ): FunctionsModel {
     return {
         path: `${prefix}v2/storage/:appId/file/:filename`,
         method: 'GET',
-        onRequest: handleGetFile(filesAdapter, options)
+        onRequest: handleGetFile(filesAdapter, databaseAdapter, options)
     }
 }
 
 export function geThumbnailFromStorage(
-    prefix = '/', filesAdapter: FilesAdapter, options: BFastOptions
+    prefix = '/', filesAdapter: FilesAdapter, databaseAdapter: DatabaseAdapter, options: BFastOptions
 ): FunctionsModel {
     return {
         path: `${prefix}storage/:appId/file/:filename/thumbnail`,
         method: 'GET',
-        onRequest: handleGetThumbnail(filesAdapter, options)
+        onRequest: handleGetThumbnail(filesAdapter, databaseAdapter, options)
     }
 }
 
 export function geThumbnailV2FromStorage(
-    prefix = '/', filesAdapter: FilesAdapter, options: BFastOptions
+    prefix = '/', filesAdapter: FilesAdapter, databaseAdapter: DatabaseAdapter, options: BFastOptions
 ): FunctionsModel {
     return {
         path: `${prefix}v2/storage/:appId/file/:filename/thumbnail`,
         method: 'GET',
-        onRequest: handleGetThumbnail(filesAdapter, options)
+        onRequest: handleGetThumbnail(filesAdapter, databaseAdapter, options)
     }
 }
 
 export function uploadMultiPartFile(
-    prefix = '/', filesAdapter: FilesAdapter, options: BFastOptions
+    prefix = '/', filesAdapter: FilesAdapter, databaseAdapter: DatabaseAdapter, options: BFastOptions
 ): FunctionsModel {
     return {
         path: `${prefix}storage/:appId`,
         method: 'POST',
-        onRequest: handleUploadFile(filesAdapter, options)
+        onRequest: handleUploadFile(filesAdapter, databaseAdapter, options)
     };
 }
 
 export function getFilesFromStorage(
-    prefix = '/', filesAdapter: FilesAdapter, options: BFastOptions
+    prefix = '/', filesAdapter: FilesAdapter, databaseAdapter: DatabaseAdapter, options: BFastOptions
 ): FunctionsModel {
     return {
         path: `${prefix}storage/:appId/list`,
         method: 'GET',
-        onRequest: handleListFilesREST(filesAdapter, options)
+        onRequest: handleListFilesREST(filesAdapter, databaseAdapter, options)
     };
 }

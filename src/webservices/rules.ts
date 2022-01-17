@@ -1,7 +1,7 @@
 import httpStatus from 'http-status-codes';
 import {BFastOptions} from "../bfast-option";
-import {AuthAdapter} from "../adapters/auth.adapter";
-import {FilesAdapter} from "../adapters/files.adapter";
+import {AuthAdapter} from "../adapters/auth";
+import {FilesAdapter} from "../adapters/files";
 import {verifyApplicationId, verifyRequestToken} from "../controllers/rest";
 import {FunctionsModel} from "../models/functions.model";
 import {devLog} from "../utils/debug";
@@ -17,6 +17,7 @@ import {
     handleStorageRules,
     handleUpdateRules
 } from "../controllers/rules";
+import {DatabaseAdapter} from "../adapters/database";
 
 function verifyMethod(request: any, response: any, next: any): void {
     if (request.method === 'POST') {
@@ -40,7 +41,7 @@ function verifyBodyData(request: any, response: any, next: any): void {
 
 function handleRuleBlocks(
     request: any, response: any, _: any, authAdapter: AuthAdapter, filesAdapter: FilesAdapter,
-    options: BFastOptions,
+    databaseAdapter: DatabaseAdapter, options: BFastOptions,
 ): void {
     const body = request.body;
     try {
@@ -49,26 +50,24 @@ function handleRuleBlocks(
         console.log(e);
     }
     const results: RuleResponse = {errors: {}};
-    handleAuthenticationRule(body, results, authAdapter, options).then(_1 => {
-        return handlePolicyRule(body, results, options);
+    handleAuthenticationRule(body, results, authAdapter, databaseAdapter, options).then(_1 => {
+        return handlePolicyRule(body, results, databaseAdapter, options);
     }).then(_2 => {
-        return handleCreateRules(body, results, options, null);
+        return handleCreateRules(body, results, databaseAdapter, options, null);
     }).then(_3 => {
-        return handleUpdateRules(body, results, options, null);
+        return handleUpdateRules(body, results, databaseAdapter, options, null);
     }).then(_4 => {
-        return handleDeleteRules(body, results, options, null);
+        return handleDeleteRules(body, results, databaseAdapter, options, null);
     }).then(_5 => {
-        return handleQueryRules(body, results, options, null);
+        return handleQueryRules(body, results, databaseAdapter, options, null);
     }).then(_6 => {
-        return handleBulkRules(body, results, options);
+        return handleBulkRules(body, results, databaseAdapter, options);
     }).then(_8 => {
-        return handleStorageRules(body, results, authAdapter, filesAdapter, options);
+        return handleStorageRules(body, results, databaseAdapter, authAdapter, filesAdapter, options);
     }).then(_9 => {
-        return handleAggregationRules(body, results, options);
+        return handleAggregationRules(body, results, databaseAdapter, options);
     }).then(_10 => {
-        if (!(results.errors && Object.keys(results.errors).length > 0)) {
-            delete results.errors;
-        }
+        if (!(results.errors && Object.keys(results.errors).length > 0)) delete results.errors;
         response.status(httpStatus.OK).json(results);
     }).catch(reason => {
         response.status(httpStatus.EXPECTATION_FAILED).json({message: reason.message ? reason.message : reason.toString()});
@@ -79,6 +78,7 @@ export function rulesRestAPI(
     prefix = '/',
     authAdapter: AuthAdapter,
     filesAdapter: FilesAdapter,
+    databaseAdapter: DatabaseAdapter,
     options: BFastOptions
 ): FunctionsModel {
     return {
@@ -89,7 +89,7 @@ export function rulesRestAPI(
             (rq, rs, n) => verifyBodyData(rq, rs, n),
             (rq, rs, n) => verifyApplicationId(rq, rs, n, options),
             (rq, rs, n) => verifyRequestToken(rq, rs, n, options),
-            (rq, rs, n) => handleRuleBlocks(rq, rs, n, authAdapter, filesAdapter, options)
+            (rq, rs, n) => handleRuleBlocks(rq, rs, n, authAdapter, filesAdapter, databaseAdapter, options)
         ]
     }
 }

@@ -1,14 +1,20 @@
-import {FilesAdapter} from '../adapters/files.adapter';
+import {FilesAdapter} from '../adapters/files';
 import {pipeline} from 'stream';
 import {BFastOptions} from '../bfast-option';
 import {Buffer} from "buffer";
-import {IpfsFactory} from "./ipfs.factory";
-import {findDataByFilterInStore, findDataByIdInStore, removeDataInStore, writeOneDataInStore} from "../controllers/database";
+import {IpfsFactory} from "./ipfs";
+import {
+    findDataByFilterInStore,
+    findDataByIdInStore,
+    removeDataInStore,
+    writeOneDataInStore
+} from "../controllers/database";
 import {generateUUID} from "../controllers/security";
 import * as mime from "mime";
 import {Storage} from "../models/storage";
 import {Request, Response} from "express";
 import {ReadableStream} from "stream/web";
+import {databaseFactory} from "../test";
 
 function removeDot(name: string) {
     if (name === null || name === undefined) {
@@ -20,40 +26,29 @@ function removeDot(name: string) {
 export class IpfsStorageFactory implements FilesAdapter {
     private domain = '_Storage';
 
-    constructor() {
-    }
-
     canHandleFileStream = true;
     isS3 = false;
 
     async createFile(
         name: string, size: number, data: Buffer, contentType: string, pN: boolean, options: BFastOptions
     ): Promise<Storage<any>> {
-        name = await this.validateFilename(name);
+        name = this.validateFilename(name);
         return this._saveFile(name, size, data, contentType, pN, options);
     }
 
     async deleteFile(id: string, options: BFastOptions): Promise<any> {
+        const wOptions = {bypassDomainVerification: true}
         return await removeDataInStore(
-            this.domain, {id: id}, {}, {bypassDomainVerification: true}, options
+            this.domain, {id: id}, {}, databaseFactory(), wOptions, options
         );
     }
 
     async fileInfo(id: string, options: BFastOptions): Promise<Storage<any>> {
-        const file: Storage<any> = await findDataByIdInStore(
-            this.domain,
-            {
-                id: id,
-                return: []
-            },
-            {bypassDomainVerification: true},
-            options
-        );
-        if (file && file.size && file.name) {
-            return file;
-        } else {
-            throw {message: 'File info can not be determined'}
-        }
+        const wOptions = {bypassDomainVerification: true}
+        const rule = {id: id, return: []}
+        const file: Storage<any> = await findDataByIdInStore(this.domain, rule, databaseFactory(), wOptions, options);
+        if (file && file.size && file.name) return file;
+        else throw {message: 'File info can not be determined'}
     }
 
     async getFileLocation(id: string, configAdapter: BFastOptions): Promise<string> {
@@ -63,8 +58,10 @@ export class IpfsStorageFactory implements FilesAdapter {
     async handleFileStream(
         id: string, req: Request, res: Response, contentType: string, options: BFastOptions
     ): Promise<any> {
+        const wOptions = {bypassDomainVerification: true}
+        const rule = {id: id, return: []}
         const file: Storage<ReadableStream> = await findDataByIdInStore(
-            this.domain, {id: id, return: []}, {bypassDomainVerification: true}, options
+            this.domain, rule, databaseFactory(), wOptions, options
         );
         if (file && file.cid && file.type && file.size) {
             const size = file.size;
@@ -107,31 +104,23 @@ export class IpfsStorageFactory implements FilesAdapter {
                     }
                 }
             });
-        } else {
-            throw 'file not found, maybe its deleted';
-        }
+        } else throw 'file not found, maybe its deleted';
     }
 
     async listFiles(
         query: { prefix: string, size: number, skip: number } = {prefix: '', size: 20, skip: 0}, options: BFastOptions
     ): Promise<any[]> {
-        let r = await findDataByFilterInStore(
-            this.domain,
-            {
-                filter: {},
-                return: [],
-                size: query.size,
-                skip: query.skip
-            },
-            {useMasterKey: true},
-            {bypassDomainVerification: true},
-            options
-        );
-        if (Array.isArray(r)) {
-            return r.filter(x => x?.name?.toString()?.includes(query.prefix));
-        } else {
-            return [];
+        const q = {
+            filter: {},
+            return: [],
+            size: query.size,
+            skip: query.skip
         }
+        const context = {useMasterKey: true}
+        const wOptions = {bypassDomainVerification: true}
+        let r = await findDataByFilterInStore(this.domain, q , context, databaseFactory(),wOptions, options);
+        if (Array.isArray(r)) return r.filter(x => x?.name?.toString()?.includes(query.prefix));
+        else return [];
     }
 
     validateFilename(name: string): string {
@@ -163,9 +152,7 @@ export class IpfsStorageFactory implements FilesAdapter {
         // @ts-ignore
         _obj.return = [];
         const wOptions = {bypassDomainVerification: true}
-        return await writeOneDataInStore(
-            this.domain, _obj, {}, wOptions, options
-        );
+        return await writeOneDataInStore(this.domain, _obj, {},databaseFactory(), wOptions, options);
     }
 
     async init(options: BFastOptions): Promise<void> {
@@ -173,9 +160,6 @@ export class IpfsStorageFactory implements FilesAdapter {
     }
 
     async getFileBuffer(file: Storage<any>, options: BFastOptions): Promise<Buffer> {
-        // let file: Storage<Buffer> = await findDataByIdInStore(
-        //     this.domain, {id: id, return: []}, {bypassDomainVerification: true}, options
-        // );
         if (file && file.cid) {
             const ipfs = await IpfsFactory.getInstance(options);
             return await ipfs.generateDataFromCid<Buffer>(

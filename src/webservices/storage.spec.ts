@@ -1,22 +1,14 @@
-const axios = require("axios");
-const {config, mongoRepSet} = require("../../mock.config.js");
-const {should, expect} = require("chai");
-const FormData = require('form-data');
-const fs = require('fs');
+import FormData from "form-data";
+import fs from "fs";
+import axios from "axios";
+import {expect, should} from "chai";
+import {config} from "../test";
 
 describe('StorageWebService', function () {
-    let mongoMemoryReplSet
-    before(async function () {
-        mongoMemoryReplSet = mongoRepSet();
-        await mongoMemoryReplSet.start();
-    });
-    after(async function () {
-        await mongoMemoryReplSet.stop();
-    });
     describe('handleUploadFile', function () {
         it('should upload a multipart file', async function () {
             const form = new FormData();
-            form.append('music', fs.createReadStream(__dirname + '/../../music.mp3'));
+            form.append('music', fs.createReadStream(__dirname + '/../../specs/music.mp3'));
             const response = await axios.post(
                 `http://localhost:${config.port}/storage/${config.applicationId}`,
                 form,
@@ -35,7 +27,7 @@ describe('StorageWebService', function () {
         });
         it('should upload a multipart file and preserve filename', async function () {
             const form = new FormData();
-            form.append('music', fs.createReadStream(__dirname + '/../../music.mp3'));
+            form.append('music', fs.createReadStream(__dirname + '/../../specs/music.mp3'));
             const response = await axios.post(
                 `http://localhost:${config.port}/storage/${config.applicationId}?pn=true`,
                 form,

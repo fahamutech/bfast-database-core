@@ -4,6 +4,7 @@ import {findDataByFilterInStore, removeDataInStore, updateDataInStore} from "./d
 import {PolicyData} from "../models/policy";
 import {validateInput} from "../utils";
 import {StringSchema} from "../models/string";
+import {DatabaseAdapter} from "../adapters/database";
 
 const policyDomainName = '_Policy';
 
@@ -23,7 +24,7 @@ function decodeDot(data: string) {
 }
 
 export async function addPolicyRule(
-    ruleId: string, rule: string, context: RuleContext, options: BFastOptions
+    ruleId: string, rule: string, databaseAdapter: DatabaseAdapter, context: RuleContext, options: BFastOptions
 ): Promise<any> {
     await validateInput(ruleId, StringSchema, 'ruleId is invalid');
     await validateInput(rule, StringSchema, 'rule is invalid');
@@ -45,9 +46,7 @@ export async function addPolicyRule(
             $set: policy
         }
     }
-    const _p1 = await updateDataInStore(
-        policyDomainName, updateModel, context, wOptions, options
-    );
+    const _p1 = await updateDataInStore(policyDomainName, updateModel, context, databaseAdapter, wOptions, options);
     if (_p1.modified > 0) {
         delete policy.return;
         delete policy.createdAt;
@@ -56,23 +55,20 @@ export async function addPolicyRule(
     return null;
 }
 
-export async function listPolicyRule(context: RuleContext, options: BFastOptions) {
+export async function listPolicyRule(
+    databaseAdapter: DatabaseAdapter, context: RuleContext, options: BFastOptions
+) {
+    const queryModel = {filter: {}, return: []}
+    const wOptions = {bypassDomainVerification: true}
     const _j1 = await findDataByFilterInStore(
-        '_Policy',
-        {
-            filter: {},
-            return: []
-        },
-        context,
-        {
-            bypassDomainVerification: true
-        },
-        options
+        '_Policy', queryModel, context, databaseAdapter, wOptions, options
     );
     return _j1.map(x => sanitizePolicy4User(x));
 }
 
-export async function removePolicyRule(ruleId: string, context: RuleContext, options: BFastOptions) {
+export async function removePolicyRule(
+    ruleId: string, context: RuleContext, databaseAdapter: DatabaseAdapter, options: BFastOptions
+) {
     await validateInput(ruleId, StringSchema, 'invalid rule id');
     const deleteModel = {
         filter: {
@@ -81,7 +77,7 @@ export async function removePolicyRule(ruleId: string, context: RuleContext, opt
         return: ['id'],
     };
     const wOptions = {bypassDomainVerification: true};
-    const _y89 = await removeDataInStore('_Policy', deleteModel, context, wOptions, options);
+    const _y89 = await removeDataInStore('_Policy', deleteModel, context, databaseAdapter, wOptions, options);
     return _y89.map(z => sanitizePolicy4User(z));
 }
 
@@ -95,7 +91,9 @@ function getGlobalRule(ruleId: string) {
     return null
 }
 
-export async function ruleHasPermission(ruleId: string, context: RuleContext, options: BFastOptions): Promise<boolean> {
+export async function ruleHasPermission(
+    ruleId: string, context: RuleContext, databaseAdapter: DatabaseAdapter, options: BFastOptions
+): Promise<boolean> {
     await validateInput(ruleId, StringSchema, 'invalid rule id')
     if (context && context?.useMasterKey === true) return true
     const filter = []
@@ -105,7 +103,8 @@ export async function ruleHasPermission(ruleId: string, context: RuleContext, op
     filter.push(originalRule)
     const queryModel = {return: [], filter: {$or: filter}}
     const wOptions = {bypassDomainVerification: true}
-    let policies: any[] = await findDataByFilterInStore(policyDomainName, queryModel, context, wOptions, options)
+    let policies: any[] =
+        await findDataByFilterInStore(policyDomainName, queryModel, context, databaseAdapter, wOptions, options)
     policies = policies.map(x => sanitizePolicy4User(x))
     if (policies.length === 0) return true
     const originalRuleResult = policies.filter(value => value.ruleId === decodeDot(originalRule.ruleId));

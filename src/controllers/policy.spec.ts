@@ -4,6 +4,7 @@ import {RuleContext} from "../models/rule-context";
 import {loadEnv} from "../utils/env";
 import {handleDeleteRules} from "./rules";
 import {extractResultFromServer} from "bfast";
+import {databaseFactory} from "../test";
 
 const ruleContext: RuleContext = {
     applicationId: 'bfast',
@@ -20,7 +21,7 @@ async function clearPolicy() {
                 updatedAt: {$exists: true}
             }
         }
-    }, {errors: {}}, loadEnv(), null)
+    }, {errors: {}}, databaseFactory(), loadEnv(), null)
     extractResultFromServer(a, 'delete', '_Policy')
 }
 
@@ -28,47 +29,10 @@ describe('PolicyController', function () {
     before(async () => await clearPolicy());
     after(async () => await clearPolicy());
     beforeEach(() => options = loadEnv());
-    // describe('sanitizePolicy4User', function () {
-    //     it('should sanitize dot encoded rule', async function () {
-    //         const a = await sanitizePolicy4User({
-    //             id: 'abc%id',
-    //             ruleId: 'create%test',
-    //             ruleBody: "return true;"
-    //         })
-    //         expect(a).eql({
-    //             id: 'abc',
-    //             ruleId: 'create.test',
-    //             ruleBody: "return true;"
-    //         });
-    //     });
-    //     it('should sanitize double dot encoded rule', async function () {
-    //         const a = await sanitizePolicy4User({
-    //             id: 'abc%id',
-    //             ruleId: 'create%%test',
-    //             ruleBody: "return true;"
-    //         })
-    //         expect(a).eql({
-    //             id: 'abc',
-    //             ruleId: 'create.test',
-    //             ruleBody: "return true;"
-    //         });
-    //     });
-    //     it('should return clean policy', async function () {
-    //         const a = await sanitizePolicy4User({
-    //             id: 'abc',
-    //             ruleId: 'create.product',
-    //             ruleBody: "return false;"
-    //         })
-    //         expect(a).eql({
-    //             id: 'abc',
-    //             ruleId: 'create.product',
-    //             ruleBody: "return false;"
-    //         });
-    //     });
-    // });
     describe('addPolicyRule', function () {
         it('should add a policy', async function () {
-            const policy: any = await addPolicyRule("create.test", "return false;", ruleContext, loadEnv());
+            const policy: any =
+                await addPolicyRule("create.test", "return false;", databaseFactory(),ruleContext, loadEnv());
             expect(policy).eql({
                 id: "create.test",
                 ruleId: "create.test",
@@ -76,7 +40,8 @@ describe('PolicyController', function () {
             });
         });
         it('should update if already exist', async function () {
-            const policy: any = await addPolicyRule("create.test", "return true;", ruleContext, loadEnv());
+            const policy: any =
+                await addPolicyRule("create.test", "return true;", databaseFactory(), ruleContext, loadEnv());
             expect(policy).eql({
                 id: "create.test",
                 ruleId: "create.test",
@@ -86,7 +51,7 @@ describe('PolicyController', function () {
     });
     describe('listPolicyRule', function () {
         it('should list all policy', async function () {
-            const policies = await listPolicyRule(ruleContext, options)
+            const policies = await listPolicyRule(databaseFactory(),ruleContext, options)
             expect(policies).be.a('array');
             expect(policies[0]).be.a('object');
             delete policies[0].createdAt
@@ -102,38 +67,38 @@ describe('PolicyController', function () {
     describe('ruleHasPermission', function () {
         before(async () => {
             options = loadEnv()
-            await addPolicyRule('create.mini', 'return false;', ruleContext, options)
-            await addPolicyRule('update.*', 'return false;', ruleContext, options)
+            await addPolicyRule('create.mini', 'return false;', databaseFactory(), ruleContext, options)
+            await addPolicyRule('update.*', 'return false;', databaseFactory(), ruleContext, options)
             ruleContext.useMasterKey = false
         })
         after(() => ruleContext.useMasterKey = true)
         it('should return true if action permitted', async function () {
-            const a = await ruleHasPermission('create.test', ruleContext, options)
+            const a = await ruleHasPermission('create.test', ruleContext, databaseFactory(), options)
             expect(a).eql(true)
         });
         it('should return true if rule not available in database', async function () {
-            const a = await ruleHasPermission('create.joe', ruleContext, options)
+            const a = await ruleHasPermission('create.joe', ruleContext, databaseFactory(), options)
             expect(a).eql(true)
         });
         it('should return false if exist in database and its false', async function () {
-            const a = await ruleHasPermission('create.mini', ruleContext, options)
+            const a = await ruleHasPermission('create.mini', ruleContext, databaseFactory(), options)
             expect(a).eql(false)
         });
         it('should return false for global rule', async function () {
-            const a = await ruleHasPermission('update.eth', ruleContext, options)
+            const a = await ruleHasPermission('update.eth', ruleContext, databaseFactory(), options)
             expect(a).eql(false)
         });
     });
     describe('removePolicyRule', function () {
         it('should remove previous rule', async function () {
-            const a = await removePolicyRule('create.test', ruleContext, options);
+            const a = await removePolicyRule('create.test', ruleContext, databaseFactory(), options);
             expect(a).be.a('array');
             expect(a[0].id).eql('create.test');
-            const c = await listPolicyRule(ruleContext, options);
+            const c = await listPolicyRule(databaseFactory(),ruleContext, options);
             expect(c).length(2)
         });
         it('should not remove not exist rule', async function () {
-            const a = await removePolicyRule('create.na', ruleContext, options);
+            const a = await removePolicyRule('create.na', ruleContext, databaseFactory(), options);
             expect(a).be.a('array');
             expect(a).length(0)
         });

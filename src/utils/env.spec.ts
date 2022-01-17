@@ -1,6 +1,6 @@
 import {assert, expect, should} from 'chai';
 import {getEnv, loadEnv} from "./env";
-import {config} from "../../test";
+import {config} from "../test";
 
 describe('EnvUtil', function () {
     before(async function () {

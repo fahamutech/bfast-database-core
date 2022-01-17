@@ -3,6 +3,7 @@ import {assert, expect, should} from "chai";
 import {handleCreateRules, handleDeleteRules, handleQueryRules, handleUpdateRules} from "./rules";
 import {loadEnv} from "../utils/env";
 import {extractResultFromServer} from "bfast";
+import {databaseFactory} from "../test";
 
 const leo = new Date();
 let options;
@@ -26,14 +27,14 @@ async function createData() {
             {id: 'josh', name: 'ethan', price: 60, a: {b: 10}, createdAt: leo, 'updatedAt': leo},
         ]
     }
-    const r = await handleCreateRules(rule, {errors: {}}, loadEnv(), null);
+    const r = await handleCreateRules(rule, {errors: {}}, databaseFactory(), loadEnv(), null);
     extractResultFromServer(r, 'create', 'Product')
 }
 
 async function clearData() {
     const a = await handleDeleteRules({
         deleteProduct: {filter: {updatedAt: {$exists: true}}}
-    }, {errors: {}}, loadEnv(), null)
+    }, {errors: {}}, databaseFactory(), loadEnv(), null)
     extractResultFromServer(a, 'delete', 'Product')
 }
 
@@ -56,9 +57,7 @@ describe('RulesUpdateController', function () {
                     return: []
                 }
             },
-            {errors: {}},
-            options,
-            null
+            {errors: {}}, databaseFactory(), options, null
         );
         should().exist(results.updateProduct);
         expect(results.updateProduct.modified).equal(1);
@@ -74,9 +73,7 @@ describe('RulesUpdateController', function () {
                     },
                     return: []
                 }
-            }, {errors: {}},
-            options,
-            null
+            }, {errors: {}}, databaseFactory(), options, null
         );
         should().exist(results.updateProduct);
         expect(results.updateProduct.modified).equal(1);
@@ -95,14 +92,12 @@ describe('RulesUpdateController', function () {
                     },
                     return: []
                 }
-            }, {errors: {}},
-            options,
-            null
+            }, {errors: {}}, databaseFactory(), options, null
         );
         should().exist(results.updateProduct);
         expect(results.updateProduct.modified).equal(3);
     });
-    it('should update crossStoreDataOperation documents by filter', async function () {
+    it('should update transaction documents by filter', async function () {
         const results = await handleUpdateRules({
                 updateProduct: [
                     {
@@ -128,9 +123,7 @@ describe('RulesUpdateController', function () {
                         },
                     }
                 ]
-            }, {errors: {}},
-            options,
-            null
+            }, {errors: {}}, databaseFactory(), options, null
         );
         should().exist(results.updateProduct);
         expect(results.updateProduct.modified).equal(10);
@@ -148,9 +141,7 @@ describe('RulesUpdateController', function () {
                         },
                     },
                 ]
-            }, {errors: {}},
-            options,
-            null
+            }, {errors: {}}, databaseFactory(), options, null
         );
         should().exist(results.updateProduct);
         expect(results.updateProduct.modified).equal(1);
@@ -168,9 +159,7 @@ describe('RulesUpdateController', function () {
                         },
                     }
                 ]
-            }, {errors: {}},
-            options,
-            null
+            }, {errors: {}}, databaseFactory(), options, null
         );
         should().not.exist(results.updateProduct);
         should().exist(results.errors);
@@ -187,9 +176,7 @@ describe('RulesUpdateController', function () {
                     },
                     return: []
                 }
-            }, {errors: {}},
-            options,
-            null
+            }, {errors: {}}, databaseFactory(), options, null
         );
         assert(results.updateProduct === undefined);
         assert(results.errors !== undefined);
@@ -207,9 +194,7 @@ describe('RulesUpdateController', function () {
                     },
                     return: []
                 }
-            }, {errors: {}},
-            options,
-            null
+            }, {errors: {}}, databaseFactory(), options, null
         );
         should().exist(results.updateProduct);
         assert(results.updateProduct.modified === 1);
@@ -229,9 +214,7 @@ describe('RulesUpdateController', function () {
                     upsert: true,
                     return: []
                 }
-            }, {errors: {}},
-            options,
-            null
+            }, {errors: {}}, databaseFactory(), options, null
         );
         should().exist(results.updateProduct);
         expect(results.updateProduct.modified).equal(1);
@@ -251,9 +234,7 @@ describe('RulesUpdateController', function () {
                     upsert: false,
                     return: []
                 }
-            }, {errors: {}},
-            options,
-            null
+            }, {errors: {}}, databaseFactory(), options, null
         );
         should().exist(results.updateProduct);
         expect(results.updateProduct.modified).equal(0)
@@ -275,9 +256,7 @@ describe('RulesUpdateController', function () {
                     return: []
                 }
             },
-            {errors: {}},
-            options,
-            null
+            {errors: {}}, databaseFactory(), options, null
         );
         const r = await handleQueryRules(
             {
@@ -288,9 +267,7 @@ describe('RulesUpdateController', function () {
                     return: []
                 }
             },
-            {errors: {}},
-            options,
-            null
+            {errors: {}}, databaseFactory(), options, null
         );
         should().exist(results.updateProduct);
         expect(results.updateProduct.modified).equal(1);
@@ -307,9 +284,7 @@ describe('RulesUpdateController', function () {
                     },
                     return: []
                 }
-            }, {errors: {}},
-            options,
-            null
+            }, {errors: {}}, databaseFactory(), options, null
         );
         should().exist(results.updateProduct);
         expect(results.updateProduct.modified).equal(1);
@@ -327,9 +302,7 @@ describe('RulesUpdateController', function () {
                     },
                     return: []
                 }
-            }, {errors: {}},
-            options,
-            null
+            }, {errors: {}}, databaseFactory(), options, null
         );
         should().exist(results.updateProduct);
         expect(results.updateProduct.modified).equal(1);
@@ -349,9 +322,7 @@ describe('RulesUpdateController', function () {
                     },
                     return: []
                 }
-            }, {errors: {}},
-            options,
-            null
+            }, {errors: {}}, databaseFactory(), options, null
         );
         should().exist(results.updateProduct);
         expect(results.updateProduct.modified).equal(1);
@@ -367,9 +338,7 @@ describe('RulesUpdateController', function () {
                     },
                     return: []
                 }
-            }, {errors: {}},
-            options,
-            null
+            }, {errors: {}}, databaseFactory(), options, null
         );
         should().exist(results.updateProduct);
         expect(results.updateProduct.modified).equal(1);
@@ -391,9 +360,7 @@ describe('RulesUpdateController', function () {
                     },
                     return: []
                 }
-            }, {errors: {}},
-            options,
-            null
+            }, {errors: {}}, databaseFactory(), options, null
         );
         should().exist(results.updateProduct);
         expect(results.updateProduct.modified).equal(1);
@@ -409,9 +376,7 @@ describe('RulesUpdateController', function () {
                     },
                     return: []
                 }
-            }, {errors: {}},
-            options,
-            null
+            }, {errors: {}}, databaseFactory(), options, null
         );
         should().not.exist(results.updateProduct);
         should().exist(results.errors['update.Product']);
@@ -428,9 +393,7 @@ describe('RulesUpdateController', function () {
                     },
                     return: []
                 }
-            }, {errors: {}},
-            options,
-            null
+            }, {errors: {}}, databaseFactory(), options, null
         );
         should().exist(results.updateProduct);
         expect(results.updateProduct.modified).equal(1);
@@ -449,9 +412,7 @@ describe('RulesUpdateController', function () {
                     },
                     return: []
                 }
-            }, {errors: {}},
-            options,
-            null
+            }, {errors: {}}, databaseFactory(), options, null
         );
         should().exist(results.updateProduct);
         expect(results.updateProduct.modified).equal(1);
@@ -468,9 +429,7 @@ describe('RulesUpdateController', function () {
                     return: []
                 }
             },
-            {errors: {}},
-            options,
-            null
+            {errors: {}}, databaseFactory(), options, null
         );
         should().exist(results.updateProduct);
         expect(results.updateProduct.modified).equal(1);
@@ -487,11 +446,14 @@ describe('RulesUpdateController', function () {
                     return: []
                 }
             },
-            {errors: {}},
-            options,
-            null
+            {errors: {}}, databaseFactory(), options, null
         );
         should().exist(results.updateProduct);
         expect(results.updateProduct.modified).equal(1);
     });
 });
+
+
+
+
+

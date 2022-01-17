@@ -3,6 +3,7 @@ import {assert, expect, should} from "chai";
 import {loadEnv} from "../utils/env";
 import {handleCreateRules, handleDeleteRules} from "./rules";
 import {extractResultFromServer} from "bfast";
+import {databaseFactory} from "../test";
 
 let options;
 
@@ -17,7 +18,7 @@ async function createData() {
             {id: 'b', name: '3'},
         ]
     }
-    const a = await handleCreateRules(rule, {errors: {}}, loadEnv(), null);
+    const a = await handleCreateRules(rule, {errors: {}}, databaseFactory(), loadEnv(), null);
     extractResultFromServer(a, 'create', 'Product')
 }
 
@@ -26,7 +27,7 @@ async function clearData() {
         deleteProduct: {
             filter: {updatedAt: {$exists: true}}
         }
-    }, {errors: {}}, loadEnv(), null)
+    }, {errors: {}}, databaseFactory(), loadEnv(), null)
     extractResultFromServer(a, 'delete', 'Product');
 }
 
@@ -44,7 +45,8 @@ describe('RulesDeleteController', function () {
                 return: []
             }
         }
-        const results = await handleDeleteRules(rule, {errors: {}}, options, null);
+        const results =
+            await handleDeleteRules(rule, {errors: {}}, databaseFactory(), options, null);
         should().exist(results.deleteProduct);
         expect(results.deleteProduct[0].id).equal('xyz');
     });
@@ -57,7 +59,8 @@ describe('RulesDeleteController', function () {
                 return: []
             }
         }
-        const results = await handleDeleteRules(rule, {errors: {}}, options, null);
+        const results =
+            await handleDeleteRules(rule, {errors: {}}, databaseFactory(), options, null);
         should().exist(results.deleteProduct);
         expect(Array.isArray(results.deleteProduct)).equal(true);
         expect(results.deleteProduct.length).equal(1);
@@ -74,7 +77,8 @@ describe('RulesDeleteController', function () {
                 return: []
             }
         }
-        const results = await handleDeleteRules(rule, {errors: {}}, options, null);
+        const results =
+            await handleDeleteRules(rule, {errors: {}}, databaseFactory(), options, null);
         should().exist(results.deleteProduct);
         expect(Array.isArray(results.deleteProduct)).equal(true);
         expect(results.deleteProduct.length).equal(3);
@@ -89,7 +93,8 @@ describe('RulesDeleteController', function () {
                 return: []
             }
         }
-        const results = await handleDeleteRules(rule, {errors: {}}, options, null);
+        const results =
+            await handleDeleteRules(rule, {errors: {}}, databaseFactory(), options, null);
         assert(results.deleteProduct === undefined);
         assert(results.errors !== undefined);
         assert(results.errors['delete.Product']['message'] === 'Empty filter map is not supported in delete rule');

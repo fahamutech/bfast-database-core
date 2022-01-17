@@ -1,4 +1,4 @@
-import {FilesAdapter} from '../adapters/files.adapter';
+import {FilesAdapter} from '../adapters/files';
 import {FileModel} from '../models/file-model';
 import mime from 'mime';
 import {StatusCodes} from 'http-status-codes';
