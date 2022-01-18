@@ -1,5 +1,5 @@
 import httpStatus from 'http-status-codes';
-import {BFastOptions} from "../bfast-option";
+import {BFastOptions, BFastOptionsFn} from "../bfast-option";
 import {AuthAdapter} from "../adapters/auth";
 import {FilesAdapter} from "../adapters/files";
 import {verifyApplicationId, verifyRequestToken} from "../controllers/rest";
@@ -19,7 +19,7 @@ import {
 } from "../controllers/rules";
 import {DatabaseAdapter} from "../adapters/database";
 
-function verifyMethod(request: any, response: any, next: any): void {
+export function verifyMethod(request: any, response: any, next: any): void {
     if (request.method === 'POST') {
         next();
     } else {
@@ -27,7 +27,7 @@ function verifyMethod(request: any, response: any, next: any): void {
     }
 }
 
-function verifyBodyData(request: any, response: any, next: any): void {
+export function verifyBodyData(request: any, response: any, next: any): void {
     const body = request.body;
     if (!body) {
         response.status(httpStatus.BAD_REQUEST).json({message: 'require non empty rule blocks request'});
@@ -73,12 +73,12 @@ function handleRuleBlocks(
     });
 }
 
-export function rulesRestAPI(
+export function handleRulesRestAPI(
     prefix = '/',
     authAdapter: AuthAdapter,
     filesAdapter: FilesAdapter,
     databaseAdapter: DatabaseAdapter,
-    options: BFastOptions
+    optionsFn: BFastOptionsFn
 ): FunctionsModel {
     return {
         path: `${prefix}v2`,
@@ -86,9 +86,9 @@ export function rulesRestAPI(
         onRequest: [
             (rq, rs, n) => verifyMethod(rq, rs, n),
             (rq, rs, n) => verifyBodyData(rq, rs, n),
-            (rq, rs, n) => verifyApplicationId(rq, rs, n, options),
-            (rq, rs, n) => verifyRequestToken(rq, rs, n, options),
-            (rq, rs, n) => handleRuleBlocks(rq, rs, n, authAdapter, filesAdapter, databaseAdapter, options)
+            (rq, rs, n) => verifyApplicationId(rq, rs, n, optionsFn(rq)),
+            (rq, rs, n) => verifyRequestToken(rq, rs, n, optionsFn(rq)),
+            (rq, rs, n) => handleRuleBlocks(rq, rs, n, authAdapter, filesAdapter, databaseAdapter, optionsFn(rq))
         ]
     }
 }

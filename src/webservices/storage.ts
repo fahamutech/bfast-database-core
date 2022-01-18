@@ -1,5 +1,5 @@
 import {FunctionsModel} from '../models/functions.model';
-import {BFastOptions} from "../bfast-option";
+import {BFastOptions, BFastOptionsFn} from "../bfast-option";
 import {FilesAdapter} from "../adapters/files";
 import {verifyApplicationId, verifyRequestToken} from "../controllers/rest";
 import {
@@ -23,7 +23,7 @@ import formidable from 'formidable';
 import {DatabaseAdapter} from "../adapters/database";
 
 function filePolicy(
-    request: any, response: any, next: any, databaseAdapter: DatabaseAdapter, options: BFastOptions
+    request: any, response: any, next: any, databaseAdapter: DatabaseAdapter, options
 ): void {
     ruleHasPermission(request.body.ruleId, request.body.context, databaseAdapter, options).then(value => {
         if (value === true) {
@@ -63,20 +63,19 @@ function multipartForm(
             } else {
                 request.body.context.storage = {preserveName: false};
             }
+            const context = request.body.context
             for (const file of Object.values<any>(files)) {
                 const fileMeta: { name: string, type: string } = {name: undefined, type: undefined};
                 const regx = /[^0-9a-z.]/gi;
                 fileMeta.name = file.originalFilename ? file.originalFilename : file.newFilename.toString().replace(regx, '');
                 fileMeta.type = file.type;
-                const result = await saveFromBuffer({
-                        data: await promisify(readFile)(file.filepath),
-                        type: fileMeta.type,
-                        size: file.size,
-                        name: fileMeta.name
-                    },
-                    request.body.context,
-                    filesAdapter,
-                    options);
+                const data = {
+                    data: await promisify(readFile)(file.filepath),
+                    type: fileMeta.type,
+                    size: file.size,
+                    name: fileMeta.name
+                }
+                const result = await saveFromBuffer(data, context, filesAdapter, options);
                 urls.push(result);
             }
             for (const f_key of Object.keys(fields)) {
@@ -85,18 +84,15 @@ function multipartForm(
                 fileMeta.name = f_key
                     .toString()
                     .replace(regx, '');
+                const data = {
+                    data: Buffer.from(fields[f_key]),
+                    type: fileMeta.type,
+                    size: fields[f_key]?.length,
+                    name: fileMeta.name
+                }
                 // @ts-ignore
                 fileMeta.type = mime.getType(f_key);
-                const result = await saveFromBuffer({
-                        data: Buffer.from(fields[f_key]),
-                        type: fileMeta.type,
-                        size: fields[f_key]?.length,
-                        name: fileMeta.name
-                    },
-                    request.body.context,
-                    filesAdapter,
-                    options
-                );
+                const result = await saveFromBuffer(data, context, filesAdapter, options);
                 urls.push(result);
             }
             response.status(StatusCodes.OK).json({urls});
@@ -115,7 +111,7 @@ async function getStorage(id: string, databaseAdapter: DatabaseAdapter, options:
 }
 
 export function handleGetFile(
-    filesAdapter: FilesAdapter, databaseAdapter: DatabaseAdapter, options: BFastOptions
+    filesAdapter: FilesAdapter, databaseAdapter: DatabaseAdapter, optionsFn: BFastOptionsFn
 ): any[] {
     return [
         (request, _, next) => {
@@ -123,10 +119,11 @@ export function handleGetFile(
             request.body.ruleId = 'files.read';
             next();
         },
-        (rq, rs, n) => verifyApplicationId(rq, rs, n, options),
-        (rq, rs, n) => verifyRequestToken(rq, rs, n, options),
-        (rq, rs, n) => filePolicy(rq, rs, n, databaseAdapter, options),
+        (rq, rs, n) => verifyApplicationId(rq, rs, n, optionsFn(rq)),
+        (rq, rs, n) => verifyRequestToken(rq, rs, n, optionsFn(rq)),
+        (rq, rs, n) => filePolicy(rq, rs, n, databaseAdapter, optionsFn(rq)),
         (request, response) => {
+            const options = optionsFn(request)
             if (request.method.toLowerCase() === 'head') {
                 fileInfo(request, response, filesAdapter, options);
             } else {
@@ -169,7 +166,7 @@ function returnFile(value: Buffer | ReadableStream | string, response) {
 }
 
 export function handleUploadFile(
-    filesAdapter: FilesAdapter, databaseAdapter: DatabaseAdapter, options: BFastOptions
+    filesAdapter: FilesAdapter, databaseAdapter: DatabaseAdapter, optionsFn: BFastOptionsFn
 ): any[] {
     return [
         (request, response, next) => {
@@ -177,15 +174,15 @@ export function handleUploadFile(
             request.body.ruleId = 'files.save';
             next();
         },
-        (rq, rs, n) => verifyApplicationId(rq, rs, n, options),
-        (rq, rs, n) => verifyRequestToken(rq, rs, n, options),
-        (rq, rs, n) => filePolicy(rq, rs, n, databaseAdapter, options),
-        (rq, rs, n) => multipartForm(rq, rs, n, filesAdapter, options)
+        (rq, rs, n) => verifyApplicationId(rq, rs, n, optionsFn(rq)),
+        (rq, rs, n) => verifyRequestToken(rq, rs, n, optionsFn(rq)),
+        (rq, rs, n) => filePolicy(rq, rs, n, databaseAdapter, optionsFn(rq)),
+        (rq, rs, n) => multipartForm(rq, rs, n, filesAdapter, optionsFn(rq))
     ];
 }
 
 export function handleGetThumbnail(
-    filesAdapter: FilesAdapter, databaseAdapter: DatabaseAdapter, options: BFastOptions
+    filesAdapter: FilesAdapter, databaseAdapter: DatabaseAdapter, optionsFn: BFastOptionsFn
 ): any[] {
     return [
         (request, _, next) => {
@@ -193,10 +190,11 @@ export function handleGetThumbnail(
             request.body.ruleId = 'files.read';
             next();
         },
-        (rq, rs, n) => verifyApplicationId(rq, rs, n, options),
-        (rq, rs, n) => verifyRequestToken(rq, rs, n, options),
-        (rq, rs, n) => filePolicy(rq, rs, n, databaseAdapter, options),
+        (rq, rs, n) => verifyApplicationId(rq, rs, n, optionsFn(rq)),
+        (rq, rs, n) => verifyRequestToken(rq, rs, n, optionsFn(rq)),
+        (rq, rs, n) => filePolicy(rq, rs, n, databaseAdapter, optionsFn(rq)),
         (request, response) => {
+            const options = optionsFn(request)
             if (request.method.toLowerCase() === 'head') {
                 fileInfo(request, response, filesAdapter, options);
             } else {
@@ -228,7 +226,7 @@ export function handleGetThumbnail(
 }
 
 export function handleListFilesREST(
-    filesAdapter: FilesAdapter, databaseAdapter: DatabaseAdapter, options: BFastOptions
+    filesAdapter: FilesAdapter, databaseAdapter: DatabaseAdapter, optionsFn: BFastOptionsFn
 ): any[] {
     return [
         (request, _, next) => {
@@ -236,10 +234,11 @@ export function handleListFilesREST(
             request.body.ruleId = 'files.list';
             next();
         },
-        (rq, rs, n) => verifyApplicationId(rq, rs, n, options),
-        (rq, rs, n) => verifyRequestToken(rq, rs, n, options),
-        (rq, rs, n) => filePolicy(rq, rs, n, databaseAdapter, options),
+        (rq, rs, n) => verifyApplicationId(rq, rs, n, optionsFn(rq)),
+        (rq, rs, n) => verifyRequestToken(rq, rs, n, optionsFn(rq)),
+        (rq, rs, n) => filePolicy(rq, rs, n, databaseAdapter, optionsFn(rq)),
         (request, response) => {
+            const options = optionsFn(request)
             const query: ListFileQuery = {
                 skip: isNaN(Number(request.query.skip)) ? 0 : parseInt(request.query.skip),
                 after: request.query.after ? request.query.after.toString() : '',
@@ -260,76 +259,74 @@ export function getUploadFileV2(prefix = '/'): FunctionsModel {
         path: `${prefix}storage/:appId`,
         method: 'GET',
         onRequest: (request, response: any) => {
-            // show a file upload form
             response.writeHead(200, {'content-type': 'text/html'});
             response.end(`
-                    <h2>With Node.js <code>"http"</code> module</h2>
-                    <form action="${prefix}storage/${request.params.appId}" enctype="multipart/form-data" method="post">
-<!--                      <div>Text field title: <input type="text" name="file" /></div>-->
-                      <div>File: <input type="file" name="multipleFiles" multiple="multiple" /></div>
-                      <input type="submit" value="Upload" />
-                    </form>
-                 `);
+                <h2>With Node.js <code>"http"</code> module</h2>
+                <form action="${prefix}storage/${request.params.appId}" enctype="multipart/form-data" method="post">
+                  <div>File: <input type="file" name="multipleFiles" multiple="multiple" /></div>
+                  <input type="submit" value="Upload" />
+                </form>
+            `);
         }
     }
 }
 
 export function getFileFromStorage(
-    prefix = '/', filesAdapter: FilesAdapter, databaseAdapter: DatabaseAdapter, options: BFastOptions
+    prefix = '/', filesAdapter: FilesAdapter, databaseAdapter: DatabaseAdapter, optionsFn: BFastOptionsFn
 ): FunctionsModel {
     return {
         path: `${prefix}storage/:appId/file/:filename`,
         method: 'GET',
-        onRequest: handleGetFile(filesAdapter, databaseAdapter, options)
+        onRequest: handleGetFile(filesAdapter, databaseAdapter, optionsFn)
     }
 }
 
 export function getFileV2FromStorage(
-    prefix = '/', filesAdapter: FilesAdapter, databaseAdapter: DatabaseAdapter, options: BFastOptions
+    prefix = '/', filesAdapter: FilesAdapter, databaseAdapter: DatabaseAdapter, optionsFn: BFastOptionsFn
 ): FunctionsModel {
     return {
         path: `${prefix}v2/storage/:appId/file/:filename`,
         method: 'GET',
-        onRequest: handleGetFile(filesAdapter, databaseAdapter, options)
+        onRequest: handleGetFile(filesAdapter, databaseAdapter, optionsFn)
     }
 }
 
 export function geThumbnailFromStorage(
-    prefix = '/', filesAdapter: FilesAdapter, databaseAdapter: DatabaseAdapter, options: BFastOptions
+    prefix = '/', filesAdapter: FilesAdapter, databaseAdapter: DatabaseAdapter, optionsFn: BFastOptionsFn
 ): FunctionsModel {
     return {
         path: `${prefix}storage/:appId/file/:filename/thumbnail`,
         method: 'GET',
-        onRequest: handleGetThumbnail(filesAdapter, databaseAdapter, options)
+        onRequest: handleGetThumbnail(filesAdapter, databaseAdapter, optionsFn)
     }
 }
 
 export function geThumbnailV2FromStorage(
-    prefix = '/', filesAdapter: FilesAdapter, databaseAdapter: DatabaseAdapter, options: BFastOptions
+    prefix = '/', filesAdapter: FilesAdapter, databaseAdapter: DatabaseAdapter, optionsFn: BFastOptionsFn
 ): FunctionsModel {
     return {
         path: `${prefix}v2/storage/:appId/file/:filename/thumbnail`,
         method: 'GET',
-        onRequest: handleGetThumbnail(filesAdapter, databaseAdapter, options)
+        onRequest: handleGetThumbnail(filesAdapter, databaseAdapter, optionsFn)
     }
 }
 
 export function uploadMultiPartFile(
-    prefix = '/', filesAdapter: FilesAdapter, databaseAdapter: DatabaseAdapter, options: BFastOptions
+    prefix = '/', filesAdapter: FilesAdapter, databaseAdapter: DatabaseAdapter, optionsFn: BFastOptionsFn
 ): FunctionsModel {
     return {
         path: `${prefix}storage/:appId`,
         method: 'POST',
-        onRequest: handleUploadFile(filesAdapter, databaseAdapter, options)
+        onRequest: handleUploadFile(filesAdapter, databaseAdapter, optionsFn)
     };
 }
 
 export function getFilesFromStorage(
-    prefix = '/', filesAdapter: FilesAdapter, databaseAdapter: DatabaseAdapter, options: BFastOptions
+    prefix = '/', filesAdapter: FilesAdapter, databaseAdapter: DatabaseAdapter, optionsFn: BFastOptionsFn
 ): FunctionsModel {
     return {
         path: `${prefix}storage/:appId/list`,
         method: 'GET',
-        onRequest: handleListFilesREST(filesAdapter, databaseAdapter, options)
+        onRequest: handleListFilesREST(filesAdapter, databaseAdapter, optionsFn)
     };
 }

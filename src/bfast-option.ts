@@ -32,6 +32,8 @@ export type BFastOptions = {
     };
 }
 
+export type BFastOptionsFn = (request: any) => BFastOptions
+
 export function isBFastOptions(options: BFastOptions, onReason?: (reason: string) => void): options is BFastOptions {
     // @ts-ignore
     const v = validate(options, BFastOptionsSchema, {required: true});

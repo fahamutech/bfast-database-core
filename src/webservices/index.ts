@@ -4,13 +4,15 @@ import {BFastOptions} from "../bfast-option";
 import {AuthAdapter} from "../adapters/auth";
 import {
     getFileFromStorage,
-    getFilesFromStorage, getFileV2FromStorage,
-    geThumbnailFromStorage, geThumbnailV2FromStorage,
+    getFilesFromStorage,
+    getFileV2FromStorage,
+    geThumbnailFromStorage,
+    geThumbnailV2FromStorage,
     getUploadFileV2,
     uploadMultiPartFile
 } from "./storage";
 import {changesRestAPI} from "./changes";
-import {authJwk, rulesRestAPI} from "./rules";
+import {authJwk, handleRulesRestAPI} from "./rules";
 import {StorageApiModel} from "../models/storage";
 import {DatabaseAdapter} from "../adapters/database";
 
@@ -24,12 +26,24 @@ export class WebServices {
     storage(prefix = '/'): StorageApiModel {
         return {
             getUploadFileV2: getUploadFileV2(prefix),
-            fileApi: getFileFromStorage(prefix, this.filesAdapter, this.databaseAdapter, this.options),
-            fileV2Api: getFileV2FromStorage(prefix, this.filesAdapter, this.databaseAdapter, this.options),
-            fileThumbnailApi: geThumbnailFromStorage(prefix, this.filesAdapter, this.databaseAdapter, this.options),
-            fileThumbnailV2Api: geThumbnailV2FromStorage(prefix, this.filesAdapter, this.databaseAdapter, this.options),
-            fileListApi: getFilesFromStorage(prefix, this.filesAdapter, this.databaseAdapter, this.options),
-            fileUploadApi: uploadMultiPartFile(prefix, this.filesAdapter, this.databaseAdapter, this.options),
+            fileApi: getFileFromStorage(
+                prefix, this.filesAdapter, this.databaseAdapter, (_:any) => this.options
+            ),
+            fileV2Api: getFileV2FromStorage(
+                prefix, this.filesAdapter, this.databaseAdapter, (_:any) => this.options
+            ),
+            fileThumbnailApi: geThumbnailFromStorage(
+                prefix, this.filesAdapter, this.databaseAdapter, (_:any) => this.options
+            ),
+            fileThumbnailV2Api: geThumbnailV2FromStorage(
+                prefix, this.filesAdapter, this.databaseAdapter, (_:any) => this.options
+            ),
+            fileListApi: getFilesFromStorage(
+                prefix, this.filesAdapter, this.databaseAdapter, (_:any) => this.options
+            ),
+            fileUploadApi: uploadMultiPartFile(
+                prefix, this.filesAdapter, this.databaseAdapter, (_:any) => this.options
+            ),
         };
     }
 
@@ -41,7 +55,9 @@ export class WebServices {
 
     rest(prefix = '/'): { rules: FunctionsModel, jwk: FunctionsModel } {
         return {
-            rules: rulesRestAPI(prefix, this.authAdapter, this.filesAdapter, this.databaseAdapter, this.options),
+            rules: handleRulesRestAPI(
+                prefix, this.authAdapter, this.filesAdapter, this.databaseAdapter, () => this.options
+            ),
             jwk: authJwk(this.options)
         };
     }
