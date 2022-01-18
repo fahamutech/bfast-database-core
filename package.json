@@ -1,6 +1,6 @@
 {
   "name": "bfast-database-core",
-  "version": "4.0.0-alpha.2",
+  "version": "4.0.0-alpha.3",
   "main": "./index.js",
   "types": "./index.d.ts",
   "license": "MIT",
@@ -18,7 +18,7 @@
     "fahamutech(https://github.com/fahamutech)"
   ],
   "scripts": {
-    "build": "npx rimraf dist && npm run build:esm && cp src/bfast.json dist/",
+    "build": "npx rimraf dist && npm run build:esm && cp src/bfast.json dist/ && cp package.json dist/ && cp .npmrc dist/",
     "build:esm": "tsc -p tsconfig.json --declaration",
     "test": "npm run build && nyc mocha --require ts-node/register src/**/*.spec.ts",
     "chapisha:beta": "npm run build && cd dist && npm publish --tag beta",
