@@ -26,7 +26,7 @@ export class IpfsFactory {
             IpfsFactory.instance = new IpfsFactory();
             IpfsFactory.ipfs = await create({
                 /*need improvement as it will work only in bfast cloud envs*/
-                host: options.useLocalIpfs === true ? 'localhost' : 'https://cf-ipfs.com'
+                host: options.useLocalIpfs === true ? 'localhost' : 'ipfs.bfast.fahamutech.com'
             });
             return IpfsFactory.instance;
         }
@@ -58,16 +58,14 @@ export class IpfsFactory {
         ipfsOptions: IpfsOption,
         options: BFastOptions
     ): Promise<T> {
-        if ((await this.checkIfWeHaveCidInWeb3(cid, options)) === false) {
-            return null;
-        }
+        if ((await this.checkIfWeHaveCidInWeb3(cid, options)) === false) return null;
         devLog('____start fetch cid content with ipfs_______');
         const results = await IpfsFactory.ipfs.cat(cid, {
             offset: (ipfsOptions && ipfsOptions.json === false && ipfsOptions.start) ? ipfsOptions.start : undefined,
             length: (ipfsOptions && ipfsOptions.json === false && ipfsOptions.end) ? ipfsOptions.end : undefined,
             timeout: 1000 * 60 * 5,
         });
-        IpfsFactory.ipfs.pin.add(CID.parse(cid)).catch(console.log);
+        // IpfsFactory.ipfs.pin.add(CID.parse(cid)).catch(console.log);
         devLog('____cid content found with ipfs______');
         if (ipfsOptions?.json === true) {
             let data = '';
