@@ -26,7 +26,7 @@ export class IpfsFactory {
             IpfsFactory.instance = new IpfsFactory();
             IpfsFactory.ipfs = await create({
                 /*need improvement as it will work only in bfast cloud envs*/
-                host: options.useLocalIpfs === true ? 'localhost' : 'ipfs.bfast.fahamutech.com'
+                host: options.useLocalIpfs === true ? 'localhost' : 'ipfsnode'
             });
             return IpfsFactory.instance;
         }
