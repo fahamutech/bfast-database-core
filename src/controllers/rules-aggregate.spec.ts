@@ -29,16 +29,39 @@ async function clearData() {
     extractResultFromServer(a, 'delete', 'Product')
 }
 
-describe('RulesController::Aggregation Unit Test', function () {
+describe('RulesAggregateController', function () {
     beforeEach(() => options = loadEnv())
     before(async () => {
         await clearData()
         await createData()
     });
     after(async () => await clearData());
-    it('should perform aggregation for a specified domain', async function () {
-        const results = await handleAggregationRules(
-            {
+    describe('handleAggregateRule', function () {
+        it('should perform aggregation for a specified domain', async function () {
+            const results = await handleAggregationRules(
+                {
+                    context: {
+                        useMasterKey: false
+                    },
+                    aggregateProduct: [
+                        {
+                            $match: {
+                                name: 'xyz'
+                            }
+                        }
+                    ]
+                },
+                {errors: {}}, databaseFactory(),options
+            );
+            should().exist(results.aggregateProduct);
+            expect(results.aggregateProduct).be.a('array');
+            expect(results.aggregateProduct).length(1);
+            expect(results.aggregateProduct[0].name).equal('xyz');
+            expect(results.aggregateProduct[0].age).equal(89);
+            expect(results.aggregateProduct[0].id).be.a('string');
+        });
+        it('should perform aggregation for a specified domain with company group id', async function () {
+            const results = await handleAggregationRules({
                 context: {
                     useMasterKey: false
                 },
@@ -47,45 +70,24 @@ describe('RulesController::Aggregation Unit Test', function () {
                         $match: {
                             name: 'xyz'
                         }
+                    },
+                    {
+                        $group: {
+                            _id: {
+                                name: '$name'
+                            },
+                            name: {$first: '$name'},
+                            age: {$first: '$age'},
+                        }
                     }
                 ]
-            },
-            {errors: {}}, databaseFactory(),options
-        );
-        should().exist(results.aggregateProduct);
-        expect(results.aggregateProduct).be.a('array');
-        expect(results.aggregateProduct).length(1);
-        expect(results.aggregateProduct[0].name).equal('xyz');
-        expect(results.aggregateProduct[0].age).equal(89);
-        expect(results.aggregateProduct[0].id).be.a('string');
-    });
-    it('should perform aggregation for a specified domain with company group id', async function () {
-        const results = await handleAggregationRules({
-            context: {
-                useMasterKey: false
-            },
-            aggregateProduct: [
-                {
-                    $match: {
-                        name: 'xyz'
-                    }
-                },
-                {
-                    $group: {
-                        _id: {
-                            name: '$name'
-                        },
-                        name: {$first: '$name'},
-                        age: {$first: '$age'},
-                    }
-                }
-            ]
-        }, {errors: {}},databaseFactory(), options);
-        should().exist(results.aggregateProduct);
-        expect(results.aggregateProduct).be.a('array');
-        expect(results.aggregateProduct).length(1);
-        expect(results.aggregateProduct[0].name).equal('xyz');
-        expect(results.aggregateProduct[0].age).equal(89);
-        expect(results.aggregateProduct[0].id).be.a('object');
+            }, {errors: {}},databaseFactory(), options);
+            should().exist(results.aggregateProduct);
+            expect(results.aggregateProduct).be.a('array');
+            expect(results.aggregateProduct).length(1);
+            expect(results.aggregateProduct[0].name).equal('xyz');
+            expect(results.aggregateProduct[0].age).equal(89);
+            expect(results.aggregateProduct[0].id).be.a('object');
+        });
     });
 });

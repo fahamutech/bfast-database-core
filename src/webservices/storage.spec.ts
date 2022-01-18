@@ -23,7 +23,6 @@ describe('StorageWebService', function () {
             expect(Array.isArray(data.urls)).equal(true);
             expect(data.urls).length(1);
             expect(data.urls[0].startsWith('/storage/bfast/file')).equal(true);
-            console.log(data.urls[0]);
         });
         it('should upload a multipart file and preserve filename', async function () {
             const form = new FormData();
@@ -131,7 +130,6 @@ describe('StorageWebService', function () {
                 should().exist(data);
                 expect(data).equal('Hello, BFast!');
             } catch (e) {
-                console.log(e?.response?.data);
                 throw e;
             }
         });
@@ -160,9 +158,6 @@ describe('StorageWebService', function () {
             expect(response.status).equal(200);
             expect(response.headers['accept-ranges']).equal('bytes');
             expect(response.headers['content-length'] > '3000000').equal(true);
-            // console.log(data);
-            // console.log(response.headers);
-            // expect(response.headers)
 
         });
     });

@@ -50,7 +50,7 @@ async function updateManyDoc(
     return updateManyData(domain, ruleData, context, databaseAdapter, uO, options);
 }
 
-export async function updateRule(
+export async function handleUpdateRule(
     domain: string, ruleData, ruleResponse: RuleResponse, databaseAdapter: DatabaseAdapter,
     context: RuleContext, options: BFastOptions
 ): Promise<RuleResponse> {

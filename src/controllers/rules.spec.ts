@@ -123,7 +123,6 @@ describe('RulesController', function () {
                         }
                     }, {errors: {}}, databaseFactory(),options
                 );
-                // console.log(results.transaction.commit)
                 should().exist(results.transaction);
                 should().exist(results.transaction.commit);
                 const _r = {...results.transaction.commit}

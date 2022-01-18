@@ -10,9 +10,6 @@ const url = require('url');
 
 export class S3StorageFactory implements FilesAdapter {
 
-    constructor() {
-    }
-
     s3: Client;
     canHandleFileStream = false;
     isS3 = true;
@@ -96,7 +93,6 @@ export class S3StorageFactory implements FilesAdapter {
                     resolve(files);
                 });
             } catch (_) {
-                console.log(_);
                 resolve(files);
             }
         }).then((files: any[]) => {

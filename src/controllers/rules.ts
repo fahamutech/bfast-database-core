@@ -9,7 +9,7 @@ import {AuthRule} from "../models/auth-rule";
 import {authRule} from "./rules-auth";
 import {policyRule} from "./rules-policy";
 import {createRule} from "./rules-create";
-import {updateRule} from "./rules-update";
+import {handleUpdateRule} from "./rules-update";
 import {handleDeleteRule} from "./rules-delete";
 import {handleQueryRule} from "./rules-query";
 import {handleStorageRule} from "./rules-storage";
@@ -145,7 +145,7 @@ export async function handleUpdateRules(
         const ePath = `${transaction ? 'transaction.' : ''}update.${domain}`;
         const ruleData = rules[rule];
         ruleResponse = await withRuleResponse(ePath, ruleResponse,
-            () => updateRule(domain, ruleData, ruleResponse, databaseAdapter, rules.context, options))
+            () => handleUpdateRule(domain, ruleData, ruleResponse, databaseAdapter, rules.context, options))
     }
     return ruleResponse;
 }

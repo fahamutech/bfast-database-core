@@ -47,7 +47,6 @@ function handleRuleBlocks(
     try {
         devLog(JSON.stringify(body));
     } catch (e) {
-        console.log(e);
     }
     const results: RuleResponse = {errors: {}};
     handleAuthenticationRule(body, results, authAdapter, databaseAdapter, options).then(_1 => {

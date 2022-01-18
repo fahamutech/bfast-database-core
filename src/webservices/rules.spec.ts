@@ -159,7 +159,6 @@ describe('RulesWebservice', function () {
                     }
                 };
                 const data = await sendRuleRequest(user);
-                // console.log(data);
                 should().not.exist(data.auth);
                 should().exist(data.errors['auth.signUp']);
                 expect(data.errors['auth.signUp'].message).equal('User already exist');

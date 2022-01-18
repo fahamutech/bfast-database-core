@@ -51,7 +51,7 @@ export async function signUp<T extends BasicUser>(
     const wOptions = {bypassDomainVerification: true}
     const oldUser = await findDataByFilterInStore('_User', queryModel, context, databaseAdapter, wOptions, options)
     if (Array.isArray(oldUser) && oldUser.length > 0) {
-        console.log('INFO: TRY RE SIGNUP');
+        // console.log('INFO: TRY RE SIGNUP');
         throw {message: 'User already exist'};
     }
     return await authAdapter.signUp(userModel, context, options);

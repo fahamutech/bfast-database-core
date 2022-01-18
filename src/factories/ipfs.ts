@@ -94,7 +94,6 @@ export class IpfsFactory {
             wrapWithDirectory: false
         });
         devLog('done save file to local ipfs with cid', r.cid.toString());
-        // DatabaseFactory.ipfs.pin.add(r.cid).catch(console.log);
         return {
             cid: r.cid.toString(),
             size: r.size

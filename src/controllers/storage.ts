@@ -97,38 +97,16 @@ export function checkStreamCapability(req: Request, filesController: FilesAdapte
 async function compressImage(
     file: Storage<any>, width: number, height: number, filesAdapter: FilesAdapter, options
 ): Promise<Buffer> {
-    // const width = parseInt(request.query.width ? request.query.width : 100);
-    // const height = parseInt(request.query.height ? request.query.height : Jimp.AUTO);
     const f: Buffer = await filesAdapter.getFileBuffer(file, options);
     const image = await sharp(f);
-    console.log(width,height,'THUMB');
-    // response.set({
-    //     'Content-Disposition': `attachment; filename="${f.name}.${f.extension}"`,
-    // });
-    // header: {
-    //     'Content-Disposition': `attachment; filename="${file.name}.${file.extension}"`,
-    // },
-    // return {
     return await image.resize(width, height).toBuffer()
-    // }
 }
 
 async function compressImageByUrl(
     file: string, width: number, height: number, filesAdapter: FilesAdapter, options
 ): Promise<Buffer> {
-    // const width = parseInt(request.query.width ? request.query.width : 100);
-    // const height = parseInt(request.query.height ? request.query.height : Jimp.AUTO);
-    // const f: Buffer = await filesAdapter.getFileBuffer(file, options);
     const image = await sharp(file);
-    // response.set({
-    //     'Content-Disposition': `attachment; filename="${f.name}.${f.extension}"`,
-    // });
-    // header: {
-    //     'Content-Disposition': `attachment; filename="${file.name}.${file.extension}"`,
-    // },
-    // return {
     return await image.resize(width, height).toBuffer()
-    // }
 }
 
 export async function handleGetFileRequest(
@@ -207,12 +185,6 @@ export async function handleGetFileBySignedUrl<T>(
     filesAdapter: FilesAdapter,
     options: BFastOptions
 ): Promise<Buffer | string> {
-    // const f: Storage<any> = await findDataByIdInStore(
-    //     '_Storage', {id: name, return: []}, {bypassDomainVerification: true}, options
-    // );
-    // if (!f) {
-    //     throw {message: 'File not found'};
-    // }
     const furl = await filesAdapter.signedUrl(name, options);
     const type = await getTypeFromUrl(furl)
     if (thumbnail === true && type?.toString()?.startsWith('image')) {

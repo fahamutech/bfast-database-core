@@ -64,7 +64,6 @@ function multipartForm(
                 request.body.context.storage = {preserveName: false};
             }
             for (const file of Object.values<any>(files)) {
-                // console.log(JSON.stringify(file, null, 4),'FILE')
                 const fileMeta: { name: string, type: string } = {name: undefined, type: undefined};
                 const regx = /[^0-9a-z.]/gi;
                 fileMeta.name = file.originalFilename ? file.originalFilename : file.newFilename.toString().replace(regx, '');
@@ -81,7 +80,6 @@ function multipartForm(
                 urls.push(result);
             }
             for (const f_key of Object.keys(fields)) {
-                // console.log(JSON.stringify(f_key, null, 4),'FKEY')
                 const fileMeta: { name: string, type: string } = {name: undefined, type: undefined};
                 const regx = /[^0-9a-z.]/gi;
                 fileMeta.name = f_key
@@ -103,7 +101,6 @@ function multipartForm(
             }
             response.status(StatusCodes.OK).json({urls});
         } catch (e) {
-            console.log(e);
             response.status(StatusCodes.BAD_REQUEST).end(e.toString());
         }
     });
@@ -149,7 +146,6 @@ export function handleGetFile(
                     }).then(value => {
                         returnFile(value, response);
                     }).catch(reason => {
-                        // console.log(reason);
                         response.status(httpStatus.BAD_REQUEST).send(reason);
                     });
                 }
@@ -166,15 +162,6 @@ function returnFile(value: Buffer | ReadableStream | string, response) {
             response.status(httpStatus.OK).send(value);
         } else if (value instanceof Readable) {
             value.pipe(response)
-            // pipeline(value, response, err => {
-            //     if (err) {
-            //         console.log(err);
-            //         try {
-            //             response.end()
-            //         } catch (_) {
-            //         }
-            //     }
-            // });
         } else {
             throw {message: 'file data can not be determined'}
         }

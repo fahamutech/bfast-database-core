@@ -137,7 +137,6 @@ describe('RulesController', function () {
         //         }, {errors: {}},
         //         config
         //     );
-        //     // console.log(results);
         //     should().exist(results.createTest);
         //     expect(results.createTest.id).equal('doe');
         //     expect(results.createTest.name).equal('doe');

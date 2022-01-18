@@ -20,7 +20,7 @@
   "scripts": {
     "build": "gulp build && npm run build:esm",
     "build:esm": "tsc -p tsconfig.json --declaration",
-    "test": "mocha --require ts-node/register --extensions ts,tsx  'src/**/*.{ts,tsx}'",
+    "test": "npm run build && nyc mocha --require ts-node/register src/**/*.spec.ts",
     "chapisha:beta": "npm run build && cd dist && npm publish --tag beta",
     "chapisha": "npm run build && cd dist && npm publish"
   },

@@ -27,7 +27,6 @@ export function changesRestAPI(
                             try {
                                 _.close();
                             } catch (_12) {
-                                console.log(_12);
                             }
                             console.log(`INFO : changes resource released, with reason --> ${__1}`);
                         });

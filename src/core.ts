@@ -22,9 +22,7 @@ function getDatabaseFactory(options: BFastOptions): DatabaseAdapter {
 }
 
 function getFilesFactory(options: BFastOptions): FilesAdapter {
-    if (!options.adapters) {
-        options.adapters = {};
-    }
+    if (!options.adapters) options.adapters = {};
     return (options &&
         options.adapters &&
         options.adapters.s3Storage &&

@@ -179,7 +179,7 @@ describe('ChangesSocket', function () {
                             .table('test')
                             .query()
                             .byId('ethan')
-                            .delete();//.then(console.log);
+                            .delete();
                     },
                     () => {
                     }
@@ -214,7 +214,6 @@ describe('ChangesSocket', function () {
                 .query()
                 .changes();
             c2.addListener((r) => {
-                // console.log(r);
                 if (r.body.info) {
                     return;
                 }
