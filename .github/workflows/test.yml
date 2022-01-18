@@ -1,9 +1,9 @@
 name: Run test on pull
 
 on:
-  pull_request:
+  push:
     branches:
-      - master
+      - beta
 
 jobs:
   build:
