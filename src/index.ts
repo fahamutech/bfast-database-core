@@ -13,15 +13,16 @@ export * from './controllers/security';
 
 export * from './controllers/rest';
 export * from './controllers/storage';
+
 export {AuthFactory} from './factories/auth';
 export {IpfsFactory} from './factories/ipfs';
 export {IpfsStorageFactory} from './factories/ipfs-storage';
 export {S3StorageFactory} from './factories/s3-storage';
+export {MongoDatabaseFactory} from './factories/mongo-database';
+export {Factory} from './factories/factory';
 
 export * from './adapters/database';
 export * from './controllers/database';
-// export * from './factory/database.factory';
 export {initialize} from './core';
 export {BFastOptions} from './bfast-option';
 export {FactoryIdentifier} from './models/factory-identifier';
-export {Factory} from './factories/factory';
