@@ -1,6 +1,23 @@
 const {initialize, loadEnv} = require('../../dist');
 const bfast = require("bfast");
-const {config} = require("../mock.config.js");
+
+const config = {
+    applicationId: 'bfast',
+    useLocalIpfs: true,
+    projectId: 'bfast',
+    port: '3111',
+    logs: false,
+    web3Token: process.env['WEB_3_TOKEN'],
+    adapters: {
+        s3Storage: undefined
+    },
+    masterKey: 'bfast',
+    taarifaToken: undefined,
+    databaseURI: 'mongodb://localhost/bfast',
+    rsaKeyPairInJson: {},
+    rsaPublicKeyInJson: {}
+}
+
 let myConfig = loadEnv();
 myConfig = Object.assign(config, myConfig);
 const webService = initialize(myConfig);

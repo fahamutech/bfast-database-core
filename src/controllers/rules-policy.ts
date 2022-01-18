@@ -1,7 +1,8 @@
-import {addPolicyRule, listPolicyRule, removePolicyRule} from "./auth.controller";
 import {RuleResponse} from "../models/rule-response";
-import {BFastOptions} from "../bfast-database.option";
+import {BFastOptions} from "../bfast-option";
 import {RuleContext} from "../models/rule-context";
+import {addPolicyRule, listPolicyRule, removePolicyRule} from "./policy";
+import {DatabaseAdapter} from "../adapters/database";
 
 function sanitizeRuleResponse(ruleResponse: RuleResponse) {
     if (!ruleResponse.policy) {
@@ -10,38 +11,51 @@ function sanitizeRuleResponse(ruleResponse: RuleResponse) {
     return ruleResponse;
 }
 
-async function policyAdd(data, ruleResponse: RuleResponse, context: RuleContext, options: BFastOptions) {
+async function policyAdd(
+    data, ruleResponse: RuleResponse,databaseAdapter: DatabaseAdapter,
+    context: RuleContext, options: BFastOptions
+): Promise<RuleResponse> {
     const authorizationResults = {};
     for (const rule of Object.keys(data)) {
-        authorizationResults[rule] = await addPolicyRule(rule, data[rule], context, options);
+        authorizationResults[rule] = await addPolicyRule(rule, data[rule],databaseAdapter, context, options);
     }
     ruleResponse = sanitizeRuleResponse(ruleResponse);
     ruleResponse.policy.add = authorizationResults;
+    return ruleResponse
 }
 
-async function policyList(ruleResponse: RuleResponse, context: RuleContext, options: BFastOptions) {
-    const listResponse = await listPolicyRule(context, options);
+async function policyList(
+    ruleResponse: RuleResponse,databaseAdapter: DatabaseAdapter,
+    context: RuleContext, options: BFastOptions
+): Promise<RuleResponse> {
+    const listResponse = await listPolicyRule(databaseAdapter,context, options);
     ruleResponse = sanitizeRuleResponse(ruleResponse);
     ruleResponse.policy.list = listResponse
+    return ruleResponse
 }
 
-async function policyRemove(data, ruleResponse: RuleResponse, context: RuleContext, options: BFastOptions) {
-    const removeResponse = await removePolicyRule(data.ruleId, context, options);
+async function policyRemove(
+    data, ruleResponse: RuleResponse,databaseAdapter: DatabaseAdapter,
+    context: RuleContext, options: BFastOptions
+): Promise<RuleResponse> {
+    const removeResponse = await removePolicyRule(data.ruleId, context, databaseAdapter, options);
     ruleResponse = sanitizeRuleResponse(ruleResponse);
     ruleResponse.policy.remove = removeResponse;
+    return ruleResponse
 }
 
 export async function policyRule(
-    action: string, data: any, ruleResponse: RuleResponse, context: RuleContext, options: BFastOptions
-) {
+    action: string, data: any, ruleResponse: RuleResponse, databaseAdapter: DatabaseAdapter,
+    context: RuleContext, options: BFastOptions
+): Promise<RuleResponse> {
     if (!(context && context.useMasterKey === true)) {
         throw {message: 'policy rule require masterKey'}
     }
     if (action === 'add' && typeof data === 'object') {
-        await policyAdd(data, ruleResponse, context, options)
+        return await policyAdd(data, ruleResponse, databaseAdapter, context, options)
     } else if (action === 'list' && typeof data === 'object') {
-        await policyList(ruleResponse, context, options);
+        return await policyList(ruleResponse, databaseAdapter, context, options);
     } else if (action === 'remove' && typeof data === 'object') {
-        await policyRemove(data, ruleResponse, context, options);
-    }
+        return await policyRemove(data, ruleResponse, databaseAdapter, context, options);
+    } else return ruleResponse
 }

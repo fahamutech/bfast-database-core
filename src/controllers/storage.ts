@@ -1,14 +1,15 @@
-import {FilesAdapter} from '../adapters/files.adapter';
+import {FilesAdapter} from '../adapters/files';
 import {FileModel} from '../models/file-model';
 import mime from 'mime';
 import {StatusCodes} from 'http-status-codes';
-import {BFastOptions} from '../bfast-database.option';
+import {BFastOptions} from '../bfast-option';
 import {Buffer} from "buffer";
 import {Request, Response} from 'express'
-import {Storage} from "../models/storage";
+import {ListFileQuery, Storage} from "../models/storage";
 import {ReadableStream} from "stream/web";
 import sharp from 'sharp'
 import {RuleContext} from "../models/rule-context";
+import {validateInput} from "../utils";
 
 export function getSource(base64: string, type: string): any {
     let data: string;
@@ -39,7 +40,7 @@ export function getSource(base64: string, type: string): any {
     return source;
 }
 
-export async function saveFile(
+export async function saveFileInStore(
     fileModel: FileModel, _: RuleContext, filesAdapter: FilesAdapter, options: BFastOptions
 ): Promise<string> {
     const {name, base64} = fileModel;
@@ -93,42 +94,19 @@ export function checkStreamCapability(req: Request, filesController: FilesAdapte
     );
 }
 
-
 async function compressImage(
     file: Storage<any>, width: number, height: number, filesAdapter: FilesAdapter, options
 ): Promise<Buffer> {
-    // const width = parseInt(request.query.width ? request.query.width : 100);
-    // const height = parseInt(request.query.height ? request.query.height : Jimp.AUTO);
     const f: Buffer = await filesAdapter.getFileBuffer(file, options);
     const image = await sharp(f);
-    console.log(width,height,'THUMB');
-    // response.set({
-    //     'Content-Disposition': `attachment; filename="${f.name}.${f.extension}"`,
-    // });
-    // header: {
-    //     'Content-Disposition': `attachment; filename="${file.name}.${file.extension}"`,
-    // },
-    // return {
     return await image.resize(width, height).toBuffer()
-    // }
 }
 
 async function compressImageByUrl(
     file: string, width: number, height: number, filesAdapter: FilesAdapter, options
 ): Promise<Buffer> {
-    // const width = parseInt(request.query.width ? request.query.width : 100);
-    // const height = parseInt(request.query.height ? request.query.height : Jimp.AUTO);
-    // const f: Buffer = await filesAdapter.getFileBuffer(file, options);
     const image = await sharp(file);
-    // response.set({
-    //     'Content-Disposition': `attachment; filename="${f.name}.${f.extension}"`,
-    // });
-    // header: {
-    //     'Content-Disposition': `attachment; filename="${file.name}.${file.extension}"`,
-    // },
-    // return {
     return await image.resize(width, height).toBuffer()
-    // }
 }
 
 export async function handleGetFileRequest(
@@ -148,11 +126,10 @@ export async function handleGetFileRequest(
     }
 }
 
-export async function listFiles(
-    data: { prefix: string, size: number, skip: number, after: string },
-    filesAdapter: FilesAdapter,
-    options: BFastOptions
+export async function listFilesFromStore(
+    data: ListFileQuery, filesAdapter: FilesAdapter, options: BFastOptions
 ): Promise<any[]> {
+    await validateInput(data,{type: 'object'},'invalid file query data')
     return filesAdapter.listFiles(data, options);
 }
 
@@ -182,7 +159,7 @@ export async function saveFromBuffer(
     return filesAdapter.getFileLocation(file.id, options);
 }
 
-export async function deleteFile(
+export async function deleteFileInStore(
     data: { name: string }, _: RuleContext, filesAdapter: FilesAdapter, options: BFastOptions
 ): Promise<{ id: string }> {
     const {name} = data;
@@ -208,12 +185,6 @@ export async function handleGetFileBySignedUrl<T>(
     filesAdapter: FilesAdapter,
     options: BFastOptions
 ): Promise<Buffer | string> {
-    // const f: Storage<any> = await findById(
-    //     '_Storage', {id: name, return: []}, {bypassDomainVerification: true}, options
-    // );
-    // if (!f) {
-    //     throw {message: 'File not found'};
-    // }
     const furl = await filesAdapter.signedUrl(name, options);
     const type = await getTypeFromUrl(furl)
     if (thumbnail === true && type?.toString()?.startsWith('image')) {

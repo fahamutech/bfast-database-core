@@ -1,10 +1,9 @@
 export type Basic = {
     id?: string;
     _id?: string;
-    createdAt?: string;
-    updatedAt?: string;
+    createdAt?: any;
+    updatedAt?: any;
     createdBy?: string;
-    password?: string;
     return?: string[];
     [key: string]: any;
 }
