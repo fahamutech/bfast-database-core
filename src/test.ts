@@ -1,6 +1,5 @@
 import {DatabaseAdapter, getEnv} from "./index";
 import {MongoDatabaseFactory} from "./factories/mongo-database";
-import {expect} from "chai";
 import axios from "axios";
 
 export const databaseFactory = (): DatabaseAdapter => {
@@ -26,6 +25,8 @@ export const config = {
 
 export const sendRuleRequest = async function sendRequest(data, code = 200) {
     const response = await axios.post(exports.serverUrl, data);
-    expect(response.status).equal(code);
+    if (response.status !== code) {
+        throw {message: 'status code not equal'}
+    }
     return response.data;
 }

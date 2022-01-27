@@ -138,7 +138,6 @@ export class IpfsStorageFactory implements FilesAdapter {
         const _obj: Storage<any> = {
             id: pN ? removeDot(name) : generateUUID(),
             name: pN ? removeDot(name + generateUUID()) : removeDot(name),
-            // @ts-ignore
             extension: mime.getExtension(contentType),
             type: contentType,
             cid: null,

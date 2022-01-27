@@ -21,6 +21,7 @@ import {promisify} from "util";
 import {readFile} from "fs";
 import formidable from 'formidable';
 import {DatabaseAdapter} from "../adapters/database";
+import * as mime from 'mime'
 
 function filePolicy(
     request: any, response: any, next: any, databaseAdapter: DatabaseAdapter, options
@@ -36,7 +37,7 @@ function filePolicy(
     });
 }
 
-function multipartForm(
+export function multipartForm(
     request: any, response: any, _: any, filesAdapter: FilesAdapter, options: BFastOptions
 ): void {
     const contentType = request.get('content-type').split(';')[0].toString().trim();
@@ -90,7 +91,6 @@ function multipartForm(
                     size: fields[f_key]?.length,
                     name: fileMeta.name
                 }
-                // @ts-ignore
                 fileMeta.type = mime.getType(f_key);
                 const result = await saveFromBuffer(data, context, filesAdapter, options);
                 urls.push(result);

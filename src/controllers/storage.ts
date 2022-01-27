@@ -1,6 +1,6 @@
 import {FilesAdapter} from '../adapters/files';
 import {FileModel} from '../models/file-model';
-import mime from 'mime';
+import * as mime from 'mime';
 import {StatusCodes} from 'http-status-codes';
 import {BFastOptions} from '../bfast-option';
 import {Buffer} from "buffer";
@@ -52,7 +52,6 @@ export async function saveFileInStore(
         throw new Error('File base64 data to save is required');
     }
     if (!type) {
-        // @ts-ignore
         type = mime.getType(name);
     }
     const source = getSource(base64, type);
@@ -149,7 +148,6 @@ export async function saveFromBuffer(
         throw new Error('File base64 data to save is required');
     }
     if (!type) {
-        // @ts-ignore
         type = mime.getType(name);
     }
     const pN = !!(context && context.storage && context.storage.preserveName === true);
