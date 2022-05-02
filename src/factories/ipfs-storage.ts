@@ -90,7 +90,7 @@ export class IpfsStorageFactory implements FilesAdapter {
                 "Content-Range": `bytes ${start}-${end}/${size}`,
                 "Accept-Ranges": "bytes",
                 "Content-Length": `${end - start + 1}`,
-                "Content-Type": file.type
+                "Content-Type": typeof file.type === 'string'? file.type : 'application/octet-stream'
             });
             const ipfs = await IpfsFactory.getInstance(options);
             const buffer: ReadableStream = await ipfs.generateDataFromCid<ReadableStream>(

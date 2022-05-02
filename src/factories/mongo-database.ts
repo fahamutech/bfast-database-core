@@ -72,7 +72,8 @@ export class MongoDatabaseFactory extends DatabaseAdapter {
 
     getManyData(table, query, options) {
         return withMongoClient(async conn => {
-            const cursor = conn.db(options.projectId).collection(table).find(query.filter);
+            const collection = conn.db(options.projectId).collection(table)
+            const cursor = collection.find(query.filter);
             if (query && !isNaN(query.size)) {
                 cursor.limit(query.size);
             }

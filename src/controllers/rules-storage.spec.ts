@@ -38,6 +38,7 @@ describe('RulesStorageController', function () {
                         }
                     }, {errors: {}}, databaseFactory(), authFactory, ipfsFactory, options
                 );
+                // console.log(results);
                 should().exist(results.files);
                 should().exist(results.files.save);
                 expect(results.files.save).be.a("string");
