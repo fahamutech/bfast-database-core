@@ -135,8 +135,8 @@ export function handleGetFile(
                 } else {
                     getStorage(filename, databaseAdapter, options).then(f => {
                         response.set({
-                            'Content-Type': f.type,
-                            'Content-Length': f.size,
+                            'Content-Type': typeof f.type==='string'?f.type:'application/octet-stream',
+                            'Content-Length': typeof f.size==='number'?f.size: 0,
                             'Content-Disposition': `attachment; filename="${f.name}.${f.extension}"`,
                         });
                         return handleGetFileRequest(f, null, null, false, filesAdapter, options);

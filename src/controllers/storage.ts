@@ -118,7 +118,7 @@ export async function handleGetFileRequest(
     if (!f) {
         throw {message: 'File not found'};
     }
-    if (thumbnail === true && f.type?.toString()?.startsWith('image')) {
+    if (thumbnail === true && f.type && f.type.toString().startsWith('image')) {
         return compressImage(f, width, height, filesAdapter, options);
     } else {
         return await filesAdapter.getFileStream(f, options);
