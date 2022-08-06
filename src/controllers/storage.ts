@@ -7,7 +7,6 @@ import {Buffer} from "buffer";
 import {Request, Response} from 'express'
 import {ListFileQuery, Storage} from "../models/storage";
 import {ReadableStream} from "stream/web";
-import sharp from 'sharp'
 import {RuleContext} from "../models/rule-context";
 import {validateInput} from "../utils";
 
@@ -93,21 +92,6 @@ export function checkStreamCapability(req: Request, filesController: FilesAdapte
     );
 }
 
-async function compressImage(
-    file: Storage<any>, width: number, height: number, filesAdapter: FilesAdapter, options
-): Promise<Buffer> {
-    const f: Buffer = await filesAdapter.getFileBuffer(file, options);
-    const image = await sharp(f);
-    return await image.resize(width, height).toBuffer()
-}
-
-async function compressImageByUrl(
-    file: string, width: number, height: number, filesAdapter: FilesAdapter, options
-): Promise<Buffer> {
-    const image = await sharp(file);
-    return await image.resize(width, height).toBuffer()
-}
-
 export async function handleGetFileRequest(
     f: Storage<any>,
     width: number, height: number,
@@ -118,11 +102,11 @@ export async function handleGetFileRequest(
     if (!f) {
         throw {message: 'File not found'};
     }
-    if (thumbnail === true && f.type && f.type.toString().startsWith('image')) {
-        return compressImage(f, width, height, filesAdapter, options);
-    } else {
+    // if (thumbnail === true && f.type && f.type.toString().startsWith('image')) {
+    //     return compressImage(f, width, height, filesAdapter, options);
+    // } else {
         return await filesAdapter.getFileStream(f, options);
-    }
+    // }
 }
 
 export async function listFilesFromStore(
@@ -185,11 +169,11 @@ export async function handleGetFileBySignedUrl<T>(
 ): Promise<Buffer | string> {
     const furl = await filesAdapter.signedUrl(name, options);
     const type = await getTypeFromUrl(furl)
-    if (thumbnail === true && type?.toString()?.startsWith('image')) {
-        return compressImageByUrl(furl, width, height, filesAdapter, options);
-    } else {
+    // if (thumbnail === true && type?.toString()?.startsWith('image')) {
+    //     return compressImageByUrl(furl, width, height, filesAdapter, options);
+    // } else {
         return furl;
-    }
+    // }
 }
 
 export function fileInfo(
