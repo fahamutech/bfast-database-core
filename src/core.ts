@@ -1,5 +1,5 @@
 import {BFastOptions, isBFastOptions} from './bfast-option';
-import {WebServices} from './webservices';
+import {WebServices} from './web';
 import {AuthFactory} from "./factories/auth";
 import {AuthAdapter} from "./adapters/auth";
 import {FilesAdapter} from "./adapters/files";
@@ -45,8 +45,8 @@ export function initialize(options: BFastOptions): WebServices {
         });
         const fileF = getFilesFactory(options);
         fileF.init(options).catch(console.log);
-        const authFactory = getAuthFactory(options)
-        const databaseFactory = getDatabaseFactory(options)
+        const authFactory = getAuthFactory(options);
+        const databaseFactory = getDatabaseFactory(options);
         return new WebServices(authFactory, fileF, databaseFactory, options);
     } else throw {message: reason}
 }

@@ -3,7 +3,7 @@ import {validate} from "jsonschema";
 import {DatabaseAdapter} from "./adapters/database";
 
 export type BFastOptions = {
-    useLocalIpfs?: boolean;
+    ipfsResolveHost?: string;
     port: string;
     masterKey: string;
     applicationId: string;

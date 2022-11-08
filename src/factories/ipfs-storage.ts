@@ -9,7 +9,7 @@ import {
     removeDataInStore,
     writeOneDataInStore
 } from "../controllers/database";
-import {generateUUID} from "../controllers/security";
+import {generateUUID} from "../controllers/security/security";
 import * as mime from "mime";
 import {Storage} from "../models/storage";
 import {Request, Response} from "express";

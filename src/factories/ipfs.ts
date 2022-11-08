@@ -26,7 +26,7 @@ export class IpfsFactory {
             IpfsFactory.instance = new IpfsFactory();
             IpfsFactory.ipfs = await create({
                 /*need improvement as it will work only in bfast cloud envs*/
-                host: options.useLocalIpfs === true ? 'localhost' : 'ipfsnode'
+                host: options.ipfsResolveHost //  === true ? 'localhost' : 'ipfsnode'
             });
             return IpfsFactory.instance;
         }
@@ -39,7 +39,7 @@ export class IpfsFactory {
         domain: string,
         options: BFastOptions
     ): Promise<{ cid: string, size: number }> {
-        if (options.useLocalIpfs) {
+        if (options.ipfsResolveHost === 'localhost') {
             devLog('use local ipfs');
             return this.generateCidFromLocalIpfsNode(buffer);
         } else {
@@ -125,7 +125,7 @@ export class IpfsFactory {
         cid: string,
         options: BFastOptions
     ) {
-        if (/* when testing or decide to use offline ipfs node */options.useLocalIpfs === true) {
+        if (/* when testing or decide to use offline ipfs node */options.ipfsResolveHost === 'localhost') {
             return true;
         } else {
             const web3Storage = new Web3Storage({

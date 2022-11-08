@@ -10,7 +10,7 @@ export const serverUrl = 'http://localhost:3111/v2';
 
 export const config = {
     applicationId: 'bfast',
-    useLocalIpfs: true,
+    useLocalIpfs: 'localhost',
     projectId: 'bfast',
     port: '3111',
     logs: false,

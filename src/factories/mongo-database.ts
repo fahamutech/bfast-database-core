@@ -107,22 +107,7 @@ export class MongoDatabaseFactory extends DatabaseAdapter {
     }
 
     async init(options) {
-        // return withMongoClient(async conn => {
-        //     await conn.db(options.projectId).collection('_User').dropIndexes();
-        //     await conn.db(options.projectId).collection('_User').createIndex({
-        //         username: 1
-        //     }, {
-        //         unique: true,
-        //         // collation: {locale: 'en', strength: 2}
-        //     });
-        //     await conn.db(options.projectId).collection('_User').createIndex({
-        //         email: 1
-        //     }, {
-        //         unique: true,
-        //         // collation: {locale: 'en', strength: 2}
-        //     });
         return 'done';
-        // }, options);
     }
 
     async aggregateData(table, pipelines, options) {
