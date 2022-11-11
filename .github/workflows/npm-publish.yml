@@ -26,15 +26,15 @@ jobs:
           port: 27017
       - name: publish to npm@beta
         run: |
-          npm install -g ipfs
-          jsipfs init
-          jsipfs config --json Addresses.API '["/ip4/127.0.0.1/tcp/5001"]'
-          jsipfs daemon &
           npm install
-          npm run test
           npm run chapisha
-
-        #jsipfs config --json API.HTTPHeaders.Access-Control-Allow-Origin '["*"]'
         env:
           CI: true
           NPM_TOKEN: ${{secrets.NPM_TOKEN}}
+
+#          npm install -g ipfs
+#          jsipfs init
+#          jsipfs config --json Addresses.API '["/ip4/127.0.0.1/tcp/5001"]'
+#          jsipfs daemon &
+#          npm run test
+#jsipfs config --json API.HTTPHeaders.Access-Control-Allow-Origin '["*"]'
