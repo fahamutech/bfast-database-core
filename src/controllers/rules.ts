@@ -2,7 +2,7 @@ import {BFastOptions} from '../bfast-option';
 import {devLog} from "../utils/debug";
 import {AuthAdapter} from "../adapters/auth";
 import {FilesAdapter} from "../adapters/files";
-import {transaction} from "./database";
+import {bulkOperationWithSession, rawOperationInDataStore} from "./database";
 import {Rules} from "../models/rules";
 import {RuleResponse} from "../models/rule-response";
 import {AuthRule} from "../models/auth-rule";
@@ -29,7 +29,9 @@ export function getRulesKey(rules: Rules): string[] {
 async function withRuleResponse(
     errorPath: string, ruleResponse: RuleResponse, fun: () => Promise<RuleResponse>
 ): Promise<RuleResponse> {
-    try {return await fun()} catch (e) {
+    try {
+        return await fun()
+    } catch (e) {
         devLog(e);
         ruleResponse.errors[errorPath] = {
             message: e.message ? e.message : e.toString(),
@@ -99,7 +101,7 @@ export async function handleQueryRules(
 }
 
 export async function handleBulkRules(
-    rules: Rules, ruleResponse: RuleResponse,databaseAdapter: DatabaseAdapter, options: BFastOptions,
+    rules: Rules, ruleResponse: RuleResponse, databaseAdapter: DatabaseAdapter, options: BFastOptions,
 ): Promise<RuleResponse> {
     const transactionRules = getRulesKey(rules).filter(rule => rule === 'transaction');
     if (transactionRules.length === 0) return ruleResponse
@@ -107,13 +109,31 @@ export async function handleBulkRules(
     const transactionData = rules[transactionRule];
     const transactionOperationRules = transactionData.commit;
     const resultObject: RuleResponse = {errors: {}};
-    await transaction(databaseAdapter, async session => {
+    await bulkOperationWithSession(databaseAdapter, async session => {
         await handleCreateRules(transactionOperationRules, resultObject, databaseAdapter, options, session);
         await handleUpdateRules(transactionOperationRules, resultObject, databaseAdapter, options, session);
         await handleQueryRules(transactionOperationRules, resultObject, databaseAdapter, options, session);
         await handleDeleteRules(transactionOperationRules, resultObject, databaseAdapter, options, session);
     });
     ruleResponse.transaction = {commit: {errors: resultObject.errors}};
+    return ruleResponse;
+}
+
+export async function handleRawRule(
+    rules: Rules,
+    ruleResponse: RuleResponse,
+    databaseAdapter: DatabaseAdapter,
+    options: BFastOptions
+): Promise<RuleResponse> {
+    // const rawRules = getRulesKey(rules).filter(rule => rule === 'raw');
+    // if (!rules?.raw) return ruleResponse;
+    // const rule = rules.raw;
+    // const ruleData = rules[rule];
+    ruleResponse = await withRuleResponse('raw', ruleResponse, async () => {
+            ruleResponse['raw'] = await rawOperationInDataStore(rules?.raw, databaseAdapter, options);
+            return ruleResponse;
+        }
+    );
     return ruleResponse;
 }
 

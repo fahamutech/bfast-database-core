@@ -25,4 +25,6 @@ export abstract class DatabaseAdapter {
     abstract aggregateData(table: string, pipelines: any[], options: BFastOptions): Promise<any>
 
     abstract session<T>(): Promise<T>
+
+    abstract raw(data: any,options: BFastOptions): Promise<any>;
 }

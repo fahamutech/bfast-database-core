@@ -11,6 +11,7 @@ export interface Rules {
   context?: RuleContext;
   transaction?: Bulk;
   auth?: AuthRule;
+  raw?: any;
   policy?: Policy;
   errors?: Errors;
   [rule: string]: any

@@ -382,34 +382,43 @@ export async function removeDataInStore(
 ): Promise<any> {
     await checkPolicyInDomain(domain, basicOptions);
     deleteModel.filter = sanitizeWithOperator4Db(deleteModel?.filter as any);
-    let result = [];
     if (deleteModel && deleteModel.id) {
         await databaseAdapter.removeOneData(domain, deleteModel.id, options);
-        result.push({id: deleteModel.id});
-    }
-    if (deleteModel && deleteModel.filter) {
+    } else if (deleteModel && deleteModel.filter) {
         deleteModel.return = ['id']
-        let all = await findDataByFilterInStore(domain, deleteModel, context, databaseAdapter, basicOptions, options);
-        const _p = all.map(async a => {
-            await databaseAdapter.removeOneData(domain, a.id, options);
-            return {id: a.id};
-        });
-        const _pa = await Promise.all(_p);
-        result.push(..._pa);
+        await databaseAdapter.removeManyData(domain, deleteModel.filter, options);
+        // let all = await findDataByFilterInStore(domain, deleteModel, context, databaseAdapter, basicOptions, options);
+        // const _p = all.map(async a => {
+        //     await databaseAdapter.removeOneData(domain, a.id, options);
+        //     return {id: a.id};
+        // });
+        // const _pa = await Promise.all(_p);
+        // result.push(..._pa);
     }
-    return result.map(t => {
-        const cleanDoc = sanitize4User(t, deleteModel.return);
-        const change: ChangesModel = {_id: t?.id, fullDocument: t, documentKey: t?.id, operationType: "delete"}
-        publishChanges(domain, change, options);
-        return cleanDoc;
-    });
+    // return result.map(t => {
+    //     const cleanDoc = sanitize4User(t, deleteModel.return);
+    const change: ChangesModel = {_id: deleteModel?.id, filter: deleteModel?.filter, operationType: "delete"}
+    publishChanges(domain, change, options);
+    return {message: 'deleted'};
+    // return cleanDoc;
+    // });
 }
 
-export async function transaction<S>(
+export async function bulkOperationWithSession<S>(
     databaseAdapter: DatabaseAdapter, operations: (session: S) => Promise<any>
 ): Promise<any> {
     const session = await databaseAdapter.session<S>()
     return await operations(session);
+}
+
+export async function rawOperationInDataStore<T extends Basic>(
+    data: any, databaseAdapter: DatabaseAdapter, options: BFastOptions
+): Promise<any> {
+    if (data !== null && data !== undefined) {
+        return databaseAdapter.raw(data, options);
+    } else {
+        throw {message: 'raw data must be valid'};
+    }
 }
 
 export async function changes(

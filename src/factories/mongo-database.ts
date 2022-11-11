@@ -40,7 +40,7 @@ export class MongoDatabaseFactory extends DatabaseAdapter {
                 updateModel.update,
                 {
                     upsert: !!updateModel.upsert,
-                }
+                },
             );
             return {modified: a.modifiedCount + a.upsertedCount}
         }, options);
@@ -99,7 +99,7 @@ export class MongoDatabaseFactory extends DatabaseAdapter {
         }, options);
     }
 
-    removeManyData(table, query: any, options) {
+    removeManyData(table, query: Data, options) {
         return withMongoClient(async conn => {
             await conn.db(options.projectId).collection(table).deleteMany(query);
             return 'done';
@@ -134,6 +134,10 @@ export class MongoDatabaseFactory extends DatabaseAdapter {
 
     session<T>(): Promise<T> {
         return Promise.resolve(undefined);
+    }
+
+    raw(table: string, data: any, options: BFastOptions): Promise<any> {
+        throw {message: 'unsupported method in mongodb factory'};
     }
 
 }
