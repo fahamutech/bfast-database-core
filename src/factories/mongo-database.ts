@@ -136,7 +136,7 @@ export class MongoDatabaseFactory extends DatabaseAdapter {
         return Promise.resolve(undefined);
     }
 
-    raw(table: string, data: any, options: BFastOptions): Promise<any> {
+    raw(data: any, options: BFastOptions): Promise<any> {
         throw {message: 'unsupported method in mongodb factory'};
     }
 
