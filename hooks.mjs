@@ -32,13 +32,13 @@ export const mochaHooks = {
         process.env.RSA_KEY = JSON.stringify(config.rsaKeyPairInJson);
         process.env.USE_LOCAL_IPFS = 'true';
         console.log('________START__________');
-        await start({
-            port: config.port,
-            functionsConfig: {
-                functionsDirPath: __dirname + '/specs/functions',
-                bfastJsonPath: __dirname + '/specs/bfast.json'
-            }
-        }).catch(console.log);
+        // await start({
+        //     port: config.port,
+        //     functionsConfig: {
+        //         functionsDirPath: __dirname + '/specs/functions',
+        //         bfastJsonPath: __dirname + '/specs/bfast.json'
+        //     }
+        // }).catch(console.log);
     },
     async afterAll() {
         console.log('________END__________');

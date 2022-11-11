@@ -2,10 +2,7 @@ import {ruleHasPermission} from "./index";
 import {expect} from "chai";
 import {RuleContext} from "../../models/rule-context";
 import {loadEnv} from "../../utils";
-import {handleDeleteRules} from "../rules/rules";
-import {extractResultFromServer} from "bfast";
 import {databaseFactory} from "../../test";
-import {addPolicyRule} from "./add";
 
 export const policyRuleContext: RuleContext = {
     applicationId: 'bfast',
@@ -13,31 +10,32 @@ export const policyRuleContext: RuleContext = {
 }
 let options;
 
-export async function clearPolicy() {
-    policyRuleContext.useMasterKey = true
-    const a = await handleDeleteRules({
-        context: policyRuleContext,
-        delete_Policy: {
-            filter: {
-                updatedAt: {$exists: true}
-            }
-        }
-    }, {errors: {}}, databaseFactory(), loadEnv(), null)
-    extractResultFromServer(a, 'delete', '_Policy')
-}
+// export async function clearPolicy() {
+//     policyRuleContext.useMasterKey = true
+//     const a = await handleDeleteRules({
+//         context: policyRuleContext,
+//         delete_Policy: {filter: {updatedAt: {$exists: true}}}
+//     }, {errors: {}}, databaseFactory(), loadEnv(), null)
+//     extractResultFromServer(a, 'delete', '_Policy')
+// }
 
 describe('PolicyController', function () {
-    before(async () => await clearPolicy());
-    after(async () => await clearPolicy());
+    // before(async () => await clearPolicy());
+    // after(async () => await clearPolicy());
     beforeEach(() => options = loadEnv());
+    describe('policyDomainName', function () {
+        it('should be _Policy', function () {
+            expect(policyRuleContext).eql('_Policy');
+        });
+    });
     describe('ruleHasPermission', function () {
-        before(async () => {
-            options = loadEnv()
-            await addPolicyRule('create.mini', 'return false;', databaseFactory(), policyRuleContext, options)
-            await addPolicyRule('update.*', 'return false;', databaseFactory(), policyRuleContext, options)
-            policyRuleContext.useMasterKey = false
-        })
-        after(() => policyRuleContext.useMasterKey = true)
+        // before(async () => {
+        //     options = loadEnv()
+        //     await addPolicyRule('create.mini', 'return false;', databaseFactory(), policyRuleContext, options)
+        //     await addPolicyRule('update.*', 'return false;', databaseFactory(), policyRuleContext, options)
+        //     policyRuleContext.useMasterKey = false
+        // });
+        // after(() => policyRuleContext.useMasterKey = true)
         it('should return true if action permitted', async function () {
             const a = await ruleHasPermission('create.test', policyRuleContext, databaseFactory(), options)
             expect(a).eql(true)

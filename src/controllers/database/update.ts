@@ -6,9 +6,7 @@ import {BFastOptions} from "../../bfast-option";
 import {validateInput} from "../index";
 import {StringSchema} from "../../models/string";
 import {
-    checkPolicyInDomain,
-    findDataByFilterInStore,
-    findDataByIdInStore,
+    checkIsAllowedDomainName,
     publishChanges, sanitize4Db,
     sanitizeDate,
     sanitizeWithOperator4Db
@@ -17,6 +15,7 @@ import {ChangesModel} from "../../models/changes.model";
 import {generateUUID} from "../security/security";
 import {TreeController} from "bfast-database-tree";
 import moment from "moment/moment";
+import {findDataByFilterInStore, findDataByIdInStore} from "./query";
 
 async function publishUpdateChange(
     domain: string, updateModel: UpdateModel, databaseAdapter: DatabaseAdapter, context: RuleContext, options: BFastOptions
@@ -103,7 +102,7 @@ export async function updateDataInStore(
 ): Promise<{ message: string, modified: number }> {
     await validateInput(domain, StringSchema, 'invalid domain');
     await validateInput(updateModel, {type: 'object'}, 'invalid data');
-    await checkPolicyInDomain(domain, updateOptions);
+    await checkIsAllowedDomainName(domain, updateOptions);
     updateModel = await sanitizeUpdateModel(updateModel);
     const a = await databaseAdapter.updateOneData(domain, updateModel, options);
     if (a && a.modified > 0)
@@ -117,7 +116,7 @@ export async function updateManyData(
 ): Promise<{ message: string, modified: number }> {
     await validateInput(domain, StringSchema, 'invalid domain');
     await validateInput(updateModels, {type: 'array', items: {type: 'object'}}, 'invalid data');
-    await checkPolicyInDomain(domain, updateOptions);
+    await checkIsAllowedDomainName(domain, updateOptions);
     if (updateModels.length === 0) return {message: 'done update', modified: 0};
     updateModels = await Promise.all(updateModels.map(x => sanitizeUpdateModel(x)));
     const a = await databaseAdapter.updateManyData(domain, updateModels, options);

@@ -5,18 +5,18 @@ import {DatabaseBasicOptions} from "../../models/database-basic-options";
 import {BFastOptions} from "../../bfast-option";
 import {ChangesModel} from "../../models/changes.model";
 import {
-    checkPolicyInDomain,
-    findDataByFilterInStore,
+    checkIsAllowedDomainName,
     publishChanges,
     sanitize4User,
     sanitizeWithOperator4Db
 } from "./index";
+import {findDataByFilterInStore} from "./query";
 
 export async function removeDataInStore(
     domain: string, deleteModel: DeleteModel, context: RuleContext, databaseAdapter: DatabaseAdapter,
     basicOptions: DatabaseBasicOptions = {bypassDomainVerification: false}, options: BFastOptions
 ): Promise<any> {
-    await checkPolicyInDomain(domain, basicOptions);
+    await checkIsAllowedDomainName(domain, basicOptions);
     deleteModel.filter = sanitizeWithOperator4Db(deleteModel?.filter as any);
     let result = [];
     if (deleteModel && deleteModel.id) {

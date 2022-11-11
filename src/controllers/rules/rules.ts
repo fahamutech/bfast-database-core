@@ -1,8 +1,6 @@
 import {BFastOptions} from '../../bfast-option';
-import {devLog} from "../../utils/debug";
 import {AuthAdapter} from "../../adapters/auth";
 import {FilesAdapter} from "../../adapters/files";
-import {transaction} from "../database";
 import {Rules} from "../../models/rules";
 import {RuleResponse} from "../../models/rule-response";
 import {AuthRule} from "../../models/auth-rule";
@@ -15,6 +13,8 @@ import {handleQueryRule} from "./rules-query";
 import {handleStorageRule} from "./rules-storage";
 import {handleAggregateRule} from "./rules-aggregate";
 import {DatabaseAdapter} from "../../adapters/database";
+import {devLog} from "../../utils";
+import {transaction} from "../database/transaction";
 
 export function getRulesKey(rules: Rules): string[] {
     const defaultKeys = []

@@ -1,11 +1,12 @@
 import {AuthAdapter} from '../adapters/auth';
 import {BasicUser} from '../models/basic-user';
 import {BFastOptions} from "../bfast-option";
-import {findDataByFilterInStore, writeOneDataInStore} from "../controllers/database";
 
 import {comparePlainTextWithSaltedHash, generateToken, saltHashPlainText} from "../controllers/security/security";
 import {RuleContext} from "../models/rule-context";
 import {databaseFactory} from "../test";
+import {findDataByFilterInStore} from "../controllers/database/query";
+import {writeOneDataInStore} from "../controllers/database/write";
 
 export class AuthFactory implements AuthAdapter {
     private domainName = '_User';

@@ -3,20 +3,31 @@ import {AppEventsFactory} from "../../factories/app-events";
 import {BFastOptions, BFastOptionsSchema} from "../../bfast-option";
 import {DatabaseWriteOptions} from "../../models/database-write-options";
 import moment from 'moment';
-import {validateInput} from "../index";
+import {
+    compose, copyJsonMap,
+    ifDoElse,
+    ifThrow,
+    isTRUE,
+    justIt,
+    propertyOrNull,
+    validateInput
+} from "../index";
 import {DatabaseAdapter} from "../../adapters/database";
 
-export const handleDomainValidation = async domain => {
-    function validDomain(d: string): boolean {
-        return (d !== '_User' && d !== '_Token' && d !== '_Policy');
-    }
+const handleDomainValidation = compose(
+    _ => true,
+    ifThrow(d => !(d !== '_User' && d !== '_Token' && d !== '_Policy'), function (d) {
+        throw {message: `${d} is not a valid domain name`};
+    })
+);
 
-    if (!validDomain(domain)) throw {message: `${domain} is not a valid domain name`};
-    return true;
-}
-
-export const checkPolicyInDomain = async (domain: string, options: DatabaseWriteOptions) => {
-    if (options && options.bypassDomainVerification === false) await handleDomainValidation(domain);
+export const checkIsAllowedDomainName = async (domain: string, options: DatabaseWriteOptions) => {
+    const check = ifDoElse(
+        compose(isTRUE,propertyOrNull('bypassDomainVerification')),
+        _=>handleDomainValidation(domain),
+        justIt
+    );
+    check(options);
 }
 
 export const sanitizeDate = data => {
@@ -53,11 +64,8 @@ export const getReturnFields = data => {
     }
 }
 
-export const sanitizeWithOperator4Db = data => {
-    // data = sanitize4Db(data);
-    if (data === null || data === undefined) {
-        return null;
-    }
+export const sanitizeWithOperator4Db = _data => {
+    const data = copyJsonMap(_data);
     if (data.filter && data.filter.id) {
         data.filter._id = data.filter.id;
         delete data.filter.id;
@@ -69,11 +77,8 @@ export const sanitizeWithOperator4Db = data => {
     return data;
 }
 
-export const sanitize4Db = data => {
-    // data = addCreateMetadata(data, null);
-    if (data === null || data === undefined) {
-        return null;
-    }
+export const sanitize4Db = _data => {
+    const  data = copyJsonMap(_data);
     if (data && data.hasOwnProperty('return')) {
         delete data.return;
     }
@@ -99,38 +104,24 @@ export const sanitize4Db = data => {
     return data;
 }
 
-export const sanitize4User = (data: any, returnFields: string[]) => {
-    if (data === null || data === undefined) {
-        return null;
-    }
+export const sanitize4User = (_data: any, returnFields: string[]) => {
+    const data = copyJsonMap(_data);
     if (data && data.hasOwnProperty('_id')) {
         data.id = data._id ? (typeof data._id === 'object' ? data._id : data._id.toString().trim()) : '';
         delete data._id;
     }
     if (data && data.hasOwnProperty('_created_at')) {
-        // data.createdAt = data._created_at;
         delete data._created_at;
     }
     if (data && data.hasOwnProperty('_updated_at')) {
-        // data.updatedAt = data._updated_at;
         delete data._updated_at;
     }
     if (data && data.hasOwnProperty('_created_by')) {
-        // data.createdBy = data?._created_by;
         delete data._created_by;
     }
     if (data && data.hasOwnProperty('_hashed_password')) {
-        // if (!data.password) {
-        //     data.password = data._hashed_password;
-        // }
         delete data._hashed_password;
     }
-    // if (data && data.hasOwnProperty('password')) {
-    // if (!data.password) {
-    //     data.password = data._hashed_password;
-    // }
-    // delete data.password;
-    // }
     if (data && typeof data.hasOwnProperty('_rperm')) {
         delete data._rperm;
     }

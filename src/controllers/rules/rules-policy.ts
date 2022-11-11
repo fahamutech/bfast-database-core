@@ -1,8 +1,10 @@
 import {RuleResponse} from "../../models/rule-response";
 import {BFastOptions} from "../../bfast-option";
 import {RuleContext} from "../../models/rule-context";
-import {addPolicyRule, listPolicyRule, removePolicyRule} from "../policy";
 import {DatabaseAdapter} from "../../adapters/database";
+import {addPolicyRule} from "../policy/add";
+import {listPolicyRule} from "../policy/list";
+import {removePolicyRule} from "../policy/remove";
 
 function sanitizeRuleResponse(ruleResponse: RuleResponse) {
     if (!ruleResponse.policy) {

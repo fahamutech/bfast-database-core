@@ -1,10 +1,10 @@
 import {DeleteModel} from "../../models/delete-model";
 import {ruleHasPermission} from "../policy";
-import {removeDataInStore} from "../database";
 import {RuleResponse} from "../../models/rule-response";
 import {RuleContext} from "../../models/rule-context";
 import {BFastOptions} from "../../bfast-option";
 import {DatabaseAdapter} from "../../adapters/database";
+import {removeDataInStore} from "../database/remove";
 
 async function hasDeletePermission(
     domain: string, databaseAdapter: DatabaseAdapter, context: RuleContext, options: BFastOptions

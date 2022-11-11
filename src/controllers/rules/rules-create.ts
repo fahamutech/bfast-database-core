@@ -1,9 +1,9 @@
 import {BFastOptions} from "../../bfast-option";
-import {writeManyDataInStore, writeOneDataInStore} from "../database";
 import {RuleContext} from "../../models/rule-context";
 import {RuleResponse} from "../../models/rule-response";
 import {ruleHasPermission} from "../policy";
 import {DatabaseAdapter} from "../../adapters/database";
+import {writeManyDataInStore, writeOneDataInStore} from "../database/write";
 
 async function hasCreatePermission(
     domain: string, context: RuleContext, databaseAdapter: DatabaseAdapter, options: BFastOptions

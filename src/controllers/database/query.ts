@@ -3,7 +3,7 @@ import {DatabaseAdapter} from "../../adapters/database";
 import {DatabaseWriteOptions} from "../../models/database-write-options";
 import {BFastOptions} from "../../bfast-option";
 import {RuleContext} from "../../models/rule-context";
-import {checkPolicyInDomain, getReturnFields, sanitize4Db, sanitize4User, sanitizeWithOperator4Db} from "./index";
+import {checkIsAllowedDomainName, getReturnFields, sanitize4Db, sanitize4User, sanitizeWithOperator4Db} from "./index";
 
 function getReturnFields4Db(data: any): any {
     if (data && data.return && Array.isArray(data.return)) {
@@ -32,7 +32,7 @@ export async function findDataByIdInStore(
 ): Promise<any> {
     const returnFields = getReturnFields(queryModel as any);
     const returnFields4Db = getReturnFields4Db(queryModel as any);
-    await checkPolicyInDomain(domain, writeOptions);
+    await checkIsAllowedDomainName(domain, writeOptions);
     const id = queryModel.id;
     queryModel.return = returnFields4Db;
     const data = await databaseAdapter.getOneData(domain, id, options);
@@ -45,7 +45,7 @@ export async function findDataByFilterInStore(
 ): Promise<any> {
     const returnFields = getReturnFields(queryModel as any);
     const returnFields4Db = getReturnFields4Db(queryModel as any);
-    await checkPolicyInDomain(domain, writeOptions);
+    await checkIsAllowedDomainName(domain, writeOptions);
     queryModel = sanitizeWithOperator4Db(queryModel as any);
     queryModel.filter = sanitizeWithOperator4Db(queryModel?.filter ? queryModel.filter : {});
     queryModel.return = returnFields4Db;

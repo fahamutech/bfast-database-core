@@ -5,7 +5,6 @@ import {validateInput} from "../index";
 import {StringSchema} from "../../models/string";
 import {DatabaseAdapter} from "../../adapters/database";
 import {findDataByFilterInStore} from "../database/query";
-import {removeDataInStore} from "../database/remove";
 
 export const policyDomainName = '_Policy';
 
@@ -16,24 +15,7 @@ export function sanitizePolicy4User(_p1: PolicyData) {
     return _p1;
 }
 
-function decodeDot(data: string) {
-    return data.replace(new RegExp('%+', 'ig'), '.');
-}
-
-export async function removePolicyRule(
-    ruleId: string, context: RuleContext, databaseAdapter: DatabaseAdapter, options: BFastOptions
-) {
-    await validateInput(ruleId, StringSchema, 'invalid rule id');
-    const deleteModel = {
-        filter: {
-            ruleId: ruleId.replace('.', '%'),
-        },
-        return: ['id'],
-    };
-    const wOptions = {bypassDomainVerification: true};
-    const _y89 = await removeDataInStore('_Policy', deleteModel, context, databaseAdapter, wOptions, options);
-    return _y89.map(z => sanitizePolicy4User(z));
-}
+const decodeDot = data => data.replace(new RegExp('%+', 'ig'), '.');
 
 function getGlobalRule(ruleId: string) {
     const ruleIdInArray = ruleId.split('.')

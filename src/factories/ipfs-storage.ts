@@ -3,18 +3,15 @@ import {pipeline} from 'stream';
 import {BFastOptions} from '../bfast-option';
 import {Buffer} from "buffer";
 import {IpfsFactory} from "./ipfs";
-import {
-    findDataByFilterInStore,
-    findDataByIdInStore,
-    removeDataInStore,
-    writeOneDataInStore
-} from "../controllers/database";
 import {generateUUID} from "../controllers/security/security";
 import * as mime from "mime";
 import {Storage} from "../models/storage";
 import {Request, Response} from "express";
 import {ReadableStream} from "stream/web";
 import {databaseFactory} from "../test";
+import {removeDataInStore} from "../controllers/database/remove";
+import {findDataByFilterInStore, findDataByIdInStore} from "../controllers/database/query";
+import {writeOneDataInStore} from "../controllers/database/write";
 
 function removeDot(name: string) {
     if (name === null || name === undefined) {

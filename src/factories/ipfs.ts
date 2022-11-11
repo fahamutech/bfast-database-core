@@ -1,10 +1,10 @@
 import {BFastOptions} from "../bfast-option";
-import {CID, create, IPFSHTTPClient} from "ipfs-http-client";
+// import {create, IPFSHTTPClient} from "ipfs-http-client";
 import {Buffer} from "buffer";
-import {devLog} from "../utils/debug";
 import {File as web3File, Web3Storage,} from 'web3.storage';
 import itToStream from 'it-to-stream';
 import {v4} from 'uuid';
+import {devLog} from "../utils";
 
 
 interface IpfsOption {
@@ -15,21 +15,21 @@ interface IpfsOption {
 }
 
 export class IpfsFactory {
-    private static ipfs: IPFSHTTPClient;
+    // private static ipfs: IPFSHTTPClient;
     private static instance: IpfsFactory;
 
     private constructor() {
     }
 
     static async getInstance(options: BFastOptions) {
-        if (!IpfsFactory.instance) {
-            IpfsFactory.instance = new IpfsFactory();
-            IpfsFactory.ipfs = await create({
-                /*need improvement as it will work only in bfast cloud envs*/
-                host: options.ipfsResolveHost //  === true ? 'localhost' : 'ipfsnode'
-            });
-            return IpfsFactory.instance;
-        }
+        // if (!IpfsFactory.instance) {
+        //     IpfsFactory.instance = new IpfsFactory();
+        //     IpfsFactory.ipfs = await create({
+        //         /*need improvement as it will work only in bfast cloud envs*/
+        //         host: options.ipfsResolveHost //  === true ? 'localhost' : 'ipfsnode'
+        //     });
+        //     return IpfsFactory.instance;
+        // }
         return IpfsFactory.instance;
     }
 
@@ -39,18 +39,19 @@ export class IpfsFactory {
         domain: string,
         options: BFastOptions
     ): Promise<{ cid: string, size: number }> {
-        if (options.ipfsResolveHost === 'localhost') {
-            devLog('use local ipfs');
-            return this.generateCidFromLocalIpfsNode(buffer);
-        } else {
-            devLog('use web3 ipfs');
-            return this.generateCidFromWeb3IpfsNode(
-                buffer,
-                domain,
-                data,
-                options
-            );
-        }
+        // if (options.ipfsResolveHost === 'localhost') {
+        //     devLog('use local ipfs');
+        //     return this.generateCidFromLocalIpfsNode(buffer);
+        // } else {
+        //     devLog('use web3 ipfs');
+        //     return this.generateCidFromWeb3IpfsNode(
+        //         buffer,
+        //         domain,
+        //         data,
+        //         options
+        //     );
+        // }
+        return undefined;
     }
 
     async generateDataFromCid<T>(
@@ -58,44 +59,45 @@ export class IpfsFactory {
         ipfsOptions: IpfsOption,
         options: BFastOptions
     ): Promise<T> {
-        if ((await this.checkIfWeHaveCidInWeb3(cid, options)) === false) return null;
-        devLog('____start fetch cid content with ipfs_______');
-        const results = await IpfsFactory.ipfs.cat(cid, {
-            offset: (ipfsOptions && ipfsOptions.json === false && ipfsOptions.start) ? ipfsOptions.start : undefined,
-            length: (ipfsOptions && ipfsOptions.json === false && ipfsOptions.end) ? ipfsOptions.end : undefined,
-            timeout: 1000 * 60 * 5,
-        });
-        // IpfsFactory.ipfs.pin.add(CID.parse(cid)).catch(console.log);
-        devLog('____cid content found with ipfs______');
-        if (ipfsOptions?.json === true) {
-            let data = '';
-            for await (const chunk of results) {
-                data += chunk.toString();
-            }
-            return JSON.parse(data);
-        }
-        if (ipfsOptions?.json === false) {
-            if (ipfsOptions?.stream === true) {
-                return itToStream.readable(results) as T;
-            } else {
-                let buffer = Buffer.alloc(0);
-                for await (const chunk of results) {
-                    buffer = Buffer.concat([buffer, chunk]);
-                }
-                return buffer as unknown as T;
-            }
-        }
+        // if ((await this.checkIfWeHaveCidInWeb3(cid, options)) === false) return null;
+        // devLog('____start fetch cid content with ipfs_______');
+        // const results = await IpfsFactory.ipfs.cat(cid, {
+        //     offset: (ipfsOptions && ipfsOptions.json === false && ipfsOptions.start) ? ipfsOptions.start : undefined,
+        //     length: (ipfsOptions && ipfsOptions.json === false && ipfsOptions.end) ? ipfsOptions.end : undefined,
+        //     timeout: 1000 * 60 * 5,
+        // });
+        // // IpfsFactory.ipfs.pin.add(CID.parse(cid)).catch(console.log);
+        // devLog('____cid content found with ipfs______');
+        // if (ipfsOptions?.json === true) {
+        //     let data = '';
+        //     for await (const chunk of results) {
+        //         data += chunk.toString();
+        //     }
+        //     return JSON.parse(data);
+        // }
+        // if (ipfsOptions?.json === false) {
+        //     if (ipfsOptions?.stream === true) {
+        //         return itToStream.readable(results) as T;
+        //     } else {
+        //         let buffer = Buffer.alloc(0);
+        //         for await (const chunk of results) {
+        //             buffer = Buffer.concat([buffer, chunk]);
+        //         }
+        //         return buffer as unknown as T;
+        //     }
+        // }
+        return undefined;
     }
 
     async generateCidFromLocalIpfsNode(buffer: Buffer) {
-        const r = await IpfsFactory.ipfs.add(buffer, {
-            wrapWithDirectory: false
-        });
-        devLog('done save file to local ipfs with cid', r.cid.toString());
-        return {
-            cid: r.cid.toString(),
-            size: r.size
-        }
+        // const r = await IpfsFactory.ipfs.add(buffer, {
+        //     wrapWithDirectory: false
+        // });
+        // devLog('done save file to local ipfs with cid', r.cid.toString());
+        // return {
+        //     cid: r.cid.toString(),
+        //     size: r.size
+        // }
     }
 
     async generateCidFromWeb3IpfsNode(

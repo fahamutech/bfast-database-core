@@ -7,7 +7,7 @@ import {validateInput} from "../index";
 import {StringSchema} from "../../models/string";
 import moment from "moment/moment";
 import {generateUUID} from "../security/security";
-import {checkPolicyInDomain, getReturnFields, publishChanges, sanitize4Db, sanitize4User, sanitizeDate} from "./index";
+import {checkIsAllowedDomainName, getReturnFields, publishChanges, sanitize4Db, sanitize4User, sanitizeDate} from "./index";
 
 function addCreateMetadata(data: any, context: RuleContext) {
     let userUpdateDate = data.updatedAt;
@@ -37,7 +37,7 @@ export async function writeOneDataInStore<T extends Basic>(
 ): Promise<T> {
     await validateInput(domain, StringSchema, 'invalid domain');
     await validateInput(data, {type: 'object'}, 'invalid data')
-    await checkPolicyInDomain(domain, writeOptions);
+    await checkIsAllowedDomainName(domain, writeOptions);
     const returnFields = getReturnFields(data);
     const sanitizedDataWithCreateMetadata = addCreateMetadata(data, context);
     const sanitizedData: any = sanitize4Db(sanitizedDataWithCreateMetadata);
@@ -56,7 +56,7 @@ export async function writeManyDataInStore<T extends Basic>(
     await validateInput(domain, StringSchema, 'invalid domain')
     await validateInput(data, {type: 'array', items: {type: 'object'}}, 'invalid data')
     if (data.length === 0) return [];
-    await checkPolicyInDomain(domain, writeOptions);
+    await checkIsAllowedDomainName(domain, writeOptions);
     const returnFields = getReturnFields(data[0]);
     const sanitizedData: any[] = data.map(x => {
         x = addCreateMetadata(x, context);

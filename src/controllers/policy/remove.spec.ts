@@ -1,14 +1,14 @@
-import {removePolicyRule} from "./index";
+import {removePolicyRule} from "./remove";
 import {databaseFactory} from "../../test";
 import {expect} from "chai";
 import {listPolicyRule} from "./list";
-import {clearPolicy, policyRuleContext} from "./index.spec";
+import {policyRuleContext} from "./index.spec";
 import {loadEnv} from "../../utils";
 
 let options;
 describe('PolicyRemove', function () {
-    before(async () => await clearPolicy());
-    after(async () => await clearPolicy());
+    // before(async () => await clearPolicy());
+    // after(async () => await clearPolicy());
     beforeEach(() => options = loadEnv());
     describe('removePolicyRule', function () {
         it('should remove previous rule', async function () {
